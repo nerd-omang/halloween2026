@@ -22,14 +22,20 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _NoiseTex:
+        m_Texture: {fileID: 2800000, guid: 35dece87a2be9d643bb80ad8f63f9696, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _DarkBias: 1
+    - _DarkCutoff: 0.15
+    - _DarkLevels: 13
     - _DitherStrength: 1
-    - _Levels: 16
+    - _Levels: 13
     - _MatrixBits: 3
-    - _MatrixSize: 4
+    - _MatrixSize: 1
     - _NoiseMix: 0.3
     - _PixelSize: 1
     m_Colors: []

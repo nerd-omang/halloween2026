@@ -80,10 +80,15 @@ public static class PrototypeSceneBuilder
             AssetDatabase.CreateAsset(mat, path);
         }
         mat.SetFloat("_PixelSize", 1f);
-        mat.SetFloat("_Levels", 16f);
+        mat.SetFloat("_Levels", 13f);
         mat.SetFloat("_DitherStrength", 1f);
-        mat.SetFloat("_MatrixSize", 3f);
-        mat.SetFloat("_DarkBias", 1.5f);        EditorUtility.SetDirty(mat);
+        mat.SetFloat("_MatrixSize", 1f);
+        mat.SetFloat("_DarkBias", 1f);
+        mat.SetFloat("_DarkLevels", 13f);
+        mat.SetFloat("_DarkCutoff", 0.15f);
+        var noise = AssetDatabase.LoadAssetAtPath<Texture2D>(BlueNoiseGenerator.TexturePath);
+        if (noise != null) mat.SetTexture("_NoiseTex", noise);
+        EditorUtility.SetDirty(mat);
         return mat;
     }
 

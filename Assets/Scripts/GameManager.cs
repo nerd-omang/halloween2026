@@ -21,8 +21,20 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         hand.CanAct = () => !over && queue.FrontReady;
+        hand.TossTarget = GetTossTarget;
         hand.Performed += OnAction;
         StartGame();
+    }
+
+    Vector3? GetTossTarget()
+    {
+        var visitor = queue.Front;
+        if (visitor == null) return null;
+
+        Vector3 point = visitor.transform.position + Vector3.up * 0.3f;
+        var cam = Camera.main;
+        if (cam != null) point += (cam.transform.position - point).normalized * 0.45f;
+        return point;
     }
 
     void StartGame()

@@ -25,23 +25,44 @@ public class HandController : MonoBehaviour
     [SerializeField] float thumbsUpTime = 0.15f;
     [SerializeField] float candyPopTime = 0.05f;
 
+    [Header("Candy toss")]
+    [SerializeField] CandySparkle sparkle;
+    [SerializeField] float candyShowTime = 0.1f;
+    [SerializeField] float tossTime = 0.32f;
+    [SerializeField] float tossArc = 0.25f;
+    [SerializeField] float tossSpin = 540f;
+
     public bool ThumbsUpNext { get; set; }
     public Func<bool> CanAct;
     public event Action<HandAction> Performed;
 
     public bool Busy { get; private set; }
 
+    public Func<Vector3?> TossTarget;
+
     Vector3 candyScale = Vector3.one;
+    Transform candyParent;
+    Vector3 candyLocalPosition;
+    Quaternion candyLocalRotation = Quaternion.identity;
+    bool candyBusy;
 
     void Awake()
     {
-        if (candy != null) candyScale = candy.transform.localScale;
+        if (candy != null)
+        {
+            candyScale = candy.transform.localScale;
+            candyParent = candy.transform.parent;
+            candyLocalPosition = candy.transform.localPosition;
+            candyLocalRotation = candy.transform.localRotation;
+        }
         ResetPose();
     }
 
     public void ResetPose()
     {
         StopAllCoroutines();
+        candyBusy = false;
+        RestoreCandy();
         Busy = false;
         ShowIdle();
     }
@@ -100,12 +121,13 @@ public class HandController : MonoBehaviour
             yield return null;
         }
 
-        if (withCandy) StartCoroutine(PopCandy());
+        if (withCandy) StartCoroutine(CandySequence());
         onPeak?.Invoke();
 
-        for (float t = 0f; t < hold; t += Time.deltaTime)
+        for (float t = 0f; t < hold || candyBusy; t += Time.deltaTime)
         {
-            int i = holdStart + Mathf.RoundToInt(Mathf.PingPong(t * holdFps, last - holdStart));
+            int span = last - holdStart;
+            int i = span > 0 ? holdStart + Mathf.RoundToInt(Mathf.PingPong(t * holdFps, span)) : holdStart;
             handRenderer.sprite = clip.frames[i];
             yield return null;
         }
@@ -128,12 +150,65 @@ public class HandController : MonoBehaviour
         if (candy.sprite == null) yield break;
 
         candy.gameObject.SetActive(true);
+        if (sparkle != null) sparkle.Burst(candy.transform.position, 16, 0.55f);
         for (float t = 0f; t < candyPopTime; t += Time.deltaTime)
         {
             candy.transform.localScale = candyScale * EaseOutBack(t / candyPopTime);
             yield return null;
         }
         candy.transform.localScale = candyScale;
+    }
+
+    IEnumerator CandySequence()
+    {
+        candyBusy = true;
+        yield return PopCandy();
+        yield return new WaitForSeconds(candyShowTime);
+        yield return TossCandy();
+        candyBusy = false;
+    }
+
+    IEnumerator TossCandy()
+    {
+        Vector3? targetPoint = TossTarget != null ? TossTarget() : null;
+        if (candy == null || !candy.gameObject.activeSelf || !targetPoint.HasValue) yield break;
+
+        Transform ct = candy.transform;
+        Vector3 start = ct.position;
+        Quaternion startRotation = ct.rotation;
+        Vector3 end = targetPoint.Value;
+        ct.SetParent(null, true);
+
+        float trailTimer = 0f;
+        for (float t = 0f; t < tossTime; t += Time.deltaTime)
+        {
+            float e = t / tossTime;
+            Vector3 position = Vector3.Lerp(start, end, e) + Vector3.up * (tossArc * 4f * e * (1f - e));
+            ct.position = position;
+            ct.rotation = startRotation * Quaternion.AngleAxis(tossSpin * t, Vector3.forward);
+
+            trailTimer += Time.deltaTime;
+            if (sparkle != null && trailTimer > 0.03f)
+            {
+                trailTimer = 0f;
+                sparkle.Emit(position, UnityEngine.Random.insideUnitSphere * 0.15f, 0.35f, 0.7f);
+            }
+            yield return null;
+        }
+
+        if (sparkle != null) sparkle.Burst(end, 12, 0.45f, 0.8f);
+        RestoreCandy();
+        HideCandy();
+    }
+
+    void RestoreCandy()
+    {
+        if (candy == null || candyParent == null) return;
+        var ct = candy.transform;
+        if (ct.parent != candyParent) ct.SetParent(candyParent, false);
+        ct.localPosition = candyLocalPosition;
+        ct.localRotation = candyLocalRotation;
+        ct.localScale = candyScale;
     }
 
     static float EaseOutBack(float x)

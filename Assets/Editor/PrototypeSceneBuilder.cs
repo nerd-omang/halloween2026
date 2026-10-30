@@ -246,8 +246,15 @@ public static class PrototypeSceneBuilder
         candySr.sortingOrder = 1;
         candyGo.SetActive(false);
 
+        var sparkleGo = new GameObject("CandySparkle");
+        var sparkle = sparkleGo.AddComponent<CandySparkle>();
+        var sparkleSo = new SerializedObject(sparkle);
+        sparkleSo.FindProperty("material").objectReferenceValue = spriteMat;
+        sparkleSo.ApplyModifiedProperties();
+
         var hand = handRoot.AddComponent<HandController>();
         var so = new SerializedObject(hand);
+        so.FindProperty("sparkle").objectReferenceValue = sparkle;
         so.FindProperty("handRenderer").objectReferenceValue = handSr;
         so.FindProperty("candy").objectReferenceValue = candySr;
         var candySprites = LoadCandySprites();
@@ -256,7 +263,8 @@ public static class PrototypeSceneBuilder
         for (int i = 0; i < candySprites.Length; i++) candyList.GetArrayElementAtIndex(i).objectReferenceValue = candySprites[i];
         so.FindProperty("idleSprite").objectReferenceValue = LoadHandFrames("middle")[0];
         SetClip(so.FindProperty("giveClip"), LoadHandFrames("spread"), 18);
-        SetClip(so.FindProperty("rejectClip"), LoadHandFrames("middle"), 13);
+        var middleFrames = LoadHandFrames("middle");
+        SetClip(so.FindProperty("rejectClip"), middleFrames, middleFrames.Length - 1);
         SetClip(so.FindProperty("thumbsUpClip"), LoadHandFrames("thumbs"), 13);
         so.ApplyModifiedProperties();
         return hand;

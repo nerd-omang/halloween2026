@@ -5,8 +5,11 @@ public class VisitorQueue : MonoBehaviour
 {
     [SerializeField] Visitor kunmungchiPrefab;
     [SerializeField] Visitor omangiPrefab;
-    [SerializeField] int disguiseStartScore = 8;
+    [SerializeField] int disguiseStartScore = 3;
+    [SerializeField] float disguiseChanceStart = 0.2f;
     [SerializeField] float disguiseChanceMax = 0.5f;
+    [SerializeField] int scoreForMaxDisguise = 30;
+    [SerializeField] int firstDisguisedOmangiScore = 5;
     [SerializeField] int visibleCount = 8;
     [SerializeField] float frontZ = 2.6f;
     [SerializeField] float spacing = 1.1f;
@@ -17,6 +20,7 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] int scoreForMaxChance = 40;
 
     readonly List<Visitor> line = new List<Visitor>();
+    bool firstDisguisedOmangiSpawned;
 
     public Visitor Front => line.Count > 0 ? line[0] : null;
     public bool FrontReady => Front != null && Front.Arrived;
@@ -34,6 +38,7 @@ public class VisitorQueue : MonoBehaviour
             if (v != null) Destroy(v.gameObject);
         }
         line.Clear();
+        firstDisguisedOmangiSpawned = false;
         while (line.Count < visibleCount)
         {
             Spawn(0, true);
@@ -42,12 +47,24 @@ public class VisitorQueue : MonoBehaviour
 
     Visitor Spawn(int score, bool immediate)
     {
-        float t = Mathf.Clamp01(score / (float)scoreForMaxChance);
+        // A visitor spawned at the back reaches the front after the ones ahead are resolved,
+        // so judge difficulty by the score the player will have by then.
+        int futureScore = score + line.Count;
+
+        float t = Mathf.Clamp01(futureScore / (float)scoreForMaxChance);
         float chance = Mathf.Lerp(omangiChanceStart, omangiChanceMax, t);
         bool isOmangi = Random.value < chance;
 
-        float disguiseT = Mathf.InverseLerp(disguiseStartScore, scoreForMaxChance, score);
-        bool disguised = score >= disguiseStartScore && Random.value < disguiseT * disguiseChanceMax;
+        float disguiseT = Mathf.InverseLerp(disguiseStartScore, scoreForMaxDisguise, futureScore);
+        float disguiseChance = Mathf.Lerp(disguiseChanceStart, disguiseChanceMax, disguiseT);
+        bool disguised = futureScore >= disguiseStartScore && Random.value < disguiseChance;
+
+        if (!firstDisguisedOmangiSpawned && futureScore >= firstDisguisedOmangiScore)
+        {
+            isOmangi = true;
+            disguised = true;
+        }
+        if (isOmangi && disguised) firstDisguisedOmangiSpawned = true;
 
         Visitor prefab = isOmangi ? omangiPrefab : kunmungchiPrefab;
         int index = line.Count;

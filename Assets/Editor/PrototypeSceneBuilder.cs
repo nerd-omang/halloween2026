@@ -13,8 +13,6 @@ public static class PrototypeSceneBuilder
     const string GameVisitorDir = "Assets/Prefabs/Game";
     const string KunmungchiModelPath = "Assets/Prefabs/Visitors/Koonmungchi.prefab";
     const string OmangiModelPath = "Assets/Prefabs/Visitors/Omangi.prefab";
-    const string KunmungchiDisguisedModelPath = "Assets/Prefabs/Visitors/Koonmungchi_OmaCostume.prefab";
-    const string OmangiDisguisedModelPath = "Assets/Prefabs/Visitors/Omangi_KoonCostume.prefab";
     const string HandArtDir = "Assets/Art/Hand";
     const string ScenePath = "Assets/Scenes/Main.unity";
 
@@ -32,18 +30,15 @@ public static class PrototypeSceneBuilder
 
         BuildGameVisitor(KunmungchiModelPath, "Visitor_Kunmungchi", VisitorKind.Kunmungchi);
         BuildGameVisitor(OmangiModelPath, "Visitor_Omangi", VisitorKind.Omangi);
-        BuildGameVisitor(KunmungchiDisguisedModelPath, "Visitor_Kunmungchi_OmaCostume", VisitorKind.Kunmungchi);
-        BuildGameVisitor(OmangiDisguisedModelPath, "Visitor_Omangi_KoonCostume", VisitorKind.Omangi);
         AssetDatabase.SaveAssets();
 
+        // Disguises are put together at runtime by VisitorDisguise (on the model prefabs).
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         var kunPrefab = LoadGameVisitor("Visitor_Kunmungchi");
         var omangiPrefab = LoadGameVisitor("Visitor_Omangi");
-        var kunDisguised = LoadGameVisitor("Visitor_Kunmungchi_OmaCostume");
-        var omangiDisguised = LoadGameVisitor("Visitor_Omangi_KoonCostume");
         BuildWorld();
         var hand = BuildCameraAndHand();
-        var queue = BuildQueue(kunPrefab, omangiPrefab, kunDisguised, omangiDisguised);
+        var queue = BuildQueue(kunPrefab, omangiPrefab);
         BuildUiAndManager(queue, hand);
 
         EditorSceneManager.SaveScene(scene, ScenePath);
@@ -303,15 +298,13 @@ public static class PrototypeSceneBuilder
         return AssetDatabase.LoadAssetAtPath<Visitor>(GameVisitorDir + "/" + name + ".prefab");
     }
 
-    static VisitorQueue BuildQueue(Visitor kun, Visitor omangi, Visitor kunDisguised, Visitor omangiDisguised)
+    static VisitorQueue BuildQueue(Visitor kun, Visitor omangi)
     {
         var go = new GameObject("VisitorQueue");
         var queue = go.AddComponent<VisitorQueue>();
         var so = new SerializedObject(queue);
         so.FindProperty("kunmungchiPrefab").objectReferenceValue = kun;
         so.FindProperty("omangiPrefab").objectReferenceValue = omangi;
-        so.FindProperty("kunmungchiDisguisedPrefab").objectReferenceValue = kunDisguised;
-        so.FindProperty("omangiDisguisedPrefab").objectReferenceValue = omangiDisguised;
         so.FindProperty("groundY").floatValue = 0f;
         so.ApplyModifiedProperties();
         return queue;

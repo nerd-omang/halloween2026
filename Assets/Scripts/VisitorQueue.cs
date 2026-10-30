@@ -5,8 +5,6 @@ public class VisitorQueue : MonoBehaviour
 {
     [SerializeField] Visitor kunmungchiPrefab;
     [SerializeField] Visitor omangiPrefab;
-    [SerializeField] Visitor kunmungchiDisguisedPrefab;
-    [SerializeField] Visitor omangiDisguisedPrefab;
     [SerializeField] int disguiseStartScore = 8;
     [SerializeField] float disguiseChanceMax = 0.5f;
     [SerializeField] int visibleCount = 8;
@@ -51,15 +49,25 @@ public class VisitorQueue : MonoBehaviour
         float disguiseT = Mathf.InverseLerp(disguiseStartScore, scoreForMaxChance, score);
         bool disguised = score >= disguiseStartScore && Random.value < disguiseT * disguiseChanceMax;
 
-        Visitor prefab = isOmangi
-            ? (disguised && omangiDisguisedPrefab != null ? omangiDisguisedPrefab : omangiPrefab)
-            : (disguised && kunmungchiDisguisedPrefab != null ? kunmungchiDisguisedPrefab : kunmungchiPrefab);
+        Visitor prefab = isOmangi ? omangiPrefab : kunmungchiPrefab;
         int index = line.Count;
         var v = Instantiate(prefab, SlotPos(visibleCount), Quaternion.identity, transform);
+        if (disguised && v.TryGetComponent(out VisitorDisguise disguise))
+        {
+            disguise.Randomize(DisguiseElements(disguiseT, disguise.ElementCount));
+        }
         if (immediate) v.Place(SlotPos(index));
         else v.SetTarget(SlotPos(index));
         line.Add(v);
         return v;
+    }
+
+    // How many disguise elements to wear. Early disguises are sloppy (mostly one element: just the
+    // fur change or a single prop); by scoreForMaxChance they wear nearly everything.
+    static int DisguiseElements(float skill, int max)
+    {
+        float expected = 1f + skill * (max - 1);
+        return Mathf.Clamp(Mathf.RoundToInt(expected + Random.Range(-0.6f, 0.6f)), 1, max);
     }
 
     public void ResolveFront(Vector3 exitDirection, int score)

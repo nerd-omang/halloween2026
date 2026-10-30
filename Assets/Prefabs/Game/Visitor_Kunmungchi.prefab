@@ -78,5 +78,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Visitor
   kind: 0
-  moveSpeed: 4
   bobHeight: 0.04
+  turnSpeed: 360
+  advance:
+    speed: 2.8
+    frequency: 2.2
+    tilt: 8
+    sway: 5
+    hop: 0.05
+  relaxed:
+    speed: 1.6
+    frequency: 1.6
+    tilt: 8
+    sway: 5
+    hop: 0.05
+  frantic:
+    speed: 3
+    frequency: 2.5
+    tilt: 16
+    sway: 10
+    hop: 0.1

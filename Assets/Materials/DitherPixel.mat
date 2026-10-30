@@ -25,9 +25,13 @@ Material:
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
+    - _DarkBias: 1
     - _DitherStrength: 1
-    - _Levels: 5
-    - _PixelSize: 3
+    - _Levels: 16
+    - _MatrixBits: 3
+    - _MatrixSize: 4
+    - _NoiseMix: 0.3
+    - _PixelSize: 1
     m_Colors: []
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -5,6 +5,10 @@ public class VisitorQueue : MonoBehaviour
 {
     [SerializeField] Visitor kunmungchiPrefab;
     [SerializeField] Visitor omangiPrefab;
+    [SerializeField] Visitor kunmungchiDisguisedPrefab;
+    [SerializeField] Visitor omangiDisguisedPrefab;
+    [SerializeField] int disguiseStartScore = 8;
+    [SerializeField] float disguiseChanceMax = 0.5f;
     [SerializeField] int visibleCount = 8;
     [SerializeField] float frontZ = 2.6f;
     [SerializeField] float spacing = 1.1f;
@@ -42,7 +46,14 @@ public class VisitorQueue : MonoBehaviour
     {
         float t = Mathf.Clamp01(score / (float)scoreForMaxChance);
         float chance = Mathf.Lerp(omangiChanceStart, omangiChanceMax, t);
-        var prefab = Random.value < chance ? omangiPrefab : kunmungchiPrefab;
+        bool isOmangi = Random.value < chance;
+
+        float disguiseT = Mathf.InverseLerp(disguiseStartScore, scoreForMaxChance, score);
+        bool disguised = score >= disguiseStartScore && Random.value < disguiseT * disguiseChanceMax;
+
+        Visitor prefab = isOmangi
+            ? (disguised && omangiDisguisedPrefab != null ? omangiDisguisedPrefab : omangiPrefab)
+            : (disguised && kunmungchiDisguisedPrefab != null ? kunmungchiDisguisedPrefab : kunmungchiPrefab);
         int index = line.Count;
         var v = Instantiate(prefab, SlotPos(visibleCount), Quaternion.identity, transform);
         if (immediate) v.Place(SlotPos(index));

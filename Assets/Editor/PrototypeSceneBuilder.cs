@@ -8,10 +8,13 @@ using UnityEngine.UI;
 
 public static class PrototypeSceneBuilder
 {
+    const float RenderScale = 1f / 3f;
     const string MaterialDir = "Assets/Materials";
     const string GameVisitorDir = "Assets/Prefabs/Game";
     const string KunmungchiModelPath = "Assets/Prefabs/Visitors/Koonmungchi.prefab";
     const string OmangiModelPath = "Assets/Prefabs/Visitors/Omangi.prefab";
+    const string KunmungchiDisguisedModelPath = "Assets/Prefabs/Visitors/Koonmungchi_OmaCostume.prefab";
+    const string OmangiDisguisedModelPath = "Assets/Prefabs/Visitors/Omangi_KoonCostume.prefab";
     const string HandArtDir = "Assets/Art/Hand";
     const string ScenePath = "Assets/Scenes/Main.unity";
 
@@ -24,19 +27,23 @@ public static class PrototypeSceneBuilder
         var dither = CreateDitherMaterial();
         AddDitherFeature("Assets/Settings/PC_Renderer.asset", dither);
         AddDitherFeature("Assets/Settings/Mobile_Renderer.asset", dither);
+        OptimizeForWebGL("Assets/Settings/Mobile_RPAsset.asset");
+        OptimizeForWebGL("Assets/Settings/PC_RPAsset.asset");
 
         BuildGameVisitor(KunmungchiModelPath, "Visitor_Kunmungchi", VisitorKind.Kunmungchi);
         BuildGameVisitor(OmangiModelPath, "Visitor_Omangi", VisitorKind.Omangi);
+        BuildGameVisitor(KunmungchiDisguisedModelPath, "Visitor_Kunmungchi_OmaCostume", VisitorKind.Kunmungchi);
+        BuildGameVisitor(OmangiDisguisedModelPath, "Visitor_Omangi_KoonCostume", VisitorKind.Omangi);
         AssetDatabase.SaveAssets();
 
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-        var kunPrefab = AssetDatabase.LoadAssetAtPath<Visitor>(GameVisitorDir + "/Visitor_Kunmungchi.prefab");
-        var omangiPrefab = AssetDatabase.LoadAssetAtPath<Visitor>(GameVisitorDir + "/Visitor_Omangi.prefab");
-        AssetDatabase.DeleteAsset("Assets/Prefabs/Kunmungchi.prefab");
-        AssetDatabase.DeleteAsset("Assets/Prefabs/Omangi.prefab");
+        var kunPrefab = LoadGameVisitor("Visitor_Kunmungchi");
+        var omangiPrefab = LoadGameVisitor("Visitor_Omangi");
+        var kunDisguised = LoadGameVisitor("Visitor_Kunmungchi_OmaCostume");
+        var omangiDisguised = LoadGameVisitor("Visitor_Omangi_KoonCostume");
         BuildWorld();
         var hand = BuildCameraAndHand();
-        var queue = BuildQueue(kunPrefab, omangiPrefab);
+        var queue = BuildQueue(kunPrefab, omangiPrefab, kunDisguised, omangiDisguised);
         BuildUiAndManager(queue, hand);
 
         EditorSceneManager.SaveScene(scene, ScenePath);
@@ -72,10 +79,11 @@ public static class PrototypeSceneBuilder
             mat = new Material(Shader.Find("Fangame/DitherPixel"));
             AssetDatabase.CreateAsset(mat, path);
         }
-        mat.SetFloat("_PixelSize", 3f);
-        mat.SetFloat("_Levels", 5f);
+        mat.SetFloat("_PixelSize", 1f);
+        mat.SetFloat("_Levels", 16f);
         mat.SetFloat("_DitherStrength", 1f);
-        EditorUtility.SetDirty(mat);
+        mat.SetFloat("_MatrixSize", 3f);
+        mat.SetFloat("_DarkBias", 1.5f);        EditorUtility.SetDirty(mat);
         return mat;
     }
 
@@ -119,6 +127,25 @@ public static class PrototypeSceneBuilder
         }
         EditorUtility.SetDirty(data);
         AssetDatabase.SaveAssets();
+    }
+
+    static void OptimizeForWebGL(string rpAssetPath)
+    {
+        var asset = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(rpAssetPath);
+        var so = new SerializedObject(asset);
+        so.FindProperty("m_SupportsHDR").boolValue = false;
+        so.FindProperty("m_RequireDepthTexture").boolValue = false;
+        so.FindProperty("m_RequireOpaqueTexture").boolValue = false;
+        so.FindProperty("m_AdditionalLightsRenderingMode").intValue = 0;
+        so.FindProperty("m_AdditionalLightShadowsSupported").boolValue = false;
+        so.FindProperty("m_SoftShadowsSupported").boolValue = false;
+        so.FindProperty("m_ShadowCascadeCount").intValue = 1;
+        so.FindProperty("m_MainLightShadowmapResolution").intValue = 512;
+        so.FindProperty("m_ShadowDistance").floatValue = 15f;
+        so.FindProperty("m_RenderScale").floatValue = RenderScale;
+        so.FindProperty("m_UpscalingFilter").intValue = (int)UpscalingFilterSelection.Point;
+        so.ApplyModifiedProperties();
+        EditorUtility.SetDirty(asset);
     }
 
     static Material LitMaterial(string name, Color color)
@@ -212,24 +239,38 @@ public static class PrototypeSceneBuilder
 
         var candyGo = new GameObject("CandySprite");
         candyGo.transform.SetParent(handRoot.transform, false);
-        candyGo.transform.localPosition = new Vector3(0f, -0.085f, -0.01f);
-        candyGo.transform.localScale = Vector3.one * 0.12f;
+        candyGo.transform.localPosition = Vector3.zero;
+        candyGo.transform.localScale = Vector3.one * 0.25f;
         var candySr = candyGo.AddComponent<SpriteRenderer>();
         candySr.sharedMaterial = spriteMat;
         candySr.sortingOrder = 1;
-        candySr.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(HandArtDir + "/Candy/candy.png");
         candyGo.SetActive(false);
 
         var hand = handRoot.AddComponent<HandController>();
         var so = new SerializedObject(hand);
         so.FindProperty("handRenderer").objectReferenceValue = handSr;
         so.FindProperty("candy").objectReferenceValue = candySr;
+        var candySprites = LoadCandySprites();
+        var candyList = so.FindProperty("candySprites");
+        candyList.arraySize = candySprites.Length;
+        for (int i = 0; i < candySprites.Length; i++) candyList.GetArrayElementAtIndex(i).objectReferenceValue = candySprites[i];
         so.FindProperty("idleSprite").objectReferenceValue = LoadHandFrames("middle")[0];
         SetClip(so.FindProperty("giveClip"), LoadHandFrames("spread"), 18);
         SetClip(so.FindProperty("rejectClip"), LoadHandFrames("middle"), 13);
         SetClip(so.FindProperty("thumbsUpClip"), LoadHandFrames("thumbs"), 13);
         so.ApplyModifiedProperties();
         return hand;
+    }
+
+    static Sprite[] LoadCandySprites()
+    {
+        var sprites = new System.Collections.Generic.List<Sprite>();
+        foreach (var guid in AssetDatabase.FindAssets("t:Sprite", new[] { HandArtDir + "/Candy" }))
+        {
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(AssetDatabase.GUIDToAssetPath(guid));
+            if (sprite != null) sprites.Add(sprite);
+        }
+        return sprites.ToArray();
     }
 
     static Sprite[] LoadHandFrames(string clip)
@@ -252,13 +293,20 @@ public static class PrototypeSceneBuilder
         clip.FindPropertyRelative("holdStart").intValue = holdStart;
     }
 
-    static VisitorQueue BuildQueue(Visitor kun, Visitor omangi)
+    static Visitor LoadGameVisitor(string name)
+    {
+        return AssetDatabase.LoadAssetAtPath<Visitor>(GameVisitorDir + "/" + name + ".prefab");
+    }
+
+    static VisitorQueue BuildQueue(Visitor kun, Visitor omangi, Visitor kunDisguised, Visitor omangiDisguised)
     {
         var go = new GameObject("VisitorQueue");
         var queue = go.AddComponent<VisitorQueue>();
         var so = new SerializedObject(queue);
         so.FindProperty("kunmungchiPrefab").objectReferenceValue = kun;
         so.FindProperty("omangiPrefab").objectReferenceValue = omangi;
+        so.FindProperty("kunmungchiDisguisedPrefab").objectReferenceValue = kunDisguised;
+        so.FindProperty("omangiDisguisedPrefab").objectReferenceValue = omangiDisguised;
         so.FindProperty("groundY").floatValue = 0f;
         so.ApplyModifiedProperties();
         return queue;

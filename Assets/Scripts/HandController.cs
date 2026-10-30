@@ -14,6 +14,7 @@ public class HandController : MonoBehaviour
 {
     [SerializeField] SpriteRenderer handRenderer;
     [SerializeField] SpriteRenderer candy;
+    [SerializeField] Sprite[] candySprites;
     [SerializeField] Sprite idleSprite;
     [SerializeField] HandClip giveClip;
     [SerializeField] HandClip rejectClip;
@@ -121,7 +122,10 @@ public class HandController : MonoBehaviour
 
     IEnumerator PopCandy()
     {
-        if (candy == null || candy.sprite == null) yield break;
+        if (candy == null) yield break;
+        if (candySprites != null && candySprites.Length > 0)
+            candy.sprite = candySprites[UnityEngine.Random.Range(0, candySprites.Length)];
+        if (candy.sprite == null) yield break;
 
         candy.gameObject.SetActive(true);
         for (float t = 0f; t < candyPopTime; t += Time.deltaTime)

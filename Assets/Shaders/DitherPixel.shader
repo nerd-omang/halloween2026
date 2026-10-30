@@ -5,7 +5,8 @@ Shader "Fangame/DitherPixel"
         _PixelSize ("Pixel Size", Float) = 4
         _Levels ("Color Levels", Float) = 6
         _DitherStrength ("Dither Strength", Float) = 1
-    }
+        _MatrixSize ("Dither Matrix Size (2, 3, 4 or 8)", Float) = 4
+        _DarkBias ("Dark Bias (1 = uniform, higher = coarser shadows)", Float) = 1.5    }
     SubShader
     {
         Tags { "RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" }
@@ -25,9 +26,33 @@ Shader "Fangame/DitherPixel"
                 float _PixelSize;
                 float _Levels;
                 float _DitherStrength;
+                float _MatrixSize;
+                float _DarkBias;
             CBUFFER_END
 
-            static const float bayer2[4] = { 0, 2, 3, 1 };
+            float Bayer(int2 p, int bits)
+            {
+                int a = p.x ^ p.y;
+                int v = 0;
+                for (int i = 0; i < bits; i++)
+                {
+                    v = (v << 2) | (((a >> i) & 1) << 1) | ((p.y >> i) & 1);
+                }
+                return (v + 0.5) / (float)(1 << (2 * bits));
+            }
+
+            static const float matrix3[9] = { 0, 7, 3, 6, 5, 2, 4, 1, 8 };
+
+            float Threshold(int2 cell, float size)
+            {
+                if (size > 2.5 && size < 3.5)
+                {
+                    int2 q = int2(cell.x % 3, cell.y % 3);
+                    return (matrix3[q.y * 3 + q.x] + 0.5) / 9.0;
+                }
+                int bits = size > 5.0 ? 3 : (size > 3.5 ? 2 : 1);
+                return Bayer(cell & ((1 << bits) - 1), bits);
+            }
 
             half4 Frag(Varyings input) : SV_Target
             {
@@ -38,13 +63,15 @@ Shader "Fangame/DitherPixel"
                 float2 uv = (cell + 0.5) / res;
                 float3 c = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, uv).rgb;
 
-                int2 p = int2(cell) % 2;
-                float thr = lerp(0.5, (bayer2[p.y * 2 + p.x] + 0.5) / 4.0, _DitherStrength);
+                float thr = lerp(0.5, Threshold(int2(cell), _MatrixSize), _DitherStrength);
 
                 float steps = max(_Levels - 1.0, 1.0);
                 float luma = dot(c, float3(0.299, 0.587, 0.114));
-                float q = floor(luma * steps + thr) / steps;
+                float bias = max(_DarkBias, 1.0);
+                float lf = pow(max(luma, 0.0), bias);
+                float q = pow(saturate(floor(lf * steps + thr) / steps), 1.0 / bias);
                 float3 result = c * (q / max(luma, 0.001));
+                result /= max(1.0, max(result.r, max(result.g, result.b)));
                 return half4(saturate(result), 1.0);
             }
             ENDHLSL

@@ -23,3 +23,7 @@ sysinfo.txt
 *.aab
 *.unitypackage
 crashlytics-build.properties
+
+# Unity Performance Testing package output
+Assets/Resources/PerformanceTestRunInfo.json*
+Assets/Resources/PerformanceTestRunSettings.json*

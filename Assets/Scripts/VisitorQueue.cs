@@ -10,6 +10,10 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] float disguiseChanceMax = 0.5f;
     [SerializeField] int scoreForMaxDisguise = 30;
     [SerializeField] int firstDisguisedOmangiScore = 5;
+    [SerializeField] int sheetStartScore = 10;
+    [SerializeField] float sheetChanceStart = 0.15f;
+    [SerializeField] float sheetChanceMax = 0.35f;
+    [SerializeField] int scoreForMaxSheet = 35;
     [SerializeField] int visibleCount = 8;
     [SerializeField] float frontZ = 2.6f;
     [SerializeField] float spacing = 1.1f;
@@ -23,7 +27,7 @@ public class VisitorQueue : MonoBehaviour
     bool firstDisguisedOmangiSpawned;
 
     public Visitor Front => line.Count > 0 ? line[0] : null;
-    public bool FrontReady => Front != null && Front.Arrived;
+    public bool FrontReady => Front != null && Front.Arrived && !Front.IsDown;
 
     Vector3 SlotPos(int index)
     {
@@ -71,8 +75,16 @@ public class VisitorQueue : MonoBehaviour
         var v = Instantiate(prefab, SlotPos(visibleCount), Quaternion.identity, transform);
         if (disguised && v.TryGetComponent(out VisitorDisguise disguise))
         {
-            disguise.Randomize(DisguiseElements(disguiseT, disguise.ElementCount));
+            disguise.Randomize(DisguiseElements(disguiseT, disguise.ElementCount), disguiseT);
         }
+
+        float sheetT = Mathf.InverseLerp(sheetStartScore, scoreForMaxSheet, futureScore);
+        float sheetChance = Mathf.Lerp(sheetChanceStart, sheetChanceMax, sheetT);
+        if (futureScore >= sheetStartScore && Random.value < sheetChance && v.TryGetComponent(out GhostSheet sheet))
+        {
+            sheet.Wear();
+        }
+
         if (immediate) v.Place(SlotPos(index));
         else v.SetTarget(SlotPos(index));
         line.Add(v);

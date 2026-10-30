@@ -98,3 +98,10 @@ MonoBehaviour:
     tilt: 16
     sway: 10
     hop: 0.1
+  knockFallTime: 0.5
+  knockLieTime: 0.35
+  knockGetUpTime: 0.45
+  knockAngle: 110
+  knockHop: 0.06
+  knockPivotHeight: 0.38
+  knockRollRadius: 0.3

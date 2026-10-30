@@ -19,6 +19,11 @@ public class HandController : MonoBehaviour
     [SerializeField] HandClip giveClip;
     [SerializeField] HandClip rejectClip;
     [SerializeField] HandClip thumbsUpClip;
+    [SerializeField] HandClip blastClip;
+    [SerializeField] float blastHoldTime = 0.5f;
+    [SerializeField] float blastCooldown = 0.3f;
+
+    float blastReadyTime;
     [SerializeField] float fps = 96f;
     [SerializeField] float holdFps = 6f;
     [SerializeField] float holdTime = 0.15f;
@@ -35,6 +40,8 @@ public class HandController : MonoBehaviour
     public bool ThumbsUpNext { get; set; }
     public Func<bool> CanAct;
     public event Action<HandAction> Performed;
+    public Func<bool> CanBlast;
+    public event Action Blasted;
 
     public bool Busy { get; private set; }
 
@@ -73,8 +80,25 @@ public class HandController : MonoBehaviour
         if (Busy || mouse == null) return;
         if (CanAct != null && !CanAct()) return;
 
+        var keyboard = Keyboard.current;
+        bool blastPressed = Time.time >= blastReadyTime
+            && (mouse.middleButton.wasPressedThisFrame
+                || Mathf.Abs(mouse.scroll.ReadValue().y) > 0.01f
+                || (keyboard != null && keyboard.spaceKey.wasPressedThisFrame));
+
         if (mouse.leftButton.wasPressedThisFrame) StartCoroutine(Perform(HandAction.Give));
         else if (mouse.rightButton.wasPressedThisFrame) StartCoroutine(Perform(HandAction.Reject));
+        else if (blastPressed && CanBlast != null && CanBlast()) StartCoroutine(PerformBlast());
+    }
+
+    IEnumerator PerformBlast()
+    {
+        Busy = true;
+        ThumbsUpNext = false;
+        yield return PlayClip(blastClip, blastHoldTime, false, () => Blasted?.Invoke());
+        ShowIdle();
+        blastReadyTime = Time.time + blastCooldown;
+        Busy = false;
     }
 
     IEnumerator Perform(HandAction action)

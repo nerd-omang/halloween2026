@@ -22,8 +22,30 @@ public class GameManager : MonoBehaviour
     {
         hand.CanAct = () => !over && queue.FrontReady;
         hand.TossTarget = GetTossTarget;
+        hand.CanBlast = () => !over && queue.FrontReady;
+        hand.Blasted += OnBlast;
         hand.Performed += OnAction;
         StartGame();
+    }
+
+    void OnBlast()
+    {
+        var visitor = queue.Front;
+        if (visitor == null) return;
+
+        var cam = Camera.main;
+        Vector3 direction = cam != null ? visitor.transform.position - cam.transform.position : Vector3.forward;
+        if (visitor.IsCoveredBySheet)
+        {
+            visitor.BlowOffSheet(direction);
+            return;
+        }
+
+        visitor.KnockDown();
+        if (visitor.TryGetComponent(out VisitorDisguise disguise))
+        {
+            disguise.DropOneFakeProp(direction);
+        }
     }
 
     Vector3? GetTossTarget()

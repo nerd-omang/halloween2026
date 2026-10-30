@@ -29,10 +29,11 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _DarkBias: 1
-    - _DarkCutoff: 0.15
-    - _DarkLevels: 13
+    - _DarkBias: 1.05
+    - _DarkCutoff: 0.115
+    - _DarkLevels: 11
     - _DitherStrength: 1
+    - _FlatThreshold: 0.0001
     - _Levels: 13
     - _MatrixBits: 3
     - _MatrixSize: 1

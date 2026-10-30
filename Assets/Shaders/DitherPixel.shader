@@ -7,8 +7,9 @@ Shader "Fangame/DitherPixel"
         _DitherStrength ("Dither Strength", Float) = 1
         _MatrixSize ("Dither Matrix Size (1 = blue noise, 2, 3, 4 or 8)", Float) = 4
         _DarkBias ("Dark Bias (1 = uniform, higher = coarser shadows)", Float) = 1.5
-        _DarkLevels ("Dark Levels (coarse steps in shadows, >= Levels disables)", Float) = 5
+        _DarkLevels ("Dark Levels (steps in shadows; < Levels coarser, > Levels softer, = Levels off)", Float) = 5
         _DarkCutoff ("Dark Cutoff (luma where fine levels take over)", Float) = 0.35
+        _FlatThreshold ("Flat Threshold (local contrast below this skips dithering, 0 = off)", Float) = 0
         [NoScaleOffset] _NoiseTex ("Blue Noise (128x128, 16-bit in RG)", 2D) = "gray" {}
     }
     SubShader
@@ -36,6 +37,7 @@ Shader "Fangame/DitherPixel"
                 float _DarkBias;
                 float _DarkLevels;
                 float _DarkCutoff;
+                float _FlatThreshold;
             CBUFFER_END
 
             float Bayer(int2 p, int bits)
@@ -75,19 +77,33 @@ Shader "Fangame/DitherPixel"
                 float2 cell = floor(input.texcoord * res);
                 float2 uv = (cell + 0.5) / res;
                 float3 c = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, uv).rgb;
+                float3 lw = float3(0.299, 0.587, 0.114);
 
                 float thr = lerp(0.5, Threshold(int2(cell), _MatrixSize), _DitherStrength);
 
                 float steps = max(_Levels - 1.0, 1.0);
-                float luma = dot(c, float3(0.299, 0.587, 0.114));
+                float luma = dot(c, lw);
                 float bias = max(_DarkBias, 1.0);
                 float lf = pow(max(luma, 0.0), bias);
-                float dsteps = clamp(_DarkLevels - 1.0, 1.0, steps);
+                float dsteps = max(_DarkLevels - 1.0, 1.0);
                 float qf = floor(lf * steps + thr) / steps;
                 float qc = floor(lf * dsteps + thr) / dsteps;
                 float q = pow(saturate(lerp(qc, qf, smoothstep(0.0, max(_DarkCutoff, 0.001), luma))), 1.0 / bias);
                 float3 result = c * (q / max(luma, 0.001));
                 result /= max(1.0, max(result.r, max(result.g, result.b)));
+
+                // Flat areas keep their original color instead of turning into dot noise.
+                if (_FlatThreshold > 0.0)
+                {
+                    float2 d = 1.0 / res;
+                    float contrast = 0.0;
+                    contrast = max(contrast, abs(dot(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, uv + float2(d.x, 0)).rgb, lw) - luma));
+                    contrast = max(contrast, abs(dot(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, uv - float2(d.x, 0)).rgb, lw) - luma));
+                    contrast = max(contrast, abs(dot(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, uv + float2(0, d.y)).rgb, lw) - luma));
+                    contrast = max(contrast, abs(dot(SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, uv - float2(0, d.y)).rgb, lw) - luma));
+                    float detail = smoothstep(_FlatThreshold * 0.5, _FlatThreshold, contrast);
+                    result = lerp(c, result, detail);
+                }
                 return half4(saturate(result), 1.0);
             }
             ENDHLSL

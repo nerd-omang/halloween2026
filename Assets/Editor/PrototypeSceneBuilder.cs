@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public static class PrototypeSceneBuilder
 {
     const float RenderScale = 1f / 3f;
+    const int BlastPeakFrame = 8;
     const string MaterialDir = "Assets/Materials";
     const string GameVisitorDir = "Assets/Prefabs/Game";
     const string KunmungchiModelPath = "Assets/Prefabs/Visitors/Koonmungchi.prefab";
@@ -81,6 +82,7 @@ public static class PrototypeSceneBuilder
         mat.SetFloat("_DarkBias", 1f);
         mat.SetFloat("_DarkLevels", 13f);
         mat.SetFloat("_DarkCutoff", 0.15f);
+        mat.SetFloat("_FlatThreshold", 0f);
         var noise = AssetDatabase.LoadAssetAtPath<Texture2D>(BlueNoiseGenerator.TexturePath);
         if (noise != null) mat.SetTexture("_NoiseTex", noise);
         EditorUtility.SetDirty(mat);
@@ -266,6 +268,9 @@ public static class PrototypeSceneBuilder
         var middleFrames = LoadHandFrames("middle");
         SetClip(so.FindProperty("rejectClip"), middleFrames, middleFrames.Length - 1);
         SetClip(so.FindProperty("thumbsUpClip"), LoadHandFrames("thumbs"), 13);
+        var blastFrames = Directory.Exists(HandArtDir + "/blast") ? LoadHandFrames("blast") : new Sprite[0];
+        if (blastFrames.Length > 0) SetClip(so.FindProperty("blastClip"), blastFrames, BlastPeakFrame);
+        else SetClip(so.FindProperty("blastClip"), LoadHandFrames("spread"), 18);
         so.ApplyModifiedProperties();
         return hand;
     }

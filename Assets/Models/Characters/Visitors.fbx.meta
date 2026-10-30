@@ -12,6 +12,36 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CostumeBandage
+    second: {fileID: 2100000, guid: ac06f2593760b984292f0ae9bb859b12, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeBow
+    second: {fileID: 2100000, guid: 62ef41c4d4cd83e4d9a90514606cdf3a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeDark
+    second: {fileID: 2100000, guid: 34246810b42f2384ea71c0d99bcfdab4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeHat
+    second: {fileID: 2100000, guid: 54b509bed5f8d2e4c9b4b9e690df019c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeOrange
+    second: {fileID: 2100000, guid: e1c4ba1628703544faeb7dffe11affe7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeWing
+    second: {fileID: 2100000, guid: db1294d94ba9ab54dae4ac5a8278a2d3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: Ear
     second: {fileID: 2100000, guid: 18701ec1ed4dd7540b2d1e77329d08c5, type: 2}
   - first:
@@ -39,6 +69,16 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: PropBand
     second: {fileID: 2100000, guid: ced449a4dda6d7b47af49a642df7bb8e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PropBucket_Gray
+    second: {fileID: 2100000, guid: 67809de94fcc6f742b7522bdc006b262, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PropBucket_Red
+    second: {fileID: 2100000, guid: ffbafd6f0e82d3949b8de4e3c361d4a7, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
@@ -74,6 +114,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: PropString
     second: {fileID: 2100000, guid: 78c1db3c08f941b44923e178480d2086, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PropTin
+    second: {fileID: 2100000, guid: e85bc6f51714ee74a84855386d4424cd, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule

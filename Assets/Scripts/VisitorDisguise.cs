@@ -13,36 +13,44 @@ public class VisitorDisguise : MonoBehaviour
     [SerializeField] Material[] dyeLevels;
     // All of these are fake (look-alike) props; real parts are never listed here.
     [SerializeField] GameObject[] props;
+    // Props sharing the head: at most one of them is worn. Listed by priority, the first one wins a clash.
+    [SerializeField] GameObject[] headProps;
+    // Props that always come with the fur change (the paint bucket: the paint was poured from it).
+    [SerializeField] GameObject[] furProps;
+
+    // Props that cover the head (the paint bucket): a costume head piece (VisitorCostume) is not worn with them.
+    [SerializeField] GameObject[] headCoverProps;
 
     [Header("Knocked-off props")]
-    [SerializeField] float dropDuration = 0.7f;
-    [SerializeField] float dropSpeed = 1.6f;
-    [SerializeField] float dropLift = 2.6f;
-    [SerializeField] float dropSpin = 720f;
-    [SerializeField] float gravity = 9.8f;
-
-    class Flight
-    {
-        public Transform prop;
-        public Vector3 localPosition;
-        public Quaternion localRotation;
-        public Vector3 localScale;
-        public Vector3 center;      // world point it tumbles around
-        public Vector3 centerInProp;
-        public Quaternion startRotation;
-        public Vector3 velocity;
-        public Vector3 spinAxis;
-        public float groundY;
-        public bool bounced;
-        public float time;
-    }
+    [SerializeField] PropFlight flight = new PropFlight();
 
     Renderer[] renderers;
     int droppedMask;
-    readonly List<Flight> flights = new List<Flight>();
 
     // Disguise elements: the fur change plus each prop.
     public int ElementCount => 1 + props.Length;
+
+    int appliedMask;
+    int appliedDye;
+
+    public int PropCount => props.Length;
+    public int DyeLevelCount => dyeLevels.Length;
+    public int DyeLevel => appliedDye;
+    public string PropName(int i) => props[i].name;
+
+    // What is visible right now in Apply's mask format: the fur change plus the props not yet knocked off.
+    public int WornMask
+    {
+        get
+        {
+            int mask = appliedMask & 1;
+            for (int i = 0; i < props.Length; i++)
+            {
+                if (IsWorn(i)) mask |= 1 << (i + 1);
+            }
+            return mask;
+        }
+    }
 
     // Fake props currently worn (dropped ones no longer count).
     public int FakePropCount
@@ -60,32 +68,93 @@ public class VisitorDisguise : MonoBehaviour
 
     // Wears `count` randomly chosen elements (clamped to 1..ElementCount). skill (0..1) picks how
     // thorough the fur change is when it is one of them: low skill dyes a few patches, high skill all of it.
+    // Only valid combinations come out (see Normalize); a prop that brings the fur change along counts it
+    // as one of the elements, and fewer than `count` are worn when the head slot rules leave no more.
     public void Randomize(int count, float skill)
     {
         int n = ElementCount;
         count = Mathf.Clamp(count, 1, n);
         int mask = 0;
-        for (int picked = 0; picked < count;)
+        var candidates = new List<int>(n);
+        while (CountBits(mask) < count)
         {
-            int bit = 1 << Random.Range(0, n);
-            if ((mask & bit) != 0) continue;
-            mask |= bit;
-            picked++;
+            candidates.Clear();
+            for (int i = 0; i < n; i++)
+            {
+                int bit = 1 << i;
+                int next = mask | bit;
+                // Skip a bit that Normalize would drop again (a second head prop).
+                if ((mask & bit) == 0 && (Normalize(next) & next) == next) candidates.Add(bit);
+            }
+            if (candidates.Count == 0) break;
+            mask = Normalize(mask | candidates[Random.Range(0, candidates.Count)]);
         }
         float expected = Mathf.Clamp01(skill) * (dyeLevels.Length - 1);
         int level = Mathf.Clamp(Mathf.RoundToInt(expected + Random.Range(-0.6f, 0.6f)), 0, dyeLevels.Length - 1);
         Apply(mask, level);
     }
 
+    // Combination rules for a mask in Apply's format: only one head prop (the first listed in headProps
+    // wins), and a fur prop turns the fur change on.
+    public int Normalize(int mask)
+    {
+        int head = mask & HeadMask;
+        if (head != 0) mask = (mask & ~HeadMask) | FirstHeadBit(head);
+        if ((mask & FurPropMask) != 0) mask |= 1;
+        return mask;
+    }
+
+    // False for combinations Apply would change (two head props, or a fur prop without the fur change).
+    public bool IsValidMask(int mask) => Normalize(mask) == mask;
+
+    int headMask = -1;
+    int furPropMask = -1;
+    int HeadMask => headMask >= 0 ? headMask : headMask = PropMask(headProps);
+    int FurPropMask => furPropMask >= 0 ? furPropMask : furPropMask = PropMask(furProps);
+
+    int PropMask(GameObject[] list)
+    {
+        int mask = 0;
+        if (list == null) return mask;
+        foreach (var p in list)
+        {
+            int i = System.Array.IndexOf(props, p);
+            if (i >= 0) mask |= 1 << (i + 1);
+        }
+        return mask;
+    }
+
+    int FirstHeadBit(int head)
+    {
+        foreach (var p in headProps)
+        {
+            int bit = 1 << (System.Array.IndexOf(props, p) + 1);
+            if ((head & bit) != 0) return bit;
+        }
+        return 0;
+    }
+
+    static int CountBits(int mask)
+    {
+        int count = 0;
+        for (; mask != 0; mask &= mask - 1) count++;
+        return count;
+    }
+
     // Bit 0 = fur change at dyeLevels[dyeLevel], bit i (i >= 1) = props[i - 1]. 0 removes the disguise.
-    // Props already knocked off stay off.
+    // The mask is normalized first (see Normalize). Props already knocked off stay off.
     public void Apply(int mask, int dyeLevel)
     {
+        mask = Normalize(mask);
+        appliedMask = mask;
+        appliedDye = dyeLevel;
         SetFur((mask & 1) != 0 ? dyeLevels[dyeLevel] : naturalFur);
         for (int i = 0; i < props.Length; i++)
         {
             props[i].SetActive((mask & (1 << (i + 1))) != 0 && (droppedMask & (1 << i)) == 0);
         }
+        // A costume head piece gives way to a head-covering prop, whichever was applied first.
+        if (TryGetComponent(out VisitorCostume costume)) costume.Apply(costume.AppliedMask);
     }
 
     // Knocks one randomly chosen worn fake prop off, flying along `direction` (camera -> visitor) and
@@ -109,70 +178,30 @@ public class VisitorDisguise : MonoBehaviour
         }
         droppedMask |= 1 << index;
 
-        var prop = props[index].transform;
-        var r = prop.GetComponentInChildren<Renderer>();
-        Vector3 center = r != null ? r.bounds.center : prop.position;
-        Vector3 forward = Vector3.ProjectOnPlane(direction, Vector3.up);
-        forward = forward.sqrMagnitude > 1e-6f ? forward.normalized : -transform.forward;
-        var flight = new Flight
-        {
-            prop = prop,
-            localPosition = prop.localPosition,
-            localRotation = prop.localRotation,
-            localScale = prop.localScale,
-            center = center,
-            centerInProp = prop.InverseTransformPoint(center),
-            velocity = forward * dropSpeed + Vector3.up * dropLift,
-            spinAxis = Random.onUnitSphere,
-            groundY = transform.position.y,
-        };
-        prop.SetParent(null, true); // fly free of the visitor (it is being knocked down)
-        flight.startRotation = prop.rotation;
-        flights.Add(flight);
-        AudioManager.Play(Sfx.PropPop);
+        flight.Launch(transform, props[index].transform, direction);
         return true;
     }
 
     bool IsWorn(int i) => props[i].activeSelf && (droppedMask & (1 << i)) == 0;
 
-    void Update()
+    // True while a worn prop covers the head (VisitorCostume leaves its head piece off then).
+    public bool HeadCovered
     {
-        for (int i = flights.Count - 1; i >= 0; i--)
+        get
         {
-            var f = flights[i];
-            f.time += Time.deltaTime;
-            f.velocity.y -= gravity * Time.deltaTime;
-            f.center += f.velocity * Time.deltaTime;
-            if (!f.bounced && f.velocity.y < 0f && f.center.y < f.groundY + 0.05f)
+            if (headCoverProps == null) return false;
+            foreach (var p in headCoverProps)
             {
-                f.bounced = true;
-                f.velocity = new Vector3(f.velocity.x * 0.5f, -f.velocity.y * 0.4f, f.velocity.z * 0.5f);
+                int i = System.Array.IndexOf(props, p);
+                if (i >= 0 && IsWorn(i)) return true;
             }
-            float t = Mathf.Clamp01(f.time / dropDuration);
-            float scale = t < 0.7f ? 1f : Mathf.Lerp(1f, 0f, (t - 0.7f) / 0.3f);
-            f.prop.rotation = Quaternion.AngleAxis(dropSpin * f.time, f.spinAxis) * f.startRotation;
-            f.prop.localScale = f.localScale * scale;
-            f.prop.position = f.center - f.prop.rotation * Vector3.Scale(f.centerInProp, f.prop.lossyScale);
-            if (t < 1f) continue;
-
-            // Done: park it back under the visitor, switched off, in its original pose.
-            f.prop.gameObject.SetActive(false);
-            f.prop.SetParent(transform, false);
-            f.prop.localPosition = f.localPosition;
-            f.prop.localRotation = f.localRotation;
-            f.prop.localScale = f.localScale;
-            flights.RemoveAt(i);
+            return false;
         }
     }
 
-    void OnDestroy()
-    {
-        // Props in flight are not our children, so they would outlive a destroyed visitor.
-        foreach (var f in flights)
-        {
-            if (f.prop != null) Destroy(f.prop.gameObject);
-        }
-    }
+    void Update() => flight.Update(transform);
+
+    void OnDestroy() => flight.DestroyAll();
 
     [ContextMenu("Random Disguise")]
     void RandomizePreview()

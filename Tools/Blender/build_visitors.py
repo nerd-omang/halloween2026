@@ -66,6 +66,14 @@ MATERIALS = {
     "PropFrame": ((0.08, 0.08, 0.08), False),
     "PropLens": ((1.0, 1.0, 1.0), True),
     "FakeTailStripe": ((1.0, 1.0, 1.0), True),
+    "PropBucket_Red": ((0.75, 0.08, 0.06), False),
+    "PropTin": ((0.62, 0.62, 0.64), False),
+    "CostumeHat": ((0.14, 0.07, 0.20), False),
+    "CostumeOrange": ((0.95, 0.42, 0.04), False),
+    "CostumeDark": ((0.04, 0.03, 0.03), False),
+    "CostumeBandage": ((0.86, 0.82, 0.70), False),
+    "CostumeWing": ((0.07, 0.05, 0.09), False),
+    "CostumeBow": ((0.50, 0.12, 0.62), False),
     "Sheet": ((0.90, 0.90, 0.88), False),
 }
 
@@ -581,6 +589,233 @@ def build_fakes():
         add_tube(part, "PropFrame", temple, [0.005] * len(temple), AXIS_Z, segments=4)
     part.finish()
 
+    build_paint_bucket()
+
+
+def build_paint_bucket():
+    """Paint tin tipped upside down onto one side of the head, as if the paint was poured over it (the fur
+    paint itself is the fur change, VisitorDisguise turns it on with the bucket). The tin is coated in that
+    paint (Unity swaps PropBucket_Red per visitor); the tells are the bare tin bottom, the rolled rim, the
+    ridge, a dent and the wire handle hanging loose. It covers part of the head on the visitor's right
+    (+X) and leaves the inner side free, so a real horn tip still peeks out next to it."""
+    part = Part("Fake_PaintBucket")
+    seat, n = surf((0.7, -0.1, 0.72))
+    axis = n  # square to the head, so both sides of the rim rest on it
+    frame = basis(axis, FRONT).to_3x3()
+    ax, ay = frame.col[0], frame.col[1]  # ax faces front
+    segments = 10
+    opening_r, bottom_r, height = 0.155, 0.135, 0.19
+    origin = seat - axis * 0.012  # the rim sits just in the fur
+
+    def ring_point(h, r, a):
+        return origin + axis * h + r * (math.cos(a) * ax + math.sin(a) * ay)
+
+    angles = [2 * math.pi * k / segments for k in range(segments)]
+    heights = (0.0, height * 0.5, height)
+    bm = part.bm
+    rings = []
+    for h in heights:
+        r = opening_r + (bottom_r - opening_r) * h / height
+        ring = [bm.verts.new(ring_point(h, r, a)) for a in angles]
+        rings.append(ring)
+    # Dent on the front-right of the side wall.
+    for k, depth in ((1, 0.022), (0, 0.008), (2, 0.008)):
+        v = rings[1][k]
+        v.co -= (v.co - (origin + axis * heights[1])).normalized() * depth
+
+    paint, tin = part.mat_index("PropBucket_Red"), part.mat_index("PropTin")
+    faces = []
+    for a, b in zip(rings, rings[1:]):
+        for k in range(segments):
+            k2 = (k + 1) % segments
+            f = bm.faces.new((a[k], a[k2], b[k2], b[k]))
+            faces.append((f, paint, f.calc_center_median() - origin - axis * height * 0.5))
+    for ring, h, mat, outward in ((rings[0], 0.0, paint, -axis), (rings[-1], height, tin, axis)):
+        center = bm.verts.new(origin + axis * h)
+        for k in range(segments):
+            faces.append((bm.faces.new((ring[k], ring[(k + 1) % segments], center)), mat, outward))
+    for f, mat, outward in faces:
+        orient(f, outward)
+        f.material_index = mat
+        f.smooth = False
+        for loop in f.loops:
+            loop[part.uv].uv = WHITE_UV
+
+    # Rolled rim at the opening and a pressed ridge on the side, bare tin.
+    for h, r, thick in ((0.006, opening_r + 0.004, 0.009), (height * 0.72, None, 0.005)):
+        r = r or opening_r + (bottom_r - opening_r) * h / height + 0.002
+        loop = [ring_point(h, r, 2 * math.pi * k / 12) for k in range(13)]
+        add_tube(part, "PropTin", loop, [thick] * len(loop), axis, segments=4, cap_start=False, cap_end=False)
+
+    # Wire handle: lugs on both sides near the rim, the bail hanging loose away from the head.
+    lugs = [ring_point(0.03, opening_r + 0.004, a) for a in (math.pi * 0.5, -math.pi * 0.5)]
+    for p in lugs:
+        add_sphere(part, "PropTin", trs(p, track(ay), (0.014, 0.014, 0.008)), u=6, v=3)
+    mid = (lugs[0] + lugs[1]) * 0.5
+    span = (lugs[0] - lugs[1]) * 0.5
+    outward = Vector((axis.x, axis.y, 0.0)).normalized()
+    hang = FRONT * 0.7 + outward * 0.5 - AXIS_Z * 0.2  # swung forward over the brow
+    hang = (hang - span.normalized() * hang.dot(span.normalized())).normalized()
+    bail = [mid + span * math.cos(t) + hang * (opening_r * 0.9) * math.sin(t)
+            for t in (math.pi * k / 8 for k in range(9))]
+    add_tube(part, "PropTin", bail, [0.0035] * len(bail), ax, segments=4, cap_start=False, cap_end=False)
+    part.finish()
+
+
+def add_ribbon(part, mat, points, normals, width):
+    """Flat strip along points, facing normals (bandages)."""
+    bm = part.bm
+    index = part.mat_index(mat)
+    count = len(points)
+    pairs = []
+    for i, (p, n) in enumerate(zip(points, normals)):
+        t = (points[min(i + 1, count - 1)] - points[max(i - 1, 0)]).normalized()
+        w = n.cross(t).normalized() * width * 0.5
+        pairs.append((bm.verts.new(p + w), bm.verts.new(p - w)))
+    for (a0, a1), (b0, b1), n in zip(pairs, pairs[1:], normals):
+        f = bm.faces.new((a0, a1, b1, b0))
+        orient(f, n)
+        f.material_index = index
+        f.smooth = False
+        for loop in f.loops:
+            loop[part.uv].uv = WHITE_UV
+
+
+def add_flat(part, mat, outline, origin, u, v, thickness):
+    """Two-sided flat shape: outline (u, v) points fanned from origin, front and back a hair apart."""
+    bm = part.bm
+    index = part.mat_index(mat)
+    normal = u.cross(v).normalized()
+    for side in (1, -1):
+        shift = normal * thickness * 0.5 * side
+        hub = bm.verts.new(origin + shift)
+        rim = [bm.verts.new(origin + shift + u * a + v * b) for a, b in outline]
+        for p, q in zip(rim, rim[1:]):
+            f = bm.faces.new((hub, p, q))
+            orient(f, normal * side)
+            f.material_index = index
+            f.smooth = False
+            for loop in f.loops:
+                loop[part.uv].uv = WHITE_UV
+
+
+def body_ring(axis, polar, steps, lift, a0=0.0, a1=360.0):
+    """Points (and normals) on the body surface along a circle at `polar` degrees around axis."""
+    z = Vector(axis).normalized()
+    x = (AXIS_X - z * AXIS_X.dot(z)).normalized()
+    y = z.cross(x)
+    points, normals = [], []
+    for k in range(steps + 1):
+        a = math.radians(a0 + (a1 - a0) * k / steps)
+        d = z * math.cos(math.radians(polar)) + (x * math.cos(a) + y * math.sin(a)) * math.sin(math.radians(polar))
+        loc, n = surf(d)
+        points.append(loc + n * lift)
+        normals.append(n)
+    return points, normals
+
+
+def build_costumes():
+    """Halloween costumes for either visitor (Costume_ prefix). They imitate neither species, so they are
+    noise, not clues; VisitorCostume in Unity allows one per slot (head, neck, hand, back, body)."""
+
+    # Witch hat (head): droopy brim, crooked cone leaning back, orange band. Hides Omangi's horns.
+    part = Part("Costume_WitchHat")
+    axis = Vector((0.0, 0.15, 1.0)).normalized()
+    base = surf(axis)[0] - axis * 0.035
+    add_cone(part, "CostumeHat", trs(base, track(axis), (1, 1, 1)), 0.30, 0.18, 0.03, segments=12, smooth=False)
+    heights = (0.0, 0.08, 0.16, 0.24, 0.31, 0.37)
+    radii = (0.17, 0.15, 0.115, 0.07, 0.03, 0.004)
+    crown = [base + axis * h + AXIS_Y * 0.13 * (h / heights[-1]) ** 2 for h in heights]
+    add_tube(part, "CostumeHat", crown, radii, AXIS_X, segments=8, cap_start=False)
+    band = [base + axis * 0.03 + 0.168 * (math.cos(a) * AXIS_X + math.sin(a) * axis.cross(AXIS_X))
+            for a in (2 * math.pi * k / 12 for k in range(13))]
+    add_tube(part, "CostumeOrange", band, [0.014] * len(band), axis, segments=4, cap_start=False, cap_end=False)
+    part.finish()
+
+    # Jack-o'-lantern candy basket (hand) hanging from the visitor's right hand (-X).
+    part = Part("Costume_PumpkinBasket")
+    start, n = surf((-1.0, -0.3, -0.1))
+    d = Vector((-0.75, -0.45, -0.45)).normalized()
+    hand = start - n * 0.03 + d * 0.17
+    rx, rz = 0.095, 0.075
+    center = hand + Vector((-0.03, -0.02, -0.13))
+    add_sphere(part, "CostumeOrange", trs(center, Matrix.Identity(4), (rx, rx, rz)), u=8, v=5)
+    for f in part.bm.faces:
+        f.smooth = False  # faceted lobes
+    add_cone(part, "CostumeDark", trs(center + AXIS_Z * (rz - 0.002), Matrix.Identity(4), (1, 1, 1)),
+             0.055, 0.055, 0.006, segments=8, smooth=False)  # open top full of candy darkness
+
+    def on_front(x, z):
+        y = -rx * math.sqrt(max(1 - (x / rx) ** 2 - (z / rz) ** 2, 0.0)) - 0.004
+        return center + Vector((x, y, z))
+
+    bm = part.bm
+    dark = part.mat_index("CostumeDark")
+    shapes = [[(sx * 0.03 - 0.013, 0.008), (sx * 0.03 + 0.013, 0.008), (sx * 0.03, 0.03)] for sx in (-1, 1)]
+    shapes.append([(-0.05, -0.012), (-0.025, -0.03), (0.0, -0.02), (0.025, -0.03), (0.05, -0.012),
+                   (0.03, -0.045), (-0.03, -0.045)])  # grin
+    for shape in shapes:
+        verts = [bm.verts.new(on_front(x, z)) for x, z in shape]
+        f = bm.faces.new(verts)
+        orient(f, FRONT)
+        f.material_index = dark
+        f.smooth = False
+        for loop in f.loops:
+            loop[part.uv].uv = WHITE_UV
+    side = AXIS_X * 0.07
+    handle = [center + side * math.cos(t) + AXIS_Z * 0.05 + (hand - center - AXIS_Z * 0.05) * math.sin(t)
+              for t in (math.pi * k / 8 for k in range(9))]
+    add_tube(part, "CostumeDark", handle, [0.006] * len(handle), FRONT, segments=4, cap_start=False, cap_end=False)
+    part.finish()
+
+    # Mummy bandage (body): loose strips around the body and the left arm, one end hanging free.
+    part = Part("Costume_Bandage")
+    for axis, polar, width in (((0.25, 0.0, 1.0), 122, 0.04), ((-0.35, 0.05, 1.0), 50, 0.035),
+                               ((0.1, 0.0, 1.0), 146, 0.04)):
+        points, normals = body_ring(axis, polar, 22, 0.012)
+        add_ribbon(part, "CostumeBandage", points, normals, width)
+    points, normals = body_ring((0.25, 0.0, 1.0), 122, 4, 0.012, 330, 360)
+    tail_end = points[-1]
+    tail = [tail_end + Vector((0.0, -0.01 * k, -0.035 * k)) for k in range(4)]
+    add_ribbon(part, "CostumeBandage", tail, [normals[-1]] * len(tail), 0.035)
+    start, n = surf((1.0, -0.3, -0.1))
+    d = Vector((0.75, -0.45, -0.45)).normalized()
+    arm = start - n * 0.03 + d * 0.085
+    ax = (AXIS_Z - d * AXIS_Z.dot(d)).normalized()
+    ay = d.cross(ax)
+    helix, radial = [], []
+    for k in range(17):
+        a = 4 * math.pi * k / 16
+        r = math.cos(a) * ax + math.sin(a) * ay
+        helix.append(arm + d * (-0.05 + 0.1 * k / 16) + r * 0.066)
+        radial.append(r)
+    add_ribbon(part, "CostumeBandage", helix, radial, 0.028)
+    part.finish()
+
+    # Bat wings (back) strapped on behind the shoulders.
+    part = Part("Costume_BatWings")
+    outline = [(0.0, 0.05), (0.20, 0.20), (0.46, 0.30), (0.40, 0.10), (0.33, 0.13), (0.27, -0.02),
+               (0.18, 0.03), (0.10, -0.10), (0.0, -0.05)]
+    for sx in (-1, 1):
+        root, n = surf((sx * 0.3, 1.0, 0.2))
+        root = root + n * 0.01
+        u = Vector((sx, 0.9, 0.0)).normalized()  # swept back, so from the front they read as wings, not ears
+        v = AXIS_Z * 0.75
+        add_flat(part, "CostumeWing", outline, root, u, v, 0.008)
+        bone = [root + u * a + v * b for a, b in ((0.0, 0.0), (0.20, 0.20), (0.46, 0.30))]
+        add_tube(part, "CostumeWing", bone, [0.012, 0.009, 0.004], AXIS_Y, segments=4)
+    part.finish()
+
+    # Bow tie (neck) under the face.
+    part = Part("Costume_BowTie")
+    knot, n = surf((0.0, -1.0, -0.55))
+    knot = knot + n * 0.02
+    for sx in (-1, 1):
+        add_cone(part, "CostumeBow", trs(knot + AXIS_X * sx * 0.04, track(AXIS_X * sx), (0.45, 1, 1)),
+                 0.012, 0.045, 0.07, segments=4, smooth=False)
+    add_sphere(part, "CostumeBow", trs(knot, Matrix.Identity(4), (0.02, 0.014, 0.018)), u=6, v=3)
+    part.finish()
+
 
 def build_ghost():
     """Ghost sheet worn over either visitor: a plain lathed bell from head to ground, no eye holes,
@@ -639,6 +874,10 @@ PREVIEW_SETS = [
     ("Oma_KoonCostume", (0.50, 0.45, 0.45), True, ("Body", "Oma_", "Fake_ConeNose", "Fake_RaccoonTail", "Fake_XGlasses")),
     ("Koon_Glasses", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Fake_XGlasses")),
     ("Ghost", (0.42, 0.42, 0.44), False, ("Ghost_",)),
+    ("Koon_Bucket", (0.75, 0.08, 0.06), False, ("Body", "Koon_", "Fake_PaintBucket")),
+    ("Oma_Bucket", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Fake_PaintBucket")),
+    ("Koon_Costumes", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_")),
+    ("Oma_Costumes", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_")),
 ]
 
 
@@ -661,7 +900,7 @@ def render_preview(out_dir):
         src.hide_render = True
 
     scene.render.engine = "BLENDER_EEVEE_NEXT"
-    scene.render.resolution_x, scene.render.resolution_y = 2600, 640
+    scene.render.resolution_x, scene.render.resolution_y = 4200, 640
     scene.world = bpy.data.worlds.new("PreviewWorld")
     scene.world.color = (0.25, 0.25, 0.27)
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
@@ -670,7 +909,7 @@ def render_preview(out_dir):
     scene.collection.objects.link(sun)
     cam_data = bpy.data.cameras.new("PreviewCam")
     cam_data.type = "ORTHO"
-    cam_data.ortho_scale = 6.9
+    cam_data.ortho_scale = 11.4
     cam = bpy.data.objects.new("PreviewCam", cam_data)
     scene.collection.objects.link(cam)
     scene.camera = cam
@@ -699,6 +938,7 @@ def main():
     build_koon()
     build_oma()
     build_fakes()
+    build_costumes()
     build_ghost()
 
     for obj in bpy.context.scene.objects:

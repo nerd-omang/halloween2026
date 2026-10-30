@@ -42,6 +42,15 @@ public static class VisitorModelBuilder
         ("PropFrame", new Color(0.08f, 0.08f, 0.08f), 0.4f, false, 0f),
         ("PropLens", Color.white, 0.5f, true, 0f),
         ("FakeTailStripe", Color.white, 0f, true, 0.25f),                 // synthetic fur, flatter
+        ("PropBucket_Red", new Color(0.75f, 0.08f, 0.06f), 0.35f, false, 0f), // tin coated in wet paint, per visitor
+        ("PropBucket_Gray", new Color(0.50f, 0.45f, 0.45f), 0.35f, false, 0f),
+        ("PropTin", new Color(0.62f, 0.62f, 0.64f), 0.45f, false, 0f),
+        ("CostumeHat", new Color(0.14f, 0.07f, 0.20f), 0.1f, false, 0f),
+        ("CostumeOrange", new Color(0.95f, 0.42f, 0.04f), 0.2f, false, 0f),
+        ("CostumeDark", new Color(0.04f, 0.03f, 0.03f), 0f, false, 0f),
+        ("CostumeBandage", new Color(0.86f, 0.82f, 0.70f), 0f, false, 0f),
+        ("CostumeWing", new Color(0.07f, 0.05f, 0.09f), 0.1f, false, 0f),
+        ("CostumeBow", new Color(0.50f, 0.12f, 0.62f), 0.3f, false, 0f),
     };
 
     const string SheetMaterial = "Sheet";
@@ -75,15 +84,26 @@ public static class VisitorModelBuilder
         var oma = SavePrefab(model, "Omangi", "Fur_Red", "Body", "Oma_");
         // Each visitor disguises as the other: its own fur change plus the other side's look-alike props.
         // The X glasses are worn by both sides, so they are not a sure sign of an impostor.
-        AddDisguise(koon, "Fur_Gray", DyeLevels("Paint_Red"), "Fake_HornBand", "Fake_GoatEars", "Fake_XGlasses");
-        AddDisguise(oma, "Fur_Red", DyeLevels("Fur_GrayDyed"), "Fake_ConeNose", "Fake_RaccoonTail", "Fake_XGlasses");
+        AddDisguise(koon, "Fur_Gray", DyeLevels("Paint_Red"), "Fake_HornBand", "Fake_GoatEars", "Fake_XGlasses", "Fake_PaintBucket");
+        AddDisguise(oma, "Fur_Red", DyeLevels("Fur_GrayDyed"), "Fake_ConeNose", "Fake_RaccoonTail", "Fake_XGlasses", "Fake_PaintBucket");
+        // The paint bucket takes the head slot (the bucket wins over the headbands) and brings the fur paint.
+        SetDisguiseRules(koon, new[] { "Fake_PaintBucket", "Fake_HornBand", "Fake_GoatEars" }, new[] { "Fake_PaintBucket" },
+            new[] { "Fake_PaintBucket" });
+        SetDisguiseRules(oma, new[] { "Fake_PaintBucket" }, new[] { "Fake_PaintBucket" }, new[] { "Fake_PaintBucket" });
+        // Halloween costumes worn by either side (noise, not clues), one per slot; only the bandage cannot be knocked off.
+        foreach (var prefab in new[] { koon, oma })
+            AddCostumes(prefab, Costumes);
+        // The bucket is coated in the same paint as the fur change.
+        SetPartMaterial(oma, "Fake_PaintBucket", "PropBucket_Red", "PropBucket_Gray");
         // Only the real raccoon tail wags; the fake one stays stiff (a possible tell).
         AddTailWag(koon, "Koon_Tail");
         // Both can hide under a ghost sheet (hidden until GhostSheet.Wear()).
         // Parts that push the sheet up (props only show when worn). Surface clues (eyes, markings, dye,
         // glasses) are not listed, so the sheet hides them.
-        AddGhostSheet(koon, "Ghost_Sheet", "Koon_Nose", "Koon_Tail", "Fake_HornBand", "Fake_GoatEars");
-        AddGhostSheet(oma, "Ghost_Sheet", "Oma_Horns", "Oma_Ears", "Oma_Tail", "Fake_ConeNose", "Fake_RaccoonTail");
+        AddGhostSheet(koon, "Ghost_Sheet", "Koon_Nose", "Koon_Tail", "Fake_HornBand", "Fake_GoatEars", "Fake_PaintBucket",
+            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings");
+        AddGhostSheet(oma, "Ghost_Sheet", "Oma_Horns", "Oma_Ears", "Oma_Tail", "Fake_ConeNose", "Fake_RaccoonTail", "Fake_PaintBucket",
+            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings");
         // Fixed full-costume variants, for the preview scene.
         var koonCostume = SavePrefab(koon, "Koonmungchi_OmaCostume", "Paint_Red",
             "Body", "Koon_", "Fake_HornBand", "Fake_GoatEars");
@@ -258,6 +278,75 @@ public static class VisitorModelBuilder
         for (var i = 0; i < propNames.Length; i++)
             props.GetArrayElementAtIndex(i).objectReferenceValue = root.transform.Find(propNames[i]).gameObject;
         so.ApplyModifiedPropertiesWithoutUndo();
+
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        PrefabUtility.UnloadPrefabContents(root);
+    }
+
+    // Combination rules for VisitorDisguise: props sharing the head (first one wins) and props that bring the fur change.
+    // VisitorCostume entries: (part, slot, stays on through a palm blast). Order is the costume bit order.
+    static readonly (string name, CostumeSlot slot, bool stays)[] Costumes =
+    {
+        ("Costume_WitchHat", CostumeSlot.Head, false),
+        ("Costume_BowTie", CostumeSlot.Neck, false),
+        ("Costume_PumpkinBasket", CostumeSlot.Hand, false),
+        ("Costume_BatWings", CostumeSlot.Back, false),
+        ("Costume_Bandage", CostumeSlot.Body, true),
+    };
+
+    static void AddCostumes(GameObject prefab, (string name, CostumeSlot slot, bool stays)[] entries)
+    {
+        var path = AssetDatabase.GetAssetPath(prefab);
+        var root = PrefabUtility.LoadPrefabContents(path);
+        var costume = root.GetComponent<VisitorCostume>();
+        if (costume == null)
+            costume = root.AddComponent<VisitorCostume>();
+
+        var so = new SerializedObject(costume);
+        var list = so.FindProperty("costumes");
+        list.arraySize = entries.Length;
+        for (var i = 0; i < entries.Length; i++)
+        {
+            var entry = list.GetArrayElementAtIndex(i);
+            entry.FindPropertyRelative("item").objectReferenceValue = root.transform.Find(entries[i].name).gameObject;
+            entry.FindPropertyRelative("slot").enumValueIndex = (int)entries[i].slot;
+            entry.FindPropertyRelative("stays").boolValue = entries[i].stays;
+        }
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        PrefabUtility.UnloadPrefabContents(root);
+    }
+
+    static void SetDisguiseRules(GameObject prefab, string[] headPropNames, string[] furPropNames, string[] headCoverNames)
+    {
+        var path = AssetDatabase.GetAssetPath(prefab);
+        var root = PrefabUtility.LoadPrefabContents(path);
+        var so = new SerializedObject(root.GetComponent<VisitorDisguise>());
+        foreach (var (field, names) in new[] { ("headProps", headPropNames), ("furProps", furPropNames), ("headCoverProps", headCoverNames) })
+        {
+            var list = so.FindProperty(field);
+            list.arraySize = names.Length;
+            for (var i = 0; i < names.Length; i++)
+                list.GetArrayElementAtIndex(i).objectReferenceValue = root.transform.Find(names[i]).gameObject;
+        }
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        PrefabUtility.UnloadPrefabContents(root);
+    }
+
+    static void SetPartMaterial(GameObject prefab, string partName, string from, string to)
+    {
+        var path = AssetDatabase.GetAssetPath(prefab);
+        var root = PrefabUtility.LoadPrefabContents(path);
+        var toMat = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{to}.mat");
+        var renderer = root.transform.Find(partName).GetComponent<Renderer>();
+        var mats = renderer.sharedMaterials;
+        for (var i = 0; i < mats.Length; i++)
+            if (mats[i] != null && mats[i].name == from)
+                mats[i] = toMat;
+        renderer.sharedMaterials = mats;
 
         PrefabUtility.SaveAsPrefabAsset(root, path);
         PrefabUtility.UnloadPrefabContents(root);

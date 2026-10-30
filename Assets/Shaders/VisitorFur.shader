@@ -3,9 +3,10 @@
 // marking atlas on _BaseMap is unaffected): each clump bends the normal like a soft pillow, the
 // creases between clumps are lightly darkened, and a fine fiber grain keeps it from reading as stone.
 // Clumps are kept large so they survive the pixel/dither pass.
-// Partial dye (disguises): with _DyeCoverage > 0, whole clumps take _DyeColor instead of _BaseColor,
-// chosen in large patches so it looks half-painted. Extremities (feet, lower belly, limbs, snout, tail)
-// keep more of the original color, so a bit always shows through even at high coverage.
+// Partial dye (disguises): with _DyeCoverage > 0 the visitor looks like paint was poured over its head:
+// _DyeColor covers from the top down to a line that sinks with coverage, with drip streaks of uneven
+// length and splatter spots below. Extremities (feet, lower belly, limbs, snout, tail) keep more of the
+// original color, so a bit always shows through even at high coverage.
 Shader "Fangame/VisitorFur"
 {
     Properties
@@ -182,23 +183,37 @@ Shader "Fangame/VisitorFur"
                 float3 furNormalWS = normalize(normalWS + tilt);
 
                 half3 baseColor = _BaseColor.rgb;
+                bool painted = false;
                 if (_DyeCoverage > 0.0)
                 {
-                    // Decide per clump (at its center): large blotches plus a little per-clump jitter.
-                    float3 stretch = _FurScale * float3(1.0, 0.6, 1.0);
-                    float3 centerOS = (input.positionOS * stretch - fromCenter) / stretch;
-                    float blotch = saturate((ValueNoise(centerOS * 3.0 + 7.3) - 0.5) * 1.8 + 0.5);
-                    float order = 0.7 * blotch + 0.3 * id;
+                    // Paint tipped over the head: a paint line that sinks with coverage, runs down in
+                    // streaks of different lengths, with loose splatter spots below it. The paint is
+                    // laid over the fur (smooth edges, not per clump).
+                    float3 p = input.positionOS;
                     // Extremities: feet / lower belly (low Y) and anything sticking out of the body ball
-                    // (limbs, snout, tail; body center is at Y 0.42 with radius ~0.36 in object space).
-                    float low = saturate((0.16 - centerOS.y) / 0.1);
-                    float outside = saturate((length(centerOS - float3(0.0, 0.42, 0.0)) - 0.38) / 0.08);
+                    // (limbs, snout, tail; body center is at Y 0.42 with radius ~0.36 in object space)
+                    // keep more of the original color.
+                    float low = saturate((0.16 - p.y) / 0.1);
+                    float outside = saturate((length(p - float3(0.0, 0.42, 0.0)) - 0.38) / 0.08);
                     float coverage = _DyeCoverage * (1.0 - _DyeProtect * max(low, outside));
-                    baseColor = order < coverage ? _DyeColor.rgb : baseColor;
+
+                    float2 dir = normalize(p.xz + float2(1e-4, 0.0));
+                    float drip = 0.65 * ValueNoise(float3(dir * 2.2, 5.7)) + 0.35 * ValueNoise(float3(dir * 6.0, 1.3));
+                    float dripLength = drip * drip * 0.7 * coverage;
+                    float wobble = (ValueNoise(p * 7.0 + 3.3) - 0.5) * 0.08;
+                    float lineY = 0.8 - coverage * 0.95;
+                    bool above = p.y > lineY - dripLength + wobble;
+                    bool splatter = coverage > 0.0 && p.y > lineY - 0.35
+                        && ValueNoise(p * 15.0 + 11.1) > lerp(0.88, 0.72, coverage);
+                    painted = above || splatter;
+                    baseColor = painted ? _DyeColor.rgb : baseColor;
                 }
                 half3 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).rgb * baseColor;
                 half crease = 1.0 - smoothstep(0.0, 0.5, f2 - f1);
-                albedo *= (1.0 - _Crease * crease) * lerp(1.0 - _ColorVariation, 1.0, id);
+                // Paint clogs the fur: fewer creases and no per-clump tint where it covers.
+                half creaseAmount = _Crease * (painted ? 0.5 : 1.0);
+                half tint = painted ? 1.0 : lerp(1.0 - _ColorVariation, 1.0, id);
+                albedo *= (1.0 - creaseAmount * crease) * tint;
 
                 Light mainLight = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
                 half3 lighting = WrapDiffuse(mainLight, furNormalWS);

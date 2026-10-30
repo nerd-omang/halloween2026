@@ -17,3 +17,12 @@ Event sounds (*.wav: candy_*, combo_up, answer_wrong, visitor_shoo, blast_charge
 From the Interface Sounds pack by Kenney (https://kenney.nl/assets/interface-sounds), released under CC0 (Creative Commons Zero, public domain): answer_correct.ogg (confirmation_001), heart_lost.ogg (glass_001).
 
 Footsteps (visitor_step_0 - visitor_step_9) are from the RPG Audio pack by Kenney (https://kenney.nl/assets/rpg-audio), released under CC0 (Creative Commons Zero, public domain).
+
+## Fonts (Assets/Resources/Fonts)
+
+Both fonts are under the SIL Open Font License 1.1; the license texts are in Assets/ThirdParty/FontLicenses. The files are subsets made by Tools/Fonts/subset.py (ASCII plus KS X 1001 Hangul for Galmuri11; ASCII only for the title font) to keep the WebGL build small.
+
+| File | Source | License |
+|---|---|---|
+| Galmuri11.ttf | "Galmuri11" by Lee Minseo (quiple), https://github.com/quiple/galmuri | SIL OFL 1.1 |
+| SpookyTitle.ttf | Subset of "Creepster" by Font Diner, Inc, https://fonts.google.com/specimen/Creepster. Renamed to SpookyTitle because the Reserved Font Name "Creepster" may not be used for a modified version. | SIL OFL 1.1 |

@@ -95,6 +95,7 @@ public class HandController : MonoBehaviour
     {
         Busy = true;
         ThumbsUpNext = false;
+        AudioManager.Play(Sfx.BlastCharge);
         yield return PlayClip(blastClip, blastHoldTime, false, () => Blasted?.Invoke());
         ShowIdle();
         blastReadyTime = Time.time + blastCooldown;
@@ -174,6 +175,7 @@ public class HandController : MonoBehaviour
         if (candy.sprite == null) yield break;
 
         candy.gameObject.SetActive(true);
+        AudioManager.Play(Sfx.CandyAppear);
         if (sparkle != null) sparkle.Burst(candy.transform.position, 16, 0.55f);
         for (float t = 0f; t < candyPopTime; t += Time.deltaTime)
         {
@@ -202,6 +204,7 @@ public class HandController : MonoBehaviour
         Quaternion startRotation = ct.rotation;
         Vector3 end = targetPoint.Value;
         ct.SetParent(null, true);
+        AudioManager.Play(Sfx.CandyToss);
 
         float trailTimer = 0f;
         for (float t = 0f; t < tossTime; t += Time.deltaTime)
@@ -221,6 +224,7 @@ public class HandController : MonoBehaviour
         }
 
         if (sparkle != null) sparkle.Burst(end, 12, 0.45f, 0.8f);
+        AudioManager.Play(Sfx.CandyLand);
         RestoreCandy();
         HideCandy();
     }

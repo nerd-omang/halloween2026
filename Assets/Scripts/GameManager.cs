@@ -7,7 +7,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] VisitorQueue queue;
     [SerializeField] HandController hand;
     [SerializeField] Text scoreText;
-    [SerializeField] Text heartsText;
+    [SerializeField] HeartsDisplay heartsDisplay;
     [SerializeField] Text messageText;
     [SerializeField] GameObject gameOverPanel;
     [SerializeField] Text gameOverText;
@@ -15,6 +15,7 @@ public class GameManager : MonoBehaviour
 
     int hearts;
     int score;
+    int streak;
     bool over;
     float messageTimer;
 
@@ -30,6 +31,7 @@ public class GameManager : MonoBehaviour
 
     void OnBlast()
     {
+        AudioManager.Play(Sfx.VisitorShoo);
         var visitor = queue.Front;
         if (visitor == null) return;
 
@@ -64,6 +66,7 @@ public class GameManager : MonoBehaviour
         over = false;
         hearts = maxHearts;
         score = 0;
+        streak = 0;
         messageTimer = 0f;
         queue.Begin();
         hand.ResetPose();
@@ -84,13 +87,19 @@ public class GameManager : MonoBehaviour
         if (correct)
         {
             score++;
+            streak++;
             ShowMessage("Correct!");
             hand.ThumbsUpNext = action == HandAction.Give;
+            AudioManager.Play(action == HandAction.Give ? Sfx.AnswerCorrect : Sfx.VisitorShoo);
+            // From the second right answer in a row, a blip layers on top. Each step of the streak raises it one semitone, up to an octave.
+            if (streak >= 2) AudioManager.Play(Sfx.ComboUp, Mathf.Pow(2f, Mathf.Min(streak - 2, 12) / 12f));
         }
         else
         {
             hearts--;
+            streak = 0;
             ShowMessage(action == HandAction.Give ? "That was an Omangi!" : "That was a Kunmungchi!");
+            AudioManager.Play(Sfx.AnswerWrong);
         }
 
         queue.ResolveFront(action == HandAction.Give ? Vector3.right : Vector3.left, score);
@@ -99,6 +108,7 @@ public class GameManager : MonoBehaviour
         if (hearts <= 0)
         {
             over = true;
+            AudioManager.Play(Sfx.GameOver);
             gameOverText.text = "GAME OVER\nScore: " + score + "\nPress R to restart";
             gameOverPanel.SetActive(true);
         }
@@ -113,7 +123,7 @@ public class GameManager : MonoBehaviour
     void Refresh()
     {
         scoreText.text = "Score: " + score;
-        heartsText.text = "Hearts: " + hearts;
+        if (heartsDisplay != null) heartsDisplay.Set(hearts, maxHearts);
     }
 
     void Update()

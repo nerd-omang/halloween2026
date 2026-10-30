@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 public class Visitor : MonoBehaviour
@@ -43,6 +44,7 @@ public class Visitor : MonoBehaviour
     float waddleTime;
     float moveBlend;
     float yaw = 180f;
+    int lastStep = -1;
 
     public bool Arrived { get; private set; }
     public bool IsMoving { get; private set; }
@@ -56,6 +58,20 @@ public class Visitor : MonoBehaviour
         if (IsDown) return;
         IsDown = true;
         knockTime = 0f;
+        StartCoroutine(PlayBounceSounds());
+    }
+
+    // The fall lands in three bounces; the times follow the EaseOutBounce landings so the sound matches the motion.
+    IEnumerator PlayBounceSounds()
+    {
+        float[] landings = { 0.36f, 0.73f, 0.91f };
+        float last = 0f;
+        foreach (float landing in landings)
+        {
+            yield return new WaitForSeconds((landing - last) * knockFallTime);
+            last = landing;
+            AudioManager.Play(Sfx.VisitorBounce);
+        }
     }
 
     public void BlowOffSheet(Vector3 direction)
@@ -101,6 +117,16 @@ public class Visitor : MonoBehaviour
 
         moveBlend = Mathf.MoveTowards(moveBlend, moving ? 1f : 0f, dt * 6f);
         if (moving) waddleTime += dt;
+
+        if (moving)
+        {
+            int step = Mathf.FloorToInt(waddleTime * style.frequency);
+            if (step != lastStep)
+            {
+                lastStep = step;
+                AudioManager.Play(Sfx.VisitorStep);
+            }
+        }
 
         float phase = waddleTime * style.frequency * Mathf.PI * 2f;
         float s = Mathf.Sin(phase);

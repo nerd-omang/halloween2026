@@ -15,6 +15,7 @@ public static class PrototypeSceneBuilder
     const string KunmungchiModelPath = "Assets/Prefabs/Visitors/Koonmungchi.prefab";
     const string OmangiModelPath = "Assets/Prefabs/Visitors/Omangi.prefab";
     const string HandArtDir = "Assets/Art/Hand";
+    const string SfxDir = "Assets/Audio/Sfx";
     const string ScenePath = "Assets/Scenes/Main.unity";
 
     [MenuItem("Fangame/Build Prototype Scene")]
@@ -41,6 +42,8 @@ public static class PrototypeSceneBuilder
         var hand = BuildCameraAndHand();
         var queue = BuildQueue(kunPrefab, omangiPrefab);
         BuildUiAndManager(queue, hand);
+        ConfigureSfxImport();
+        BuildAudioManager();
 
         EditorSceneManager.SaveScene(scene, ScenePath);
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
@@ -341,6 +344,79 @@ public static class PrototypeSceneBuilder
         return text;
     }
 
+    static void BuildAudioManager()
+    {
+        var table = new (Sfx id, string[] files, float volume, float jitter)[]
+        {
+            (Sfx.CandyAppear, new[] { "candy_appear" }, 0.45f, 0.04f),
+            (Sfx.ComboUp, new[] { "combo_up" }, 0.6f, 0f),
+            (Sfx.CandyToss, new[] { "candy_toss" }, 0.7f, 0.05f),
+            (Sfx.CandyLand, new[] { "candy_land" }, 0.4f, 0.05f),
+            (Sfx.AnswerCorrect, new[] { "answer_correct" }, 0.9f, 0f),
+            (Sfx.AnswerWrong, new[] { "answer_wrong" }, 0.9f, 0f),
+            (Sfx.HeartLost, new[] { "heart_lost" }, 0.9f, 0f),
+            (Sfx.VisitorShoo, new[] { "visitor_shoo" }, 0.9f, 0.05f),
+            (Sfx.BlastCharge, new[] { "blast_charge" }, 0.45f, 0.03f),
+            (Sfx.SheetBlowOff, new[] { "sheet_blowoff" }, 0.8f, 0.08f),
+            (Sfx.VisitorBounce, new[] { "visitor_bounce" }, 0.8f, 0.08f),
+            (Sfx.PropPop, new[] { "prop_pop" }, 0.8f, 0.08f),
+            (Sfx.GameOver, new[] { "game_over" }, 1f, 0f),
+            (Sfx.VisitorStep, FootstepFiles(), 0.35f, 0.1f),
+        };
+
+        var go = new GameObject("AudioManager");
+        var manager = go.AddComponent<AudioManager>();
+        var so = new SerializedObject(manager);
+        var entries = so.FindProperty("entries");
+        entries.arraySize = table.Length;
+        for (int i = 0; i < table.Length; i++)
+        {
+            var (id, files, volume, jitter) = table[i];
+            var entry = entries.GetArrayElementAtIndex(i);
+            entry.FindPropertyRelative("id").enumValueIndex = (int)id;
+            entry.FindPropertyRelative("volume").floatValue = volume;
+            entry.FindPropertyRelative("pitchJitter").floatValue = jitter;
+
+            var clips = entry.FindPropertyRelative("clips");
+            clips.arraySize = files.Length;
+            for (int j = 0; j < files.Length; j++)
+            {
+                var clip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{SfxDir}/{files[j]}.wav") ??
+                           AssetDatabase.LoadAssetAtPath<AudioClip>($"{SfxDir}/{files[j]}.ogg");
+                if (clip == null) Debug.LogWarning($"PrototypeSceneBuilder: missing SFX {files[j]}");
+                clips.GetArrayElementAtIndex(j).objectReferenceValue = clip;
+            }
+        }
+        so.ApplyModifiedProperties();
+    }
+
+    static string[] FootstepFiles()
+    {
+        var files = new string[10];
+        for (int i = 0; i < files.Length; i++) files[i] = "visitor_step_" + i;
+        return files;
+    }
+
+    // Short effects: decompress on load, mono, 22.05 kHz, Vorbis. Keeps the WebGL download small.
+    public static void ConfigureSfxImport()
+    {
+        foreach (var guid in AssetDatabase.FindAssets("t:AudioClip", new[] { SfxDir }))
+        {
+            var importer = AssetImporter.GetAtPath(AssetDatabase.GUIDToAssetPath(guid)) as AudioImporter;
+            if (importer == null) continue;
+
+            importer.forceToMono = true;
+            var settings = importer.defaultSampleSettings;
+            settings.loadType = AudioClipLoadType.DecompressOnLoad;
+            settings.compressionFormat = AudioCompressionFormat.Vorbis;
+            settings.quality = 0.5f;
+            settings.sampleRateSetting = AudioSampleRateSetting.OverrideSampleRate;
+            settings.sampleRateOverride = 22050;
+            importer.defaultSampleSettings = settings;
+            importer.SaveAndReimport();
+        }
+    }
+
     static void BuildUiAndManager(VisitorQueue queue, HandController hand)
     {
         var canvasGo = new GameObject("Canvas");
@@ -351,7 +427,14 @@ public static class PrototypeSceneBuilder
         scaler.referenceResolution = new Vector2(1280, 720);
 
         var score = MakeText(canvasGo.transform, "Score", TextAnchor.UpperLeft, new Vector2(0, 1), new Vector2(0, 1), new Vector2(24, -20), 32, new Vector2(400, 50));
-        var hearts = MakeText(canvasGo.transform, "Hearts", TextAnchor.UpperRight, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-24, -20), 32, new Vector2(400, 50));
+        var heartsGo = new GameObject("Hearts", typeof(RectTransform));
+        heartsGo.transform.SetParent(canvasGo.transform, false);
+        var heartsRt = (RectTransform)heartsGo.transform;
+        heartsRt.anchorMin = heartsRt.anchorMax = new Vector2(1, 1);
+        heartsRt.pivot = new Vector2(1, 1);
+        heartsRt.anchoredPosition = new Vector2(-24, -20);
+        heartsRt.sizeDelta = new Vector2(240, 50);
+        var hearts = heartsGo.AddComponent<HeartsDisplay>();
         var message = MakeText(canvasGo.transform, "Message", TextAnchor.UpperCenter, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -80), 40, new Vector2(800, 60));
         message.color = new Color(1f, 0.85f, 0.4f);
 
@@ -371,7 +454,7 @@ public static class PrototypeSceneBuilder
         so.FindProperty("queue").objectReferenceValue = queue;
         so.FindProperty("hand").objectReferenceValue = hand;
         so.FindProperty("scoreText").objectReferenceValue = score;
-        so.FindProperty("heartsText").objectReferenceValue = hearts;
+        so.FindProperty("heartsDisplay").objectReferenceValue = hearts;
         so.FindProperty("messageText").objectReferenceValue = message;
         so.FindProperty("gameOverPanel").objectReferenceValue = panel;
         so.FindProperty("gameOverText").objectReferenceValue = overText;

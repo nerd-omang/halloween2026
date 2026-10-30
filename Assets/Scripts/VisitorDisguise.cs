@@ -129,6 +129,7 @@ public class VisitorDisguise : MonoBehaviour
         prop.SetParent(null, true); // fly free of the visitor (it is being knocked down)
         flight.startRotation = prop.rotation;
         flights.Add(flight);
+        AudioManager.Play(Sfx.PropPop);
         return true;
     }
 

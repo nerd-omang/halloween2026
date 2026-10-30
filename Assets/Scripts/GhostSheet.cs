@@ -87,6 +87,7 @@ public class GhostSheet : MonoBehaviour
         hidden.Clear();
         RestoreBumps();
 
+        AudioManager.Play(Sfx.SheetBlowOff);
         blowing = true;
         blowTime = 0f;
         blowDirection = direction.sqrMagnitude > 1e-6f ? direction.normalized : -transform.forward;

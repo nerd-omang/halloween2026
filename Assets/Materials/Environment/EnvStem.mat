@@ -1,0 +1,39 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: EnvStem
+  m_Shader: {fileID: 4800000, guid: 3cd9db93fb089154f8c7943ba8f439a2, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs: []
+    m_Ints: []
+    m_Floats:
+    - _Cull: 2
+    - _FlapAmount: 0
+    - _FlapSpeed: 10
+    - _FlickerAmount: 0
+    - _FlickerSpeed: 8
+    - _FogAmount: 0.7
+    - _Intensity: 1
+    - _LightAmount: 1
+    m_Colors:
+    - _BaseColor: {r: 0.12, g: 0.16, b: 0.05, a: 1}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

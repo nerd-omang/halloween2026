@@ -65,6 +65,11 @@ public class HandController : MonoBehaviour
         ResetPose();
     }
 
+    public void SetVisible(bool visible)
+    {
+        handRenderer.enabled = visible;
+    }
+
     public void ResetPose()
     {
         StopAllCoroutines();

@@ -41,7 +41,8 @@ public static class PrototypeSceneBuilder
         BuildWorld();
         var hand = BuildCameraAndHand();
         var queue = BuildQueue(kunPrefab, omangiPrefab);
-        BuildUiAndManager(queue, hand);
+        BuildCatalogAndStage(kunPrefab, omangiPrefab, out var catalog, out var stage);
+        BuildUiAndManager(queue, hand, catalog, stage);
         ConfigureSfxImport();
         BuildAudioManager();
 
@@ -417,7 +418,7 @@ public static class PrototypeSceneBuilder
         }
     }
 
-    static void BuildUiAndManager(VisitorQueue queue, HandController hand)
+    static void BuildUiAndManager(VisitorQueue queue, HandController hand, OutfitCatalog catalog, ModelStage stage)
     {
         var canvasGo = new GameObject("Canvas");
         var canvas = canvasGo.AddComponent<Canvas>();
@@ -438,26 +439,32 @@ public static class PrototypeSceneBuilder
         var message = MakeText(canvasGo.transform, "Message", TextAnchor.UpperCenter, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -80), 40, new Vector2(800, 60));
         message.color = new Color(1f, 0.85f, 0.4f);
 
-        var panel = new GameObject("GameOverPanel");
-        panel.transform.SetParent(canvasGo.transform, false);
-        var img = panel.AddComponent<Image>();
-        img.color = new Color(0f, 0f, 0f, 0.75f);
-        var prt = img.rectTransform;
-        prt.anchorMin = Vector2.zero;
-        prt.anchorMax = Vector2.one;
-        prt.offsetMin = prt.offsetMax = Vector2.zero;
-        var overText = MakeText(panel.transform, "GameOverText", TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, 54, new Vector2(900, 300));
-        panel.SetActive(false);
-
+        // Menu, gallery, dress-up and review screens are built at runtime by GameManager (UiKit).
         var gm = new GameObject("GameManager").AddComponent<GameManager>();
         var so = new SerializedObject(gm);
         so.FindProperty("queue").objectReferenceValue = queue;
         so.FindProperty("hand").objectReferenceValue = hand;
+        so.FindProperty("catalog").objectReferenceValue = catalog;
+        so.FindProperty("stage").objectReferenceValue = stage;
         so.FindProperty("scoreText").objectReferenceValue = score;
         so.FindProperty("heartsDisplay").objectReferenceValue = hearts;
         so.FindProperty("messageText").objectReferenceValue = message;
-        so.FindProperty("gameOverPanel").objectReferenceValue = panel;
-        so.FindProperty("gameOverText").objectReferenceValue = overText;
         so.ApplyModifiedProperties();
+    }
+
+    // Looks library (prefabs, gallery save) and the far-away stage where models are shown up close.
+    static void BuildCatalogAndStage(Visitor kun, Visitor omangi, out OutfitCatalog catalog, out ModelStage stage)
+    {
+        catalog = new GameObject("OutfitCatalog").AddComponent<OutfitCatalog>();
+        var catalogSo = new SerializedObject(catalog);
+        catalogSo.FindProperty("kunmungchiPrefab").objectReferenceValue = kun;
+        catalogSo.FindProperty("omangiPrefab").objectReferenceValue = omangi;
+        catalogSo.ApplyModifiedProperties();
+
+        stage = new GameObject("ModelStage").AddComponent<ModelStage>();
+        var stageSo = new SerializedObject(stage);
+        stageSo.FindProperty("catalog").objectReferenceValue = catalog;
+        stageSo.FindProperty("floorMaterial").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Material>(MaterialDir + "/Ground.mat");
+        stageSo.ApplyModifiedProperties();
     }
 }

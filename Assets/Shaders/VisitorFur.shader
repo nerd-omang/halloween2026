@@ -3,6 +3,9 @@
 // marking atlas on _BaseMap is unaffected): each clump bends the normal like a soft pillow, the
 // creases between clumps are lightly darkened, and a fine fiber grain keeps it from reading as stone.
 // Clumps are kept large so they survive the pixel/dither pass.
+// Partial dye (disguises): with _DyeCoverage > 0, whole clumps take _DyeColor instead of _BaseColor,
+// chosen in large patches so it looks half-painted. Extremities (feet, lower belly, limbs, snout, tail)
+// keep more of the original color, so a bit always shows through even at high coverage.
 Shader "Fangame/VisitorFur"
 {
     Properties
@@ -17,6 +20,9 @@ Shader "Fangame/VisitorFur"
         _Wrap ("Light Wrap", Range(0, 1)) = 0.5
         _RimPower ("Rim Power", Range(0.5, 8)) = 3
         _RimStrength ("Rim Strength", Range(0, 2)) = 0.5
+        _DyeColor ("Dye Color", Color) = (1, 1, 1, 1)
+        _DyeCoverage ("Dye Coverage (0 = off)", Range(0, 1)) = 0
+        _DyeProtect ("Extremities Keep Color", Range(0, 1)) = 0.6
     }
     SubShader
     {
@@ -40,6 +46,9 @@ Shader "Fangame/VisitorFur"
             half _Wrap;
             half _RimPower;
             half _RimStrength;
+            half4 _DyeColor;
+            half _DyeCoverage;
+            half _DyeProtect;
         CBUFFER_END
 
         float Hash13(float3 p)
@@ -172,7 +181,22 @@ Shader "Fangame/VisitorFur"
                 tilt -= normalWS * dot(tilt, normalWS);
                 float3 furNormalWS = normalize(normalWS + tilt);
 
-                half3 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).rgb * _BaseColor.rgb;
+                half3 baseColor = _BaseColor.rgb;
+                if (_DyeCoverage > 0.0)
+                {
+                    // Decide per clump (at its center): large blotches plus a little per-clump jitter.
+                    float3 stretch = _FurScale * float3(1.0, 0.6, 1.0);
+                    float3 centerOS = (input.positionOS * stretch - fromCenter) / stretch;
+                    float blotch = saturate((ValueNoise(centerOS * 3.0 + 7.3) - 0.5) * 1.8 + 0.5);
+                    float order = 0.7 * blotch + 0.3 * id;
+                    // Extremities: feet / lower belly (low Y) and anything sticking out of the body ball
+                    // (limbs, snout, tail; body center is at Y 0.42 with radius ~0.36 in object space).
+                    float low = saturate((0.16 - centerOS.y) / 0.1);
+                    float outside = saturate((length(centerOS - float3(0.0, 0.42, 0.0)) - 0.38) / 0.08);
+                    float coverage = _DyeCoverage * (1.0 - _DyeProtect * max(low, outside));
+                    baseColor = order < coverage ? _DyeColor.rgb : baseColor;
+                }
+                half3 albedo = SAMPLE_TEXTURE2D(_BaseMap, sampler_BaseMap, input.uv).rgb * baseColor;
                 half crease = 1.0 - smoothstep(0.0, 0.5, f2 - f1);
                 albedo *= (1.0 - _Crease * crease) * lerp(1.0 - _ColorVariation, 1.0, id);
 

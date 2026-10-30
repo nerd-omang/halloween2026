@@ -77,6 +77,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: Sheet
+    second: {fileID: 2100000, guid: a600302238353cc41a3f3a09b28b986c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: TailStripe
     second: {fileID: 2100000, guid: 54cd85a7a5cbdd547b876766a36d0dcc, type: 2}
   materials:

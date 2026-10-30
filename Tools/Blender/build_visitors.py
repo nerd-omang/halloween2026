@@ -66,6 +66,7 @@ MATERIALS = {
     "PropFrame": ((0.08, 0.08, 0.08), False),
     "PropLens": ((1.0, 1.0, 1.0), True),
     "FakeTailStripe": ((1.0, 1.0, 1.0), True),
+    "Sheet": ((0.90, 0.90, 0.88), False),
 }
 
 BVH = None
@@ -559,10 +560,11 @@ def build_fakes():
     rim_r, lens_r = 0.066, 0.062
     eye_y = 0.42
     centers = [surf((sx * 0.36, -1.0, eye_y))[0] for sx in (-1, 1)]
-    # Lenses sit on one flat plane just in front of the face.
+    # Lenses sit on one flat plane in front of the face, clear of Koonmungchi's button eyes (they stick out
+    # ~0.016) so either visitor can wear them; the lenses cover the eyes exactly.
     face_y = min(project(c + AXIS_X * r * math.cos(a) + AXIS_Z * r * math.sin(a), FRONT, 0.0).y
                  for c in centers for r in (0.0, rim_r) for a in (k * math.pi / 4 for k in range(8)))
-    centers = [Vector((c.x, face_y - 0.012, c.z)) for c in centers]
+    centers = [Vector((c.x, face_y - 0.026, c.z)) for c in centers]
     for c in centers:
         rim = [c + rim_r * (math.cos(a) * AXIS_X + math.sin(a) * AXIS_Z)
                for a in (2 * math.pi * k / 12 for k in range(13))]
@@ -577,6 +579,41 @@ def build_fakes():
             loc, sn = surf((sx * math.sin(math.radians(a)), -math.cos(math.radians(a)), eye_y))
             temple.append(loc + sn * 0.012)
         add_tube(part, "PropFrame", temple, [0.005] * len(temple), AXIS_Z, segments=4)
+    part.finish()
+
+
+def build_ghost():
+    """Ghost sheet worn over either visitor: a plain lathed bell from head to ground, no eye holes,
+    only a soft round volume so nothing underneath reads through. The hem is wavy; its flutter is
+    done in the VisitorSheet shader (weight grows toward the ground). Hidden until GhostSheet.Wear()."""
+    part = Part("Ghost_Sheet")
+    bm = part.bm
+    # (radius, height) from the crown down to the hem.
+    # The crown sits a bit low so horns and other top parts can push it up (GhostSheet bumps).
+    profile = [(0.0, 0.80), (0.17, 0.78), (0.30, 0.72), (0.39, 0.62), (0.43, 0.50),
+               (0.44, 0.37), (0.46, 0.22), (0.49, 0.09), (0.52, 0.01)]
+    segments = 16
+    rings = []
+    for i, (r, z) in enumerate(profile[1:], start=1):
+        ring = []
+        for k in range(segments):
+            a = 2 * math.pi * k / segments
+            hem = 0.025 * math.sin(4 * a) if i == len(profile) - 1 else 0.0  # wavy hem
+            ring.append(bm.verts.new((r * math.sin(a), -r * math.cos(a), max(z + hem, 0.0))))
+        rings.append(ring)
+    crown = bm.verts.new((0.0, 0.0, profile[0][1]))
+    index = part.mat_index("Sheet")
+    faces = [bm.faces.new((rings[0][k], rings[0][(k + 1) % segments], crown)) for k in range(segments)]
+    for a, b in zip(rings, rings[1:]):
+        for k in range(segments):
+            k2 = (k + 1) % segments
+            faces.append(bm.faces.new((a[k], a[k2], b[k2], b[k])))
+    for f in faces:
+        orient(f, f.calc_center_median() - Vector((0.0, 0.0, 0.45)))
+        f.material_index = index
+        f.smooth = True
+        for loop in f.loops:
+            loop[part.uv].uv = WHITE_UV
     part.finish()
 
 
@@ -600,6 +637,8 @@ PREVIEW_SETS = [
     ("Omangi", (0.62, 0.12, 0.12), True, ("Body", "Oma_")),
     ("Koon_OmaCostume", (0.75, 0.08, 0.06), False, ("Body", "Koon_", "Fake_HornBand", "Fake_GoatEars")),
     ("Oma_KoonCostume", (0.50, 0.45, 0.45), True, ("Body", "Oma_", "Fake_ConeNose", "Fake_RaccoonTail", "Fake_XGlasses")),
+    ("Koon_Glasses", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Fake_XGlasses")),
+    ("Ghost", (0.42, 0.42, 0.44), False, ("Ghost_",)),
 ]
 
 
@@ -613,7 +652,7 @@ def render_preview(out_dir):
                 continue
             obj = src.copy()
             scene.collection.objects.link(obj)
-            obj.location.x = (i - 1.5) * 1.1
+            obj.location.x = (i - (len(PREVIEW_SETS) - 1) / 2) * 1.1
             for slot in obj.material_slots:
                 if slot.material and slot.material.name == "Fur":
                     slot.link = "OBJECT"
@@ -622,7 +661,7 @@ def render_preview(out_dir):
         src.hide_render = True
 
     scene.render.engine = "BLENDER_EEVEE_NEXT"
-    scene.render.resolution_x, scene.render.resolution_y = 1800, 640
+    scene.render.resolution_x, scene.render.resolution_y = 2600, 640
     scene.world = bpy.data.worlds.new("PreviewWorld")
     scene.world.color = (0.25, 0.25, 0.27)
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
@@ -631,7 +670,7 @@ def render_preview(out_dir):
     scene.collection.objects.link(sun)
     cam_data = bpy.data.cameras.new("PreviewCam")
     cam_data.type = "ORTHO"
-    cam_data.ortho_scale = 4.6
+    cam_data.ortho_scale = 6.9
     cam = bpy.data.objects.new("PreviewCam", cam_data)
     scene.collection.objects.link(cam)
     scene.camera = cam
@@ -660,6 +699,7 @@ def main():
     build_koon()
     build_oma()
     build_fakes()
+    build_ghost()
 
     for obj in bpy.context.scene.objects:
         tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)

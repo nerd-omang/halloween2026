@@ -44,6 +44,23 @@ public static class VisitorModelBuilder
         ("FakeTailStripe", Color.white, 0f, true, 0.25f),                 // synthetic fur, flatter
     };
 
+    const string SheetMaterial = "Sheet";
+    const string SheetBumpMaterial = "Sheet_Bump"; // sheet cloth over protruding parts, no hem flutter
+
+    // Partial dye: the natural fur material with whole clumps recolored to the dye color (VisitorFur
+    // _DyeCoverage). Named "<dye>_<percent>"; the plain dye material is the full (100%) level.
+    static readonly int[] DyeCoveragePercents = { 30, 60, 90 };
+
+    static readonly (string natural, string dye)[] DyePairs =
+    {
+        ("Fur_Gray", "Paint_Red"),    // Koonmungchi painting itself red
+        ("Fur_Red", "Fur_GrayDyed"),  // Omangi dyeing itself gray
+    };
+
+    // Dye levels from sloppiest to full, as VisitorDisguise expects them.
+    static string[] DyeLevels(string dye) =>
+        DyeCoveragePercents.Select(p => $"{dye}_{p}").Append(dye).ToArray();
+
     [MenuItem("Tools/Visitors/Rebuild Prefabs")]
     public static void Build()
     {
@@ -57,10 +74,16 @@ public static class VisitorModelBuilder
         var koon = SavePrefab(model, "Koonmungchi", "Fur_Gray", "Body", "Koon_");
         var oma = SavePrefab(model, "Omangi", "Fur_Red", "Body", "Oma_");
         // Each visitor disguises as the other: its own fur change plus the other side's look-alike props.
-        AddDisguise(koon, "Fur_Gray", "Paint_Red", "Fake_HornBand", "Fake_GoatEars");
-        AddDisguise(oma, "Fur_Red", "Fur_GrayDyed", "Fake_ConeNose", "Fake_RaccoonTail", "Fake_XGlasses");
+        // The X glasses are worn by both sides, so they are not a sure sign of an impostor.
+        AddDisguise(koon, "Fur_Gray", DyeLevels("Paint_Red"), "Fake_HornBand", "Fake_GoatEars", "Fake_XGlasses");
+        AddDisguise(oma, "Fur_Red", DyeLevels("Fur_GrayDyed"), "Fake_ConeNose", "Fake_RaccoonTail", "Fake_XGlasses");
         // Only the real raccoon tail wags; the fake one stays stiff (a possible tell).
         AddTailWag(koon, "Koon_Tail");
+        // Both can hide under a ghost sheet (hidden until GhostSheet.Wear()).
+        // Parts that push the sheet up (props only show when worn). Surface clues (eyes, markings, dye,
+        // glasses) are not listed, so the sheet hides them.
+        AddGhostSheet(koon, "Ghost_Sheet", "Koon_Nose", "Koon_Tail", "Fake_HornBand", "Fake_GoatEars");
+        AddGhostSheet(oma, "Ghost_Sheet", "Oma_Horns", "Oma_Ears", "Oma_Tail", "Fake_ConeNose", "Fake_RaccoonTail");
         // Fixed full-costume variants, for the preview scene.
         var koonCostume = SavePrefab(koon, "Koonmungchi_OmaCostume", "Paint_Red",
             "Body", "Koon_", "Fake_HornBand", "Fake_GoatEars");
@@ -103,6 +126,7 @@ public static class VisitorModelBuilder
                 mat.SetFloat("_Fiber", 0.4f * fur);
                 mat.SetFloat("_ColorVariation", 0.1f * fur);
                 mat.SetFloat("_RimStrength", 0.8f * fur);
+                mat.SetFloat("_DyeCoverage", 0f);
             }
             else
             {
@@ -118,6 +142,52 @@ public static class VisitorModelBuilder
             }
             EditorUtility.SetDirty(mat);
         }
+
+        foreach (var (natural, dye) in DyePairs)
+        {
+            var naturalMat = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{natural}.mat");
+            var dyeColor = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{dye}.mat").GetColor("_BaseColor");
+            foreach (var percent in DyeCoveragePercents)
+            {
+                var path = $"{MaterialDir}/{dye}_{percent}.mat";
+                var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (mat == null)
+                {
+                    mat = new Material(naturalMat);
+                    AssetDatabase.CreateAsset(mat, path);
+                }
+                mat.shader = naturalMat.shader;
+                mat.CopyPropertiesFromMaterial(naturalMat);
+                mat.SetColor("_DyeColor", dyeColor);
+                mat.SetFloat("_DyeCoverage", percent / 100f);
+                EditorUtility.SetDirty(mat);
+            }
+        }
+
+        // Ghost sheet: its own fluttering cloth shader.
+        var sheetPath = $"{MaterialDir}/{SheetMaterial}.mat";
+        var sheetMat = AssetDatabase.LoadAssetAtPath<Material>(sheetPath);
+        if (sheetMat == null)
+        {
+            sheetMat = new Material(Shader.Find("Fangame/VisitorSheet"));
+            AssetDatabase.CreateAsset(sheetMat, sheetPath);
+        }
+        sheetMat.shader = Shader.Find("Fangame/VisitorSheet");
+        sheetMat.SetColor("_BaseColor", new Color(0.9f, 0.9f, 0.88f));
+        EditorUtility.SetDirty(sheetMat);
+
+        var bumpPath = $"{MaterialDir}/{SheetBumpMaterial}.mat";
+        var bumpMat = AssetDatabase.LoadAssetAtPath<Material>(bumpPath);
+        if (bumpMat == null)
+        {
+            bumpMat = new Material(sheetMat);
+            AssetDatabase.CreateAsset(bumpMat, bumpPath);
+        }
+        bumpMat.shader = sheetMat.shader;
+        bumpMat.CopyPropertiesFromMaterial(sheetMat);
+        bumpMat.SetFloat("_FlutterAmount", 0f);
+        bumpMat.SetFloat("_EyeSize", 0f); // eyes belong on the sheet only, not on the bumps
+        EditorUtility.SetDirty(bumpMat);
         AssetDatabase.SaveAssets();
     }
 
@@ -142,6 +212,8 @@ public static class VisitorModelBuilder
             importer.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), slot),
                 AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{name}.mat"));
         }
+        importer.AddRemap(new AssetImporter.SourceAssetIdentifier(typeof(Material), SheetMaterial),
+            AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{SheetMaterial}.mat"));
         importer.SaveAndReimport();
     }
 
@@ -167,7 +239,7 @@ public static class VisitorModelBuilder
         return prefab;
     }
 
-    static void AddDisguise(GameObject prefab, string naturalFur, string disguiseFur, params string[] propNames)
+    static void AddDisguise(GameObject prefab, string naturalFur, string[] dyeLevels, params string[] propNames)
     {
         var path = AssetDatabase.GetAssetPath(prefab);
         var root = PrefabUtility.LoadPrefabContents(path);
@@ -177,11 +249,38 @@ public static class VisitorModelBuilder
 
         var so = new SerializedObject(disguise);
         so.FindProperty("naturalFur").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{naturalFur}.mat");
-        so.FindProperty("disguiseFur").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{disguiseFur}.mat");
+        var levels = so.FindProperty("dyeLevels");
+        levels.arraySize = dyeLevels.Length;
+        for (var i = 0; i < dyeLevels.Length; i++)
+            levels.GetArrayElementAtIndex(i).objectReferenceValue = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{dyeLevels[i]}.mat");
         var props = so.FindProperty("props");
         props.arraySize = propNames.Length;
         for (var i = 0; i < propNames.Length; i++)
             props.GetArrayElementAtIndex(i).objectReferenceValue = root.transform.Find(propNames[i]).gameObject;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        PrefabUtility.UnloadPrefabContents(root);
+    }
+
+    static void AddGhostSheet(GameObject prefab, string sheetName, params string[] protrusionNames)
+    {
+        var path = AssetDatabase.GetAssetPath(prefab);
+        var root = PrefabUtility.LoadPrefabContents(path);
+        var ghost = root.GetComponent<GhostSheet>();
+        if (ghost == null)
+            ghost = root.AddComponent<GhostSheet>();
+
+        var sheet = root.transform.Find(sheetName);
+        sheet.gameObject.SetActive(false);
+        var so = new SerializedObject(ghost);
+        so.FindProperty("sheet").objectReferenceValue = sheet;
+        so.FindProperty("bumpMaterial").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{SheetBumpMaterial}.mat");
+        var protrusions = so.FindProperty("protrusions");
+        protrusions.arraySize = protrusionNames.Length;
+        for (var i = 0; i < protrusionNames.Length; i++)
+            protrusions.GetArrayElementAtIndex(i).objectReferenceValue = root.transform.Find(protrusionNames[i]);
         so.ApplyModifiedPropertiesWithoutUndo();
 
         PrefabUtility.SaveAsPrefabAsset(root, path);

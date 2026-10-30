@@ -48,6 +48,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -5387892025628945052, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: -5068187537282442282, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -90,17 +94,20 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7495048644737810908}
+      addedObject: {fileID: 5309160007156671548}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 289815892779837355}
+      addedObject: {fileID: 4414183742746406215}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8075325426716323031}
   m_SourcePrefab: {fileID: 100100000, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
 --- !u!1 &540156389055253225 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
   m_PrefabInstance: {fileID: 846233138622822328}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &7495048644737810908
+--- !u!114 &5309160007156671548
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -113,11 +120,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::VisitorDisguise
   naturalFur: {fileID: 2100000, guid: 8cd9c9b4c374a3c47b51f39ae6d53516, type: 2}
-  disguiseFur: {fileID: 2100000, guid: a2cb288202a23bc4e9abbeff9f0b85e7, type: 2}
+  dyeLevels:
+  - {fileID: 2100000, guid: cfae0a85a2a706343823f99f401c18c4, type: 2}
+  - {fileID: 2100000, guid: d2bc198cbe8f4f84aa71fd2b9c540dd8, type: 2}
+  - {fileID: 2100000, guid: a466d88f93a911d45b724c69cca557d1, type: 2}
+  - {fileID: 2100000, guid: a2cb288202a23bc4e9abbeff9f0b85e7, type: 2}
   props:
   - {fileID: 7350652912253465477}
   - {fileID: 6970121654756164712}
---- !u!114 &289815892779837355
+  - {fileID: 5931272978108518738}
+  dropDuration: 0.7
+  dropSpeed: 1.6
+  dropLift: 2.6
+  dropSpin: 720
+  gravity: 9.8
+--- !u!114 &4414183742746406215
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -133,9 +150,62 @@ MonoBehaviour:
   amplitude: 20
   frequency: 0.4
   blendSpeed: 3
+--- !u!114 &8075325426716323031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 540156389055253225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed2913d28cc290f44aaf564ae479e2a9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GhostSheet
+  sheet: {fileID: 6043365754010936755}
+  blowOffDuration: 0.5
+  flyDistance: 2.5
+  flyRise: 1.2
+  spinDegrees: 420
+  walkLean: 8
+  leanSpeed: 4
+  flyPivot: {x: 0, y: 0.45, z: 0}
+  protrusions:
+  - {fileID: 2584652239222102900}
+  - {fileID: 1678039608865895187}
+  - {fileID: 6472574883279907224}
+  - {fileID: 1653284521237320691}
+  bumpMaterial: {fileID: 2100000, guid: a0c85184ac7075a429de9f0e89fc6368, type: 2}
+  bumpScale: 1.12
+  bumpCenter: {x: 0, y: 0.42, z: 0}
+--- !u!4 &1653284521237320691 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -7111244227282574261, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
+  m_PrefabInstance: {fileID: 846233138622822328}
+  m_PrefabAsset: {fileID: 0}
 --- !u!4 &1678039608865895187 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -7135966063132785493, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
+  m_PrefabInstance: {fileID: 846233138622822328}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &2584652239222102900 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2909583788034403532, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
+  m_PrefabInstance: {fileID: 846233138622822328}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5931272978108518738 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 6480242084057900778, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
+  m_PrefabInstance: {fileID: 846233138622822328}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6043365754010936755 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 6368148886209679883, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
+  m_PrefabInstance: {fileID: 846233138622822328}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &6472574883279907224 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -3283871665451868640, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
   m_PrefabInstance: {fileID: 846233138622822328}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &6970121654756164712 stripped

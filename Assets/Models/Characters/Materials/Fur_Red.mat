@@ -111,6 +111,8 @@ Material:
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
     - _DstBlendAlpha: 0
+    - _DyeCoverage: 0
+    - _DyeProtect: 0.6
     - _EnvironmentReflections: 1
     - _Fiber: 0.24000001
     - _FurScale: 9
@@ -138,6 +140,7 @@ Material:
     m_Colors:
     - _BaseColor: {r: 0.62, g: 0.12, b: 0.12, a: 1}
     - _Color: {r: 0.62, g: 0.11999995, b: 0.11999995, a: 1}
+    - _DyeColor: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
   m_BuildTextureStacks: []

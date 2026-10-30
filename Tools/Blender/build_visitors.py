@@ -9,6 +9,7 @@ Usage (from the project root):
 Conventions:
   - Every part is its own object with its origin at the world origin (between the feet),
     so in Unity each part sits at local zero under the visitor root and parts can be toggled freely.
+    Exception: Koon_Tail is pivoted at its base so it can wag.
   - Characters face -Y in Blender, which becomes +Z (forward) in Unity.
   - Object name prefixes: Body (shared), Koon_ (Koonmungchi), Oma_ (Omangi), Fake_ (costume props).
   - Material names are slot names; Unity remaps them to project materials. "Fur" is swapped per character.
@@ -209,7 +210,8 @@ def add_tube(part, mat, points, radii, ref, segments=6, cap_start=True, cap_end=
                       for a in (2 * math.pi * k / segments for k in range(segments))])
 
     def uv_at(i):
-        return cell_uv(uv_cell, 0.5, i / (count - 1)) if uv_cell else WHITE_UV
+        # Kept off the cell edges so filtering never picks up the neighbouring atlas cell.
+        return cell_uv(uv_cell, 0.5, 0.03 + 0.94 * i / (count - 1)) if uv_cell else WHITE_UV
 
     def finish_face(face, outward, ring_of):
         orient(face, outward)
@@ -259,6 +261,28 @@ def add_disc(part, mat, center, normal, radius, depth, cell, segments=10):
         for face in (f, side):
             face.material_index = index
             face.smooth = False
+
+
+def koon_tail_path(steps):
+    """Koonmungchi's tail: base anchor, curve parameters and points (shared with the fake tail)."""
+    anchor, n = surf((0.0, 1.0, -0.35))
+    start = anchor - n * 0.05
+    ts = [i / (steps - 1) for i in range(steps)]
+    return anchor, ts, [start + Vector((0.15 * t * t, 0.28 * t, 0.55 * t * t)) for t in ts]
+
+
+def koon_tail_radius(t):
+    """Thick in the middle, rounded off at the tip (shared with the fake tail)."""
+    r = 0.075 + 0.05 * math.sin(math.pi * t * 0.75)
+    if t > 0.8:
+        r *= math.sqrt(max(1 - ((t - 0.8) / 0.2) ** 2, 0.02))
+    return r
+
+
+def set_origin(obj, point):
+    """Moves the object's pivot to point without moving its geometry."""
+    obj.data.transform(Matrix.Translation(-point))
+    obj.location = point
 
 
 def limb(part, start_dir, direction, length, radius, sink=0.03):
@@ -342,12 +366,12 @@ def build_atlas():
     paint(in_cell(CELL_LENS), (0.60, 0.75, 0.95))
     paint(in_cell(CELL_LENS) & x_mark(CELL_LENS, 0.6, 10), (0.05, 0.07, 0.18))
 
-    # Tail stripes along V. Real tail: 7 bands, tip always dark. Fake tail: 5 bands, beige-tinted.
+    # Tail stripes along V. Real tail: 7 bands, tip always dark. Fake tail: 5 bands, beige-tinted, tip dark too.
     t = (ys - CELL_TAIL[1]) / CELL_TAIL[3]
     dark = (np.floor((1 - t) * 7).astype(int) % 2) == 0
     paint(in_cell(CELL_TAIL) & dark, (0.22, 0.22, 0.24))
     paint(in_cell(CELL_TAIL) & ~dark, (0.68, 0.68, 0.70))
-    dark = (np.floor(t * 5).astype(int) % 2) == 1
+    dark = (np.floor((1 - t) * 5).astype(int) % 2) == 0
     paint(in_cell(CELL_FAKE_TAIL) & dark, (0.25, 0.22, 0.20))
     paint(in_cell(CELL_FAKE_TAIL) & ~dark, (0.75, 0.72, 0.66))
 
@@ -413,16 +437,17 @@ def build_body():
 
 
 def build_koon():
-    # Long, slightly droopy raccoon snout with a dark tip.
+    # Short raccoon muzzle: wide base blending into the face, tapering quickly to a small dark nose,
+    # pointing forward with a slight upturn (a long, even, droopy tube reads wrong).
     part = Part("Koon_Nose")
     base, n = surf((0.0, -1.0, -0.1))
-    d = Vector((0.0, -1.0, -0.28)).normalized()
+    d = Vector((0.0, -1.0, -0.1)).normalized()
     start = base - d * 0.05
-    length = 0.24
+    length = 0.17
     ts = [i / 4 for i in range(5)]
-    pts = [start + d * (length * t) + Vector((0, 0, -0.035)) * t * t for t in ts]
-    add_tube(part, "Fur", pts, [0.085 * (1 - t) + 0.05 * t for t in ts], AXIS_X, cap_start=False)
-    add_sphere(part, "NoseTip", trs(pts[-1], Matrix(), (0.046, 0.046, 0.042)))
+    pts = [start + d * (length * t) + Vector((0, 0, 0.012)) * t * t for t in ts]
+    add_tube(part, "Fur", pts, [0.035 + 0.08 * (1 - t) ** 1.5 for t in ts], AXIS_X, cap_start=False)
+    add_sphere(part, "NoseTip", trs(pts[-1] + d * 0.008, Matrix(), (0.042, 0.034, 0.034)))
     part.finish()
 
     # Round blue button eyes; the X stitch is in the texture. The X is a permanent trait, not an expression.
@@ -434,20 +459,11 @@ def build_koon():
 
     # Thick striped raccoon tail that curls up and peeks over one shoulder.
     part = Part("Koon_Tail")
-    anchor, n = surf((0.0, 1.0, -0.35))
-    start = anchor - n * 0.05
-    ts = [i / 7 for i in range(8)]
-    pts = [start + Vector((0.15 * t * t, 0.28 * t, 0.55 * t * t)) for t in ts]
-
-    def tail_radius(t):
-        r = 0.075 + 0.05 * math.sin(math.pi * t * 0.75)
-        if t > 0.8:
-            r *= math.sqrt(max(1 - ((t - 0.8) / 0.2) ** 2, 0.02))
-        return r
-
-    add_tube(part, "TailStripe", pts, [tail_radius(t) for t in ts], AXIS_X, segments=7,
+    anchor, ts, pts = koon_tail_path(8)
+    add_tube(part, "TailStripe", pts, [koon_tail_radius(t) for t in ts], AXIS_X, segments=7,
              cap_start=False, uv_cell=CELL_TAIL)
-    part.finish()
+    # Pivot at the tail base so it can wag in Unity (TailWag); the only part not pivoted at the feet.
+    set_origin(part.finish(), anchor)
 
 
 def build_oma():
@@ -520,7 +536,9 @@ def build_fakes():
     add_tube(part, "PropString", string, [0.0035] * len(string), AXIS_Z, segments=4, cap_start=False, cap_end=False)
     part.finish()
 
-    # Stiff striped fake tail strapped around the waist; blunt sewn-off end.
+    # Stiff striped fake tail strapped around the waist. Same thickness profile and rounded tip as the real
+    # one, and its tip sits where the real tail's tip peeks over the shoulder, so from the front the two look
+    # alike; the tells are the strap, the straight stiff line, the beige tint and that it does not wag.
     part = Part("Fake_RaccoonTail")
     strap = []
     for a in range(0, 361, 20):
@@ -528,9 +546,11 @@ def build_fakes():
         strap.append(loc + sn * 0.012)
     add_tube(part, "PropStrap", strap, [0.014] * len(strap), AXIS_Z, segments=4, cap_start=False, cap_end=False)
     back, n = surf((0.0, 1.0, -0.85))
-    ts = [i / 5 for i in range(6)]
-    pts = [back + n * 0.02 + Vector((0.0, 0.3 * t, 0.3 * t + 0.1 * t * t)) for t in ts]
-    add_tube(part, "FakeTailStripe", pts, [0.07] * 5 + [0.055], AXIS_X, segments=7,
+    base = back + n * 0.02
+    tip = koon_tail_path(2)[2][-1]
+    ts = [i / 7 for i in range(8)]
+    pts = [base.lerp(tip, t) + Vector((0.0, 0.07, 0.0)) * math.sin(math.pi * t) for t in ts]
+    add_tube(part, "FakeTailStripe", pts, [koon_tail_radius(t) for t in ts], AXIS_X, segments=7,
              cap_start=False, uv_cell=CELL_FAKE_TAIL)
     part.finish()
 

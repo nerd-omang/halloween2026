@@ -56,6 +56,12 @@ public static class VisitorModelBuilder
         var model = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath);
         var koon = SavePrefab(model, "Koonmungchi", "Fur_Gray", "Body", "Koon_");
         var oma = SavePrefab(model, "Omangi", "Fur_Red", "Body", "Oma_");
+        // Each visitor disguises as the other: its own fur change plus the other side's look-alike props.
+        AddDisguise(koon, "Fur_Gray", "Paint_Red", "Fake_HornBand", "Fake_GoatEars");
+        AddDisguise(oma, "Fur_Red", "Fur_GrayDyed", "Fake_ConeNose", "Fake_RaccoonTail", "Fake_XGlasses");
+        // Only the real raccoon tail wags; the fake one stays stiff (a possible tell).
+        AddTailWag(koon, "Koon_Tail");
+        // Fixed full-costume variants, for the preview scene.
         var koonCostume = SavePrefab(koon, "Koonmungchi_OmaCostume", "Paint_Red",
             "Body", "Koon_", "Fake_HornBand", "Fake_GoatEars");
         var omaCostume = SavePrefab(oma, "Omangi_KoonCostume", "Fur_GrayDyed",
@@ -159,6 +165,43 @@ public static class VisitorModelBuilder
         var prefab = PrefabUtility.SaveAsPrefabAsset(go, $"{PrefabDir}/{name}.prefab");
         Object.DestroyImmediate(go);
         return prefab;
+    }
+
+    static void AddDisguise(GameObject prefab, string naturalFur, string disguiseFur, params string[] propNames)
+    {
+        var path = AssetDatabase.GetAssetPath(prefab);
+        var root = PrefabUtility.LoadPrefabContents(path);
+        var disguise = root.GetComponent<VisitorDisguise>();
+        if (disguise == null)
+            disguise = root.AddComponent<VisitorDisguise>();
+
+        var so = new SerializedObject(disguise);
+        so.FindProperty("naturalFur").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{naturalFur}.mat");
+        so.FindProperty("disguiseFur").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{disguiseFur}.mat");
+        var props = so.FindProperty("props");
+        props.arraySize = propNames.Length;
+        for (var i = 0; i < propNames.Length; i++)
+            props.GetArrayElementAtIndex(i).objectReferenceValue = root.transform.Find(propNames[i]).gameObject;
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        PrefabUtility.UnloadPrefabContents(root);
+    }
+
+    static void AddTailWag(GameObject prefab, string tailName)
+    {
+        var path = AssetDatabase.GetAssetPath(prefab);
+        var root = PrefabUtility.LoadPrefabContents(path);
+        var wag = root.GetComponent<TailWag>();
+        if (wag == null)
+            wag = root.AddComponent<TailWag>();
+
+        var so = new SerializedObject(wag);
+        so.FindProperty("tail").objectReferenceValue = root.transform.Find(tailName);
+        so.ApplyModifiedPropertiesWithoutUndo();
+
+        PrefabUtility.SaveAsPrefabAsset(root, path);
+        PrefabUtility.UnloadPrefabContents(root);
     }
 
     static void BuildPreviewScene(params GameObject[] prefabs)

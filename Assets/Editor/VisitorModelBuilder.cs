@@ -16,37 +16,38 @@ public static class VisitorModelBuilder
     // Fur variants are swapped on every "Fur" slot of a visitor.
     static readonly string[] FurMaterials = { "Fur_Gray", "Fur_Red", "Fur_GrayDyed", "Paint_Red" };
 
-    static readonly (string name, Color color, float smoothness)[] MaterialDefs =
+    // Markings (Omangi's face and cross, button X, lens X, tail stripes) live in this atlas.
+    // Textured materials multiply it by their color; white cells keep the plain color.
+    const string AtlasPath = "Assets/Models/Characters/Textures/VisitorAtlas.png";
+
+    // fur > 0 uses the matte Fangame/VisitorFur shader with that clump strength; otherwise URP Lit.
+    // Lit materials never use environment reflections and only glossy props keep specular highlights.
+    static readonly (string name, Color color, float smoothness, bool textured, float fur)[] MaterialDefs =
     {
-        ("Fur_Gray", new Color(0.42f, 0.42f, 0.44f), 0.1f),
-        ("Fur_Red", new Color(0.62f, 0.12f, 0.12f), 0.1f),
-        ("Fur_GrayDyed", new Color(0.50f, 0.45f, 0.45f), 0.15f), // Omangi dyed gray, a little reddish
-        ("Paint_Red", new Color(0.75f, 0.08f, 0.06f), 0.45f),    // Koonmungchi in red paint, wet sheen
-        ("NoseTip", new Color(0.08f, 0.08f, 0.09f), 0.6f),
-        ("Button", new Color(0.15f, 0.35f, 0.85f), 0.7f),
-        ("Thread", new Color(0.05f, 0.07f, 0.18f), 0.1f),
-        ("TailLight", new Color(0.68f, 0.68f, 0.70f), 0.1f),
-        ("TailDark", new Color(0.22f, 0.22f, 0.24f), 0.1f),
-        ("EyeBlack", new Color(0.02f, 0.02f, 0.02f), 0.8f),
-        ("Horn", new Color(0.06f, 0.05f, 0.05f), 0.3f),
-        ("Ear", new Color(0.07f, 0.06f, 0.06f), 0.1f),
-        ("Mark", new Color(0.03f, 0.03f, 0.03f), 0.2f),
-        ("PropBand", new Color(0.05f, 0.05f, 0.05f), 0.8f),
-        ("PropHorn", new Color(0.10f, 0.02f, 0.02f), 0.85f),
-        ("PropFelt", new Color(0.12f, 0.11f, 0.11f), 0f),
-        ("PropPaper", new Color(0.55f, 0.55f, 0.52f), 0.05f),
-        ("PropString", new Color(0.92f, 0.92f, 0.92f), 0.2f),
-        ("PropStrap", new Color(0.35f, 0.20f, 0.10f), 0.3f),
-        ("PropFrame", new Color(0.08f, 0.08f, 0.08f), 0.8f),
-        ("PropLens", new Color(0.60f, 0.75f, 0.95f), 0.9f),
-        ("PropMarker", new Color(0.05f, 0.07f, 0.18f), 0.1f),
-        ("FakeTailLight", new Color(0.75f, 0.72f, 0.66f), 0.2f),
-        ("FakeTailDark", new Color(0.25f, 0.22f, 0.20f), 0.2f),
+        ("Fur_Gray", new Color(0.42f, 0.42f, 0.44f), 0f, false, 0.6f),
+        ("Fur_Red", new Color(0.62f, 0.12f, 0.12f), 0f, true, 0.6f),       // carries Omangi's face and cross
+        ("Fur_GrayDyed", new Color(0.50f, 0.45f, 0.45f), 0f, true, 0.6f),  // Omangi dyed gray, a little reddish
+        ("Paint_Red", new Color(0.75f, 0.08f, 0.06f), 0f, false, 0.1f),    // Koonmungchi in red paint, fur matted down
+        ("NoseTip", new Color(0.08f, 0.08f, 0.09f), 0.35f, false, 0f),
+        ("Button", Color.white, 0.35f, true, 0f),
+        ("TailStripe", Color.white, 0f, true, 0.6f),
+        ("Horn", new Color(0.06f, 0.05f, 0.05f), 0.2f, false, 0f),
+        ("Ear", new Color(0.07f, 0.06f, 0.06f), 0f, false, 0.4f),
+        ("PropBand", new Color(0.05f, 0.05f, 0.05f), 0.4f, false, 0f),
+        ("PropHorn", new Color(0.10f, 0.02f, 0.02f), 0.5f, false, 0f),
+        ("PropFelt", new Color(0.12f, 0.11f, 0.11f), 0f, false, 0f),
+        ("PropPaper", new Color(0.55f, 0.55f, 0.52f), 0.05f, false, 0f),
+        ("PropString", new Color(0.92f, 0.92f, 0.92f), 0.1f, false, 0f),
+        ("PropStrap", new Color(0.35f, 0.20f, 0.10f), 0.2f, false, 0f),
+        ("PropFrame", new Color(0.08f, 0.08f, 0.08f), 0.4f, false, 0f),
+        ("PropLens", Color.white, 0.5f, true, 0f),
+        ("FakeTailStripe", Color.white, 0f, true, 0.25f),                 // synthetic fur, flatter
     };
 
     [MenuItem("Tools/Visitors/Rebuild Prefabs")]
     public static void Build()
     {
+        AssetDatabase.Refresh(); // pick up a freshly exported FBX/atlas
         EnsureFolder(MaterialDir);
         EnsureFolder(PrefabDir);
         CreateMaterials();
@@ -67,18 +68,48 @@ public static class VisitorModelBuilder
 
     static void CreateMaterials()
     {
-        var shader = Shader.Find("Universal Render Pipeline/Lit");
-        foreach (var (name, color, smoothness) in MaterialDefs)
+        var atlasImporter = (TextureImporter)AssetImporter.GetAtPath(AtlasPath);
+        atlasImporter.mipmapEnabled = false;
+        atlasImporter.wrapMode = TextureWrapMode.Clamp;
+        atlasImporter.SaveAndReimport();
+        var atlas = AssetDatabase.LoadAssetAtPath<Texture2D>(AtlasPath);
+
+        var lit = Shader.Find("Universal Render Pipeline/Lit");
+        var furShader = Shader.Find("Fangame/VisitorFur");
+        foreach (var (name, color, smoothness, textured, fur) in MaterialDefs)
         {
             var path = $"{MaterialDir}/{name}.mat";
             var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (mat == null)
             {
-                mat = new Material(shader);
+                mat = new Material(lit);
                 AssetDatabase.CreateAsset(mat, path);
             }
+            mat.shader = fur > 0f ? furShader : lit;
             mat.SetColor("_BaseColor", color);
-            mat.SetFloat("_Smoothness", smoothness);
+            mat.SetTexture("_BaseMap", textured ? atlas : null);
+            if (fur > 0f)
+            {
+                mat.shaderKeywords = new string[0];
+                mat.SetFloat("_FurScale", 9f);
+                mat.SetFloat("_FurStrength", 1.5f * fur);
+                mat.SetFloat("_Crease", 0.4f * fur);
+                mat.SetFloat("_Fiber", 0.4f * fur);
+                mat.SetFloat("_ColorVariation", 0.1f * fur);
+                mat.SetFloat("_RimStrength", 0.8f * fur);
+            }
+            else
+            {
+                var highlights = smoothness >= 0.3f;
+                mat.SetFloat("_Smoothness", smoothness);
+                mat.SetFloat("_EnvironmentReflections", 0f);
+                mat.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+                mat.SetFloat("_SpecularHighlights", highlights ? 1f : 0f);
+                if (highlights)
+                    mat.DisableKeyword("_SPECULARHIGHLIGHTS_OFF");
+                else
+                    mat.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+            }
             EditorUtility.SetDirty(mat);
         }
         AssetDatabase.SaveAssets();
@@ -92,9 +123,12 @@ public static class VisitorModelBuilder
         importer.importCameras = false;
         importer.importLights = false;
         importer.importBlendShapes = false;
+        importer.importNormals = ModelImporterNormals.Import; // custom normals smooth the low-poly body
 
         // FBX slot names match project material names, except "Fur" which defaults to gray.
-        foreach (var (name, _, _) in MaterialDefs)
+        foreach (var remap in importer.GetExternalObjectMap().Keys.ToList())
+            importer.RemoveRemap(remap);
+        foreach (var (name, _, _, _, _) in MaterialDefs)
         {
             var slot = FurMaterials.Contains(name) ? (name == "Fur_Gray" ? "Fur" : null) : name;
             if (slot == null)

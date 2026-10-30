@@ -48,19 +48,11 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: -5429409147399768141, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: -5068187537282442282, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -4099428975203254612, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: -2471362686876807389, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}
@@ -81,10 +73,6 @@ PrefabInstance:
       value: Koonmungchi
       objectReference: {fileID: 0}
     - target: {fileID: 1626327498913167400, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 2136537040894096382, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       propertyPath: m_IsActive
       value: 0
       objectReference: {fileID: 0}

@@ -9,6 +9,14 @@ public struct WorldEntry
 {
     public string initials;
     public int score;
+    public string result; // LookCode result text of that game, empty for entries stored before the server kept it
+
+    // The three looks of that game (fewer, or none, if the text is missing or damaged).
+    public bool TryGetLooks(out Outfit[] looks)
+    {
+        looks = new Outfit[0];
+        return !string.IsNullOrEmpty(result) && LookCode.TryDecode(result, out _, out _, out looks, out _);
+    }
 }
 
 // Client of the leaderboard server (server/API.md): sends each finished game as its short result text and
@@ -68,6 +76,7 @@ public static class WorldBoard
     {
         public string initials;
         public int score;
+        public string r; // result text, see server/API.md
     }
 
     [Serializable]
@@ -102,7 +111,7 @@ public static class WorldBoard
                 entries.Clear();
                 if (list?.items != null)
                 {
-                    foreach (var row in list.items) entries.Add(new WorldEntry { initials = LocalRanking.CleanInitials(row.initials), score = row.score });
+                    foreach (var row in list.items) entries.Add(new WorldEntry { initials = LocalRanking.CleanInitials(row.initials), score = row.score, result = row.r ?? "" });
                 }
                 status = LoadStatus.Ready;
                 lastRefreshTime = Time.realtimeSinceStartup;

@@ -14,10 +14,11 @@ public class MenuScreen
     public event Action DressUpClicked;
 
     // Height of the title/carousel column in canvas units (see MenuFit).
-    const float ColumnHeight = 440f;
+    const float ColumnHeight = 480f;
+    const float ColumnShift = 28f;   // the whole title block sits this far below the screen top
     const int ItemCount = 5; // start, gallery, records, dress-up, settings
 
-    const float SlotSpacing = 430f; // canvas units between neighbouring entries
+    const float SlotSpacing = 360f; // canvas units between neighbouring entries
     const float ItemY = -330f;      // vertical center of the carousel inside the column
     const float SlideSeconds = 0.2f;
 
@@ -59,7 +60,7 @@ public class MenuScreen
 
         // Title and buttons stack from the top inside a column that shrinks on short (wide) screens,
         // so nothing overlaps whatever the aspect ratio. The control guide stays at the screen bottom.
-        var column = UiKit.Rect("Column", root, top, top, Vector2.zero, new Vector2(1280f, ColumnHeight));
+        var column = UiKit.Rect("Column", root, top, top, new Vector2(0f, -ColumnShift), new Vector2(1280f, ColumnHeight));
         column.gameObject.AddComponent<MenuFit>().Init(root, column);
 
         UiKit.Bind(UiKit.Label(column, "Title", "", 120, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -12f), new Vector2(1100f, 130f), UiKit.Accent, true),
@@ -73,17 +74,17 @@ public class MenuScreen
         for (int i = 0; i < ItemCount; i++)
         {
             int index = i;
-            items[i] = UiKit.Button(column, "Item" + i, "", 44, top, top, Vector2.zero, new Vector2(520f, 76f), () => armedItem = index);
+            items[i] = UiKit.Button(column, "Item" + i, "", 44, top, top, Vector2.zero, new Vector2(400f, 92f), () => armedItem = index);
             ((RectTransform)items[i].transform).pivot = new Vector2(0.5f, 0.5f);
             groups[i] = items[i].gameObject.AddComponent<CanvasGroup>();
         }
         for (int i = 0; i < ItemCount; i++)
         {
-            var dot = UiKit.Rect("Dot" + i, column, top, top, new Vector2((i - (ItemCount - 1) * 0.5f) * 22f, -386f), new Vector2(10f, 10f));
+            var dot = UiKit.Rect("Dot" + i, column, top, top, new Vector2((i - (ItemCount - 1) * 0.5f) * 22f, -396f), new Vector2(10f, 10f));
             dots[i] = dot.gameObject.AddComponent<Image>();
             dots[i].raycastTarget = false;
         }
-        carouselHint = UiKit.Label(column, "CarouselHint", "", 22, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -412f), new Vector2(1200f, 30f), UiKit.Dim * 0.8f);
+        carouselHint = UiKit.Label(column, "CarouselHint", "", 22, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -424f), new Vector2(1200f, 30f), UiKit.Dim * 0.8f);
         panel.AddComponent<Ticker>().OnUpdate = Tick;
         Loc.Changed += Refresh;
 
@@ -319,7 +320,7 @@ public class MenuScreen
 // Shrinks the menu column so it fits above the control guide on short screens (21:9 and the like).
 public class MenuFit : MonoBehaviour
 {
-    const float GuideHeight = 104f; // room kept free at the bottom for the control guide
+    const float GuideHeight = 132f; // room kept free at the bottom for the control guide, plus the column's shift down
 
     RectTransform root;
     RectTransform column;

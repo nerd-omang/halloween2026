@@ -60,6 +60,15 @@ Without it the online tab shows that no server is set and nothing is ever sent.
 
 git-flow style: work happens on `feature/*` branches, `main` is for releases.
 
+## License
+
+Non-commercial use only, to respect the original designer's rights.
+
+- Code: [PolyForm Noncommercial 1.0.0](LICENSE).
+- Models, art and audio made for the game: [CC BY-NC-SA 4.0](LICENSE-ASSETS.md).
+- The characters themselves remain the designer's; commercial use needs their permission.
+- Third-party assets keep their own licenses ([CREDITS.md](CREDITS.md)).
+
 ## Credits
 
 See [CREDITS.md](CREDITS.md).

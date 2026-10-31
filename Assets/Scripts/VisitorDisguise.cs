@@ -184,6 +184,18 @@ public class VisitorDisguise : MonoBehaviour
 
     bool IsWorn(int i) => props[i].activeSelf && (droppedMask & (1 << i)) == 0;
 
+    // Whether the mask (Apply's format) has a head-covering prop on.
+    public bool CoversHead(int mask)
+    {
+        if (headCoverProps == null) return false;
+        foreach (var p in headCoverProps)
+        {
+            int i = System.Array.IndexOf(props, p);
+            if (i >= 0 && (mask & (1 << (i + 1))) != 0) return true;
+        }
+        return false;
+    }
+
     // True while a worn prop covers the head (VisitorCostume leaves its head piece off then).
     public bool HeadCovered
     {

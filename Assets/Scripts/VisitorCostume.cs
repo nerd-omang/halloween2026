@@ -31,6 +31,20 @@ public class VisitorCostume : MonoBehaviour
     public string CostumeName(int i) => costumes[i].item.name;
     public CostumeSlot Slot(int i) => costumes[i].slot;
 
+    // Costumes that a palm blast can still knock off.
+    public int LooseCount
+    {
+        get
+        {
+            int count = 0;
+            for (int i = 0; i < costumes.Length; i++)
+            {
+                if (IsWorn(i) && !costumes[i].stays) count++;
+            }
+            return count;
+        }
+    }
+
     // The mask last given to Apply, after Normalize.
     public int AppliedMask => appliedMask;
 
@@ -51,7 +65,11 @@ public class VisitorCostume : MonoBehaviour
     // One costume per slot (the first listed wins), no head piece under a head-covering disguise prop.
     public int Normalize(int mask)
     {
-        bool headCovered = TryGetComponent(out VisitorDisguise disguise) && disguise.HeadCovered;
+        return Normalize(mask, TryGetComponent(out VisitorDisguise disguise) && disguise.HeadCovered);
+    }
+
+    public int Normalize(int mask, bool headCovered)
+    {
         int taken = 0; // slots already used, one bit per CostumeSlot
         for (int i = 0; i < costumes.Length; i++)
         {

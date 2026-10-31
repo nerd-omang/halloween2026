@@ -27,3 +27,8 @@ crashlytics-build.properties
 # Unity Performance Testing package output
 Assets/Resources/PerformanceTestRunInfo.json*
 Assets/Resources/PerformanceTestRunSettings.json*
+
+# Local scratch
+/Moku_original_backup.fbx
+/Textures/
+__pycache__/

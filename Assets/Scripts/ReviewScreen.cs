@@ -39,6 +39,7 @@ public class ReviewScreen
     readonly SimpleButton recordButton;
     readonly SimpleButton skipButton;
     readonly SimpleButton nextButton;
+    readonly SimpleToggle uploadToggle;
     readonly SimpleButton tabLooks;
     readonly SimpleButton tabRanking;
     readonly GameObject bottomButtons;
@@ -55,6 +56,9 @@ public class ReviewScreen
     int recordedRank;
 
     // The score and initials steps use keys of their own; the game must not treat them as shortcuts.
+    // Whether this game's result is to be uploaded online (never when no server is configured).
+    public bool Upload => WorldBoard.Configured && uploadToggle.Value;
+
     public bool Busy => mode == Mode.Score || mode == Mode.Initials;
 
     public ReviewScreen(Transform parent, OutfitCatalog catalog, ModelStage stage)
@@ -75,8 +79,8 @@ public class ReviewScreen
 
         // Score step: a card over the three models.
         var center = new Vector2(0.5f, 0.5f);
-        var card = UiKit.Card("ScoreCard", root, new Vector2(700f, 460f));
-        card.gameObject.AddComponent<ScreenFit>().Init(root, card, 460f, 24f);
+        var card = UiKit.Card("ScoreCard", root, new Vector2(700f, 520f));
+        card.gameObject.AddComponent<ScreenFit>().Init(root, card, 520f, 24f);
         scoreCard = card.gameObject;
         UiKit.Bind(UiKit.Label(card, "Header", "", 66, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 180f), new Vector2(640f, 76f), UiKit.Danger, true), "review.header", true);
         bigScore = UiKit.Label(card, "BigScore", "", 140, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 80f), new Vector2(640f, 150f), UiKit.Accent, true);
@@ -87,12 +91,16 @@ public class ReviewScreen
         questionText = UiKit.Label(card, "Question", "", 22, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -140f), new Vector2(640f, 32f), UiKit.Dim);
         UiKit.Bind(questionText, "score.question");
 
-        recordButton = UiKit.Button(card, "Record", "", 33, center, center, new Vector2(-120f, -190f), new Vector2(210f, 52f), OpenInitials);
+        recordButton = UiKit.Button(card, "Record", "", 33, center, center, new Vector2(-120f, -226f), new Vector2(210f, 52f), OpenInitials);
         UiKit.Bind(recordButton.Label, "score.record");
-        skipButton = UiKit.Button(card, "Skip", "", 33, center, center, new Vector2(120f, -190f), new Vector2(210f, 52f), () => SetMode(Mode.Looks));
+        skipButton = UiKit.Button(card, "Skip", "", 33, center, center, new Vector2(120f, -226f), new Vector2(210f, 52f), () => SetMode(Mode.Looks));
         UiKit.Bind(skipButton.Label, "score.skip");
-        nextButton = UiKit.Button(card, "Next", "", 33, center, center, new Vector2(0f, -190f), new Vector2(210f, 52f), () => SetMode(Mode.Looks));
+        nextButton = UiKit.Button(card, "Next", "", 33, center, center, new Vector2(0f, -226f), new Vector2(210f, 52f), () => SetMode(Mode.Looks));
         UiKit.Bind(nextButton.Label, "score.next");
+
+        // Per game: starts from the settings default, and changing it here does not change the setting.
+        uploadToggle = UiKit.Toggle(card, "Upload", "", false, 22, center, center, new Vector2(0f, -176f), new Vector2(360f, 32f));
+        UiKit.Bind(uploadToggle.Label, "score.upload");
 
         initialsEntry = new InitialsEntry(root);
 
@@ -134,6 +142,8 @@ public class ReviewScreen
             shownOutfits.Add(outfit);
         }
 
+        uploadToggle.Set(Settings.ShareOnline);
+        uploadToggle.gameObject.SetActive(WorldBoard.Configured);
         bigScore.text = score.ToString();
         newBestText.gameObject.SetActive(newBest);
         bestText.gameObject.SetActive(!newBest);

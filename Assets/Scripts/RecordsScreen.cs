@@ -53,7 +53,7 @@ public class RecordsScreen
         header = UiKit.Bind(UiKit.Label(root, "Header", "", 55, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(24f, -12f), new Vector2(500f, 60f), UiKit.Accent, true),
             "records.header", true).gameObject;
 
-        ranking = new RankingView(root, catalog, stage, "records.header");
+        ranking = new RankingView(root, catalog, stage, "records.header", true);
 
         statsPage = BuildStats(out statLines, out noFooledText, out fooledLabels, out fooledBars, out fooledCounts, out resetButton);
 
@@ -159,8 +159,7 @@ public class RecordsScreen
     {
         if (Time.unscaledTime < resetArmedUntil)
         {
-            LocalRanking.Clear();
-            LocalStats.Reset();
+            LocalStats.Reset(); // the ranking has its own clear button
             RefreshStats();
             return;
         }

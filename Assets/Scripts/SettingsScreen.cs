@@ -8,7 +8,7 @@ using UnityEngine.UI;
 public class SettingsScreen
 {
     const float BoxWidth = 860f;
-    const float BoxHeight = 650f;
+    const float BoxHeight = 710f;
     const float LabelX = 36f;
     const float ControlX = 270f;
     const float OptionWidth = 130f;
@@ -29,6 +29,8 @@ public class SettingsScreen
     readonly SimpleButton[] languageButtons = new SimpleButton[2];
     readonly SimpleButton[] shareButtons = new SimpleButton[2];
     GameObject shareRow;
+    GameObject confirmReset;
+    Text resetDone;
 
     // Advanced look tab
     readonly SimpleButton[] ditherButtons = new SimpleButton[2];
@@ -86,8 +88,45 @@ public class SettingsScreen
         gear = gearButton.gameObject;
         gear.SetActive(false);
 
+        confirmReset = BuildResetConfirm(root);
+
         Loc.Changed += Refresh;
         panel.SetActive(false);
+    }
+
+    GameObject BuildResetConfirm(RectTransform root)
+    {
+        var center = new Vector2(0.5f, 0.5f);
+        var modal = UiKit.Fill("ConfirmReset", root);
+        modal.gameObject.AddComponent<Image>().color = new Color(0.03f, 0.01f, 0.06f, 0.6f);
+        var card = UiKit.Card("Card", modal, new Vector2(660f, 280f));
+        card.gameObject.AddComponent<ScreenFit>().Init(modal, card, 280f, 24f);
+        UiKit.Bind(UiKit.Label(card, "Text", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 45f), new Vector2(600f, 130f), Color.white), "settings.resetAsk");
+        var yes = UiKit.Button(card, "Yes", "", 33, center, center, new Vector2(-140f, -90f), new Vector2(250f, 52f), () =>
+        {
+            CloseResetConfirm();
+            Progress.ResetAll(); // settings are kept; a running game keeps its own score
+            resetDone.gameObject.SetActive(true);
+        });
+        UiKit.Bind(yes.Label, "settings.resetYes");
+        yes.Label.color = UiKit.Danger;
+        var no = UiKit.Button(card, "No", "", 33, center, center, new Vector2(140f, -90f), new Vector2(250f, 52f), CloseResetConfirm);
+        UiKit.Bind(no.Label, "settings.resetNo");
+        modal.gameObject.SetActive(false);
+        return modal.gameObject;
+    }
+
+    void OpenResetConfirm()
+    {
+        confirmReset.SetActive(true);
+        confirmReset.transform.SetAsLastSibling();
+        UiKit.ModalRoot = confirmReset.transform;
+    }
+
+    void CloseResetConfirm()
+    {
+        confirmReset.SetActive(false);
+        if (UiKit.ModalRoot == confirmReset.transform) UiKit.ModalRoot = panel.transform;
     }
 
     void BuildGeneral(Transform page)
@@ -130,6 +169,14 @@ public class SettingsScreen
         shareButtons[1] = Option(shareRow.transform, "ShareOff", -512f, 1, () => Settings.ShareOnline = false, "settings.off");
         UiKit.Bind(UiKit.Label(shareRow.transform, "ShareHint", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -558f), new Vector2(BoxWidth - 2f * LabelX - 240f, 56f), UiKit.Dim),
             "settings.shareHint");
+
+        // Apart from the other settings, at the very bottom.
+        var reset = UiKit.Button(page, "ResetAll", "", 22, topLeft, topLeft, new Vector2(LabelX, -650f), new Vector2(300f, 40f), OpenResetConfirm);
+        UiKit.Bind(reset.Label, "settings.resetAll");
+        reset.Label.color = UiKit.Danger;
+        resetDone = UiKit.Label(page, "ResetDone", "", 22, TextAnchor.MiddleLeft, topLeft, topLeft, new Vector2(LabelX + 312f, -650f), new Vector2(240f, 40f), UiKit.Accent);
+        UiKit.Bind(resetDone, "settings.resetDone");
+        resetDone.gameObject.SetActive(false);
     }
 
     void BuildAdvanced(Transform page)
@@ -282,14 +329,16 @@ public class SettingsScreen
         panel.transform.SetAsLastSibling();
         UiKit.ModalRoot = panel.transform;
         SetTab(0);
+        resetDone.gameObject.SetActive(false);
         Refresh();
     }
 
     public void Close()
     {
         if (!IsOpen) return;
+        confirmReset.SetActive(false);
         panel.SetActive(false);
-        if (UiKit.ModalRoot == panel.transform) UiKit.ModalRoot = null;
+        if (UiKit.ModalRoot == panel.transform || UiKit.ModalRoot == confirmReset.transform) UiKit.ModalRoot = null;
         if (paused) GamePause.Release(this);
         paused = false;
         Settings.Save();

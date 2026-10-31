@@ -45,7 +45,7 @@ public class RankingView
     const float RowTop = 110f;
     const float RowStep = 42f;
     const float RowHeight = 38f;
-    const float DesignHeight = 600f;
+    const float DesignHeight = 650f;
 
     readonly OutfitCatalog catalog;
     readonly ModelStage stage;
@@ -64,6 +64,8 @@ public class RankingView
     readonly SimpleButton localTab;
     readonly SimpleButton onlineTab;
     readonly SimpleButton retryButton;
+    readonly SimpleButton clearButton;
+    readonly GameObject confirm;
     readonly List<GameObject> captions = new List<GameObject>();
 
     int page;
@@ -71,7 +73,8 @@ public class RankingView
     bool online;  // showing the world ranking (initials and score only, no looks)
 
     // headerKey: the Loc key of the panel title.
-    public RankingView(Transform parentTransform, OutfitCatalog catalog, ModelStage stage, string headerKey)
+    // canClear: offer "clear ranking" (not on the game-over screen, where it could wipe the game just recorded).
+    public RankingView(Transform parentTransform, OutfitCatalog catalog, ModelStage stage, string headerKey, bool canClear = false)
     {
         this.catalog = catalog;
         this.stage = stage;
@@ -111,6 +114,15 @@ public class RankingView
         retryButton = UiKit.Button(content, "Retry", "", 22, topLeft, topLeft, new Vector2(24f, -RowTop - LocalRanking.PageSize * RowStep - 10f), new Vector2(200f, 38f), () => WorldBoard.Refresh(true));
         UiKit.Bind(retryButton.Label, "ranking.retry");
 
+        // Below the page arrows; separate from the stats reset, and only for the local list.
+        if (canClear)
+        {
+            clearButton = UiKit.Button(content, "Clear", "", 22, topLeft, topLeft, new Vector2(24f, -RowTop - LocalRanking.PageSize * RowStep - 56f), new Vector2(240f, 38f), OpenConfirm);
+            UiKit.Bind(clearButton.Label, "ranking.clear");
+            clearButton.Label.color = UiKit.Danger;
+            confirm = BuildConfirm();
+        }
+
         var bottomLeft = new Vector2(0f, 1f);
         float navY = -RowTop - LocalRanking.PageSize * RowStep - 10f;
         prevButton = UiKit.Button(content, "Prev", "←", 22, bottomLeft, bottomLeft, new Vector2(24f, navY), new Vector2(72f, 38f), () => ChangePage(-1));
@@ -139,8 +151,48 @@ public class RankingView
     public void Hide()
     {
         WorldBoard.Changed -= OnWorldChanged;
+        CloseConfirm();
         root.gameObject.SetActive(false);
         LookCaptions.Clear(captions);
+    }
+
+    GameObject BuildConfirm()
+    {
+        var center = new Vector2(0.5f, 0.5f);
+        var modal = UiKit.Fill("ConfirmClear", root);
+        modal.gameObject.AddComponent<Image>().color = new Color(0.03f, 0.01f, 0.06f, 0.75f);
+        var card = UiKit.Card("Card", modal, new Vector2(660f, 280f));
+        card.gameObject.AddComponent<ScreenFit>().Init(modal, card, 280f, 24f);
+        UiKit.Bind(UiKit.Label(card, "Text", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 45f), new Vector2(600f, 130f), Color.white), "ranking.clearAsk");
+        var yes = UiKit.Button(card, "Yes", "", 33, center, center, new Vector2(-140f, -90f), new Vector2(250f, 52f), () =>
+        {
+            CloseConfirm();
+            LocalRanking.Clear();
+            selected = 0;
+            page = 0;
+            Layout();
+            ShowSelected();
+        });
+        UiKit.Bind(yes.Label, "settings.resetYes");
+        yes.Label.color = UiKit.Danger;
+        var no = UiKit.Button(card, "No", "", 33, center, center, new Vector2(140f, -90f), new Vector2(250f, 52f), CloseConfirm);
+        UiKit.Bind(no.Label, "settings.resetNo");
+        modal.gameObject.SetActive(false);
+        return modal.gameObject;
+    }
+
+    void OpenConfirm()
+    {
+        confirm.SetActive(true);
+        confirm.transform.SetAsLastSibling();
+        UiKit.ModalRoot = confirm.transform;
+    }
+
+    void CloseConfirm()
+    {
+        if (confirm == null) return;
+        confirm.SetActive(false);
+        if (UiKit.ModalRoot == confirm.transform) UiKit.ModalRoot = null;
     }
 
     void SetOnline(bool value)
@@ -171,6 +223,7 @@ public class RankingView
     {
         var entries = WorldBoard.Entries;
         emptyText.gameObject.SetActive(false);
+        if (clearButton != null) clearButton.gameObject.SetActive(false);
         prevButton.gameObject.SetActive(false);
         nextButton.gameObject.SetActive(false);
         pageText.gameObject.SetActive(false);
@@ -204,6 +257,7 @@ public class RankingView
         page = Mathf.Clamp(page, 0, pages - 1);
 
         emptyText.gameObject.SetActive(LocalRanking.Entries.Count == 0);
+        if (clearButton != null) clearButton.gameObject.SetActive(LocalRanking.Entries.Count > 0);
         for (int i = 0; i < rows.Length; i++)
         {
             bool shown = i < entries.Count;

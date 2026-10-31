@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+  <meta charset="utf-8">
+  <title>Halloween2026</title>
+  <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0710">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='7' y='1' width='2' height='3' fill='%23496b2a'/%3E%3Cellipse cx='8' cy='9' rx='7' ry='6' fill='%23f28a1a'/%3E%3C/svg%3E">
+  <style>
+    :root { --bg: #0b0710; --orange: #f28a1a; --dim: #6b5a7a; }
+    html, body {
+      position: fixed; inset: 0; margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; background: var(--bg);
+      overscroll-behavior: none; touch-action: none;
+      -webkit-user-select: none; user-select: none;
+      -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
+    }
+    #unity-canvas {
+      position: fixed; inset: 0; width: 100dvw; height: 100dvh; display: block;
+      background: var(--bg); touch-action: none; outline: none;
+    }
+    #loading, #fatal {
+      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px; background: var(--bg); color: var(--orange); text-align: center; padding: 0 24px;
+      font: 700 clamp(18px, 4dvh, 32px) / 1.3 "Courier New", monospace; letter-spacing: .12em; text-transform: uppercase;
+      text-shadow: 0 0 12px rgba(242, 138, 26, .55);
+    }
+    #fatal { display: none; z-index: 3; text-transform: none; letter-spacing: 0; text-shadow: none; font-size: clamp(14px, 3.4dvh, 22px); }
+    #fatal b { display: block; margin-bottom: 8px; font-size: 1.25em; color: #ff5a3c; }
+    #fatal small { display: block; margin-top: 10px; color: var(--dim); word-break: break-word; max-width: 80ch; }
+    #bar { width: min(60dvw, 420px); height: 14px; border: 2px solid var(--orange); border-radius: 8px; padding: 2px; box-sizing: content-box; }
+    #fill { height: 100%; width: 0; background: var(--orange); border-radius: 5px; box-shadow: 0 0 10px rgba(242, 138, 26, .7); }
+    #pct { font-size: .55em; color: var(--dim); letter-spacing: .2em; }
+    #fs {
+      position: fixed; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right));
+      width: 40px; height: 40px; display: none; z-index: 2; padding: 0; cursor: pointer;
+      border: 2px solid var(--orange); border-radius: 8px; background: rgba(11, 7, 16, .55); opacity: .55;
+    }
+    #fs:active { opacity: 1; }
+    #fs svg { width: 22px; height: 22px; stroke: var(--orange); fill: none; stroke-width: 2.5; }
+  </style>
+</head>
+<body>
+  <canvas id="unity-canvas" tabindex="-1"></canvas>
+
+  <div id="loading">
+    <div>Halloween2026</div>
+    <div id="bar"><div id="fill"></div></div>
+    <div id="pct">0%</div>
+  </div>
+
+  <div id="fatal"><div id="fatal-msg"></div></div>
+
+  <button id="fs" type="button" aria-label="Toggle fullscreen">
+    <svg viewBox="0 0 24 24"><path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></svg>
+  </button>
+
+  <script src="Build/5bd6848d8423e2f106e1d2aed923143c.loader.js"></script>
+  <script>
+    (function () {
+      // Upper bound for the canvas pixel ratio. The game renders at a fraction of the canvas size, so
+      // a 3x phone screen would mean a 9x pixel count for the final upscale; 2 keeps fill cost sane.
+      var MAX_DPR = 2;
+
+      var canvas = document.getElementById('unity-canvas');
+      var loading = document.getElementById('loading');
+      var fill = document.getElementById('fill');
+      var pct = document.getElementById('pct');
+      var fatal = document.getElementById('fatal');
+      var fsButton = document.getElementById('fs');
+
+      function showFatal(title, detail) {
+        loading.style.display = 'none';
+        var msg = document.getElementById('fatal-msg');
+        msg.innerHTML = '';
+        var b = document.createElement('b');
+        b.textContent = title;
+        msg.appendChild(b);
+        if (detail) {
+          var s = document.createElement('small');
+          s.textContent = detail;
+          msg.appendChild(s);
+        }
+        fatal.style.display = 'flex';
+      }
+
+      function hasWebGL2() {
+        try {
+          var probe = document.createElement('canvas');
+          var gl = probe.getContext('webgl2');
+          if (!gl) return false;
+          var lose = gl.getExtension('WEBGL_lose_context');
+          if (lose) lose.loseContext();
+          return true;
+        } catch (e) { return false; }
+      }
+
+      // Block browser gestures that would fight the game: pinch zoom, double-tap zoom, long-press menu,
+      // page drag/pull-to-refresh. touchstart/touchend stay untouched so taps and audio unlock still work.
+      var opts = { passive: false };
+      document.addEventListener('touchmove', function (e) { e.preventDefault(); }, opts);
+      ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (n) {
+        document.addEventListener(n, function (e) { e.preventDefault(); }, opts);
+      });
+      document.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+      document.addEventListener('selectstart', function (e) { e.preventDefault(); });
+      document.addEventListener('dblclick', function (e) { e.preventDefault(); });
+      document.addEventListener('wheel', function (e) { if (e.ctrlKey) e.preventDefault(); }, opts);
+
+      // Fullscreen: standard API, or the webkit-prefixed one. iPhone Safari has neither, so the button stays hidden.
+      var root = document.documentElement;
+      var requestFs = root.requestFullscreen || root.webkitRequestFullscreen;
+      var exitFs = document.exitFullscreen || document.webkitExitFullscreen;
+      if (requestFs && exitFs) {
+        fsButton.style.display = 'block';
+        fsButton.addEventListener('click', function () {
+          var active = document.fullscreenElement || document.webkitFullscreenElement;
+          try {
+            var p = active ? exitFs.call(document) : requestFs.call(root);
+            if (p && p.catch) p.catch(function () {});
+          } catch (e) {}
+        });
+      }
+
+      // Keep the screen awake while playing, where supported. Needs a user gesture; released automatically on hide.
+      var wakeLock = null;
+      function acquireWakeLock() {
+        if (!navigator.wakeLock || wakeLock) return;
+        navigator.wakeLock.request('screen').then(function (l) {
+          wakeLock = l;
+          l.addEventListener('release', function () { wakeLock = null; });
+        }).catch(function () {});
+      }
+      document.addEventListener('pointerdown', acquireWakeLock);
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') acquireWakeLock();
+      });
+
+      if (!hasWebGL2()) {
+        showFatal('WebGL 2 is not available',
+          'This game needs WebGL 2. Try a current version of Chrome, Edge, Firefox or Safari (iOS 15 or newer), and make sure hardware acceleration is enabled.');
+        return;
+      }
+
+      var config = {
+        arguments: [],
+        dataUrl: 'Build/7745832d9007212e362666fa2ebf9d58.data.unityweb',
+        frameworkUrl: 'Build/82ebaba81f1d218e8c0ad87dd795a53b.framework.js.unityweb',
+        codeUrl: 'Build/71b9b9afc9aac94b9a61a35a1cb757a0.wasm.unityweb',
+        streamingAssetsUrl: 'StreamingAssets',
+        companyName: "m7",
+        productName: "Halloween2026",
+        productVersion: "0.1.0",
+        devicePixelRatio: Math.min(window.devicePixelRatio || 1, MAX_DPR)
+      };
+
+      createUnityInstance(canvas, config, function (progress) {
+        var p = Math.round(progress * 100);
+        fill.style.width = p + '%';
+        pct.textContent = p + '%';
+      }).then(function () {
+        loading.style.display = 'none';
+        canvas.focus();
+      }).catch(function (err) {
+        var text = String(err && err.message ? err.message : err);
+        var memory = /memory|allocation|abort/i.test(text);
+        showFatal(memory ? 'Out of memory' : 'Could not start the game',
+          (memory ? 'Close other tabs and apps, then reload. ' : 'Reload the page to try again. ') + text);
+      });
+    })();
+  </script>
+</body>
+</html>

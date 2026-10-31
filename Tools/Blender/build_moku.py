@@ -59,7 +59,7 @@ bv.MATERIALS.update({
     "MokuJacket": ((1.0, 1.0, 1.0), True),
     "MokuWarmer": ((1.0, 1.0, 1.0), True),
     "MokuHair": ((1.0, 1.0, 1.0), True),
-    "MokuHairBlue": ((0.20, 0.44, 0.56), False),
+    "MokuHairBlue": ((1.0, 1.0, 1.0), True),  # the blue pixel of the hair cell
     "MokuHorn": ((0.85, 0.06, 0.08), False),
     "MokuEar": ((0.07, 0.07, 0.08), False),
     "MokuLine": ((0.02, 0.02, 0.02), False),
@@ -384,12 +384,15 @@ def build_hair():
     """Secret two-tone bob after the smol chibis: a rounded cap hugging the forehead, then separate
     blunt-cut locks that bulge at the ears and tuck in toward the jaw (a mushroom bob) in uneven lengths,
     over a blue under layer whose tips show below them; locks framing the face at both cheeks; a heavy
-    square-cut fringe across the whole forehead (down to the lid of the open eye, longer over the other)."""
+    square-cut fringe across the whole forehead (down to the lid of the open eye, longer over the other);
+    the blue parting below the right horn; an ahoge."""
     global HAIR_BVH
     part = Part("Moku_Hair")
-    # Cap: rounded crown down to the temples, (radius, z relative to the head center).
-    cap = [(0.0, 0.27), (0.13, 0.26), (0.23, 0.215), (0.295, 0.14), (0.318, 0.05), (0.318, -0.02)]
-    add_lathe(part, "MokuHair", cap, 10, HEAD_CENTER)
+    # Cap: rounded crown down to the temples, (radius, z relative to the head center). Dense enough for
+    # the parting to be shaped into it.
+    cap = [(0.0, 0.27)] + [(0.318 * math.cos(math.radians(e)) ** 0.8, 0.27 * math.sin(math.radians(e)))
+                           for e in (78, 66, 55, 45, 36, 28, 21, 15, 10, 5, 0, -4)]
+    add_lathe(part, "MokuHair", cap, 40, HEAD_CENTER)
     window = [f for f in part.bm.faces
               if (c := f.calc_center_median() - HEAD_CENTER).z < 0.13
               and abs(math.degrees(math.atan2(c.x, -c.y))) < 42]
@@ -405,10 +408,32 @@ def build_hair():
             if loc is not None:
                 v.co = v.co.lerp(loc + n * 0.015, front * low)
 
+    # Parting: it starts just in front of the right horn (-X), where the ahoge springs up, and runs forward
+    # to the hairline. The hair splits there: both sides swell into a ridge and fall away from the line,
+    # the line itself sinks into a groove where the blue under layer shows (the strip added below).
+    part_start = Vector((-0.38, -0.12, 0.92)).normalized()
+    part_end = Vector((-0.24, -0.8, 0.56)).normalized()
+    plane = part_start.cross(part_end).normalized()
+    span = part_start.angle(part_end)
+    for v in part.bm.verts:
+        d = (v.co - HEAD_CENTER).normalized()
+        side = d.dot(plane)  # signed distance from the parting (unit sphere)
+        p = (d - plane * side).normalized()
+        along = math.atan2(part_start.cross(p).dot(plane), part_start.dot(p))
+        if along < 0.0:  # behind the start the ridges round off into the whorl
+            reach = math.exp(-(along / 0.12) ** 2)
+        elif along > span + 0.2:
+            reach = 0.0
+        else:
+            reach = 1.0
+        groove = -0.014 * math.exp(-(side / 0.05) ** 2)
+        ridge = 0.024 * math.exp(-((abs(side) - 0.12) / 0.07) ** 2)
+        v.co += d * (groove + ridge) * reach
+
     # Blue under layer: tucked in like the locks and a little longer, so only its tips show below them,
     # open at the face (seen from outside only; the camera never looks up into it).
     under = [(0.288, 0.06), (0.29, -0.1), (0.265, -0.19), (0.245, -0.235)]
-    add_lathe(part, "MokuHair", under, 8, HEAD_CENTER, 1, gap=math.radians(40))
+    add_lathe(part, "MokuHairBlue", under, 10, HEAD_CENTER, 1, gap=math.radians(40))
     HAIR_BVH = BVHTree.FromBMesh(part.bm)
 
     def lock(a0, a1, z_end, tuck, mat="MokuHair", r_top=0.31):
@@ -418,7 +443,7 @@ def build_hair():
         for z, t in ((0.03, 0.0), (-0.09, 0.45), (z_end, 1.0)):
             r = r_top + 0.014 * math.sin(math.pi * t) - tuck * t * t
             grid.append([HEAD_CENTER + Vector((r * math.sin(math.radians(a)), -r * math.cos(math.radians(a)), z))
-                         for a in (a0, a1)])
+                         for a in (a0, (a0 + a1) / 2, a1)])
         add_slab(part, mat, grid, 0.022)
 
     # Face-framing locks at both cheeks, reaching the jaw and tucked in toward the face.
@@ -431,14 +456,29 @@ def build_hair():
         lock(a0, a0 + 33, z_end, 0.035)
 
     # Fringe: broad square-cut flaps across the whole forehead. Down to the lid of the open eye (-X),
-    # longer and swept over the other (+X).
-    flaps = [(-0.165, 0.0, 0.015, "MokuHair"), (-0.045, 0.005, 0.005, "MokuHair"),
-             (0.07, 0.03, -0.05, "MokuHair"), (0.18, 0.01, -0.04, "MokuHair")]  # the long side stops above the cheek cross
+    # longer and swept over the other (+X); the blue one continues the parting.
+    flaps = [(-0.19, 0.0, 0.018, "MokuHair"), (-0.125, 0.0, 0.012, "MokuHairBlue"), (-0.06, 0.005, 0.01, "MokuHair"),
+             (0.0, 0.02, 0.0, "MokuHair"), (0.06, 0.035, -0.05, "MokuHair"), (0.125, 0.025, -0.055, "MokuHair"),
+             (0.19, 0.0, -0.03, "MokuHair")]  # the long side stops above the cheek cross
     for x0, sweep, z_end, mat in flaps:
         ts = (0.0, 0.5, 1.0)
         pts = [face_point(x0 + sweep * t, 0.16 + (z_end - 0.16) * t, 0.03 * (1 - t) + 0.012)[0] for t in ts]
-        add_clump(part, mat, pts, [FRONT] * 3, [0.13, 0.128, 0.122], 0.02)
+        add_clump(part, mat, pts, [FRONT] * 3, [0.088, 0.086, 0.082], 0.02)
 
+    # The blue under layer showing in the parting groove.
+    pts, normals = [], []
+    for k in range(17):
+        p, n = hair_point(part_start.lerp(part_end, k / 16), 0.008)
+        pts.append(p)
+        normals.append(n)
+    bv.add_ribbon(part, "MokuHairBlue", pts, normals, 0.04)
+
+    # Ahoge: one strand springing up from where the parting starts and curling forward.
+    root, n = hair_point(part_start)
+    ts = [i / 6 for i in range(7)]
+    ahoge = [root - n * 0.015 + Vector((0.11 * t, -0.07 * math.sin(math.pi * t * 0.9), 0.16 * math.sin(math.pi * t * 0.6)))
+             for t in ts]
+    add_tube(part, "MokuHair", ahoge, [0.014 * (1 - t) + 0.004 for t in ts], AXIS_X, segments=4, cap_start=False)
     part.finish()
 
 
@@ -609,9 +649,9 @@ def build_jacket():
         shoulder = Vector((sx * 0.1, 0.0, 0.39))
         cuff = Vector((sx * 0.178, -0.016, 0.195))  # past the hand (Moku_Arms), so the sleeve hides it
         mid = shoulder.lerp(cuff, 0.45) + AXIS_X * sx * 0.02
-        add_tube(part, "MokuJacket", [shoulder, mid, cuff], [0.042, 0.058, 0.054], AXIS_Y, segments=5)
+        add_tube(part, "MokuJacket", [shoulder, mid, cuff], [0.042, 0.058, 0.054], AXIS_Y, segments=6)
         d = (cuff - mid).normalized()
-        add_tube(part, "MokuLining", [cuff - d * 0.03, cuff - d * 0.016], [0.058, 0.058], AXIS_Y, segments=5,
+        add_tube(part, "MokuLining", [cuff - d * 0.03, cuff - d * 0.016], [0.058, 0.058], AXIS_Y, segments=6,
                  cap_start=False, cap_end=False)
     part.finish()
 
@@ -678,11 +718,74 @@ def map_uvs(obj):
             for loop in f.loops:
                 t = (loop.vert.co.z - HAIR_Z[0]) / (HAIR_Z[1] - HAIR_Z[0])
                 loop[uv].uv = cell_point(CELL_HAIR, 0.5, min(max(t, 0.02), 0.98))
+        elif mat == "MokuHairBlue":
+            for loop in f.loops:
+                loop[uv].uv = cell_point(CELL_HAIR, 0.5, 0.02)  # blue all over
         elif mat == "MokuWarmer":
             for loop in f.loops:
                 t = (loop.vert.co.z - 0.25) / 0.1
                 loop[uv].uv = cell_point(CELL_WARMER, 0.5, min(max(t, 0.02), 0.98))
+        else:  # flat colors sample the white pixel (a boolean leaves interpolated garbage)
+            for loop in f.loops:
+                loop[uv].uv = bv.WHITE_UV
     bm.to_mesh(me)
+    bm.free()
+
+
+def union_closed(obj):
+    """Boolean-unions the closed pieces of a part into one skin, so the pieces that overlap (toe and boot,
+    neck and head) lose the faces buried inside each other. Open pieces (skirts, lathes without caps)
+    are left as they are."""
+    scene = bpy.context.scene
+    name = obj.name
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = obj
+    obj.select_set(True)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.separate(type="LOOSE")
+    bpy.ops.object.mode_set(mode="OBJECT")
+    pieces = [o for o in scene.objects if o.name == name or o.name.startswith(name + ".")]
+    closed = []
+    for o in pieces:
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        if all(e.is_manifold for e in bm.edges) and len(bm.faces) > 3:
+            closed.append(o)
+        bm.free()
+    if len(closed) > 1:
+        base = max(closed, key=lambda o: len(o.data.polygons))
+        for other in closed:
+            if other is base:
+                continue
+            bpy.context.view_layer.objects.active = base
+            mod = base.modifiers.new("union", "BOOLEAN")
+            mod.operation = "UNION"
+            mod.solver = "EXACT"
+            mod.object = other
+            bpy.ops.object.modifier_apply(modifier=mod.name)
+            pieces.remove(other)
+            bpy.data.objects.remove(other)
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in pieces:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = pieces[0]
+    if len(pieces) > 1:
+        bpy.ops.object.join()
+    bpy.context.view_layer.objects.active.name = name
+    return bpy.context.view_layer.objects.active
+
+
+def dissolve_flat(obj, angle=2.0):
+    """Retopology of the flat bits: merges the faces that lie in one plane (the splinters a boolean leaves,
+    and the extra cuts across flat sides) into single polygons, keeping every material border. The UVs
+    are recomputed from the positions afterwards, so the atlas still lines up."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    bmesh.ops.remove_doubles(bm, verts=list(bm.verts), dist=1e-5)
+    bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(angle), verts=list(bm.verts), edges=list(bm.edges),
+                             delimit={"MATERIAL"})
+    bm.to_mesh(obj.data)
     bm.free()
 
 
@@ -770,6 +873,13 @@ def main():
     build_tail()
 
     bv.get_mat("MokuOutline").use_backface_culling = True
+    parts = [o for o in bpy.context.scene.objects if o.type == "MESH"]
+    for obj in list(parts):
+        if obj.name not in ("Moku_Jacket", "Moku_Hair"):
+            merged = union_closed(obj)
+            before = sum(len(p.vertices) - 2 for p in merged.data.polygons)
+            dissolve_flat(merged)
+            print(f"[moku] retopo {merged.name}: {before} -> {sum(len(p.vertices) - 2 for p in merged.data.polygons)} tris")
     parts = [o for o in bpy.context.scene.objects if o.type == "MESH"]
     for obj in parts:
         map_uvs(obj)

@@ -3,7 +3,87 @@ guid: 9fb259434da60774d936571e94a74704
 ModelImporter:
   serializedVersion: 24200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuBoot
+    second: {fileID: 2100000, guid: 5db1fe81b3cdc7d4daa4da0068210200, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuEar
+    second: {fileID: 2100000, guid: 0f2ffd278e6fa9744a34579262246629, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuGem
+    second: {fileID: 2100000, guid: 90811e03d7dc9894386665197fa56b6c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuGold
+    second: {fileID: 2100000, guid: ece8632ad4823a24a87cc0bee99379f6, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuHair
+    second: {fileID: 2100000, guid: dc4692a00a11dcb42ab18e0d7c1b887f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuHairBlue
+    second: {fileID: 2100000, guid: 85e689d0b3e02084495af96a524f2f1a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuHorn
+    second: {fileID: 2100000, guid: 669d012fb69415047a649c66b7e02c8e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuJacket
+    second: {fileID: 2100000, guid: eeb05f308514fa648821b0cae6915db1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuLine
+    second: {fileID: 2100000, guid: 9262c30d3d5412843800bae6e460de29, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuLining
+    second: {fileID: 2100000, guid: 50e100b69746eda43875c2c4b0dba428, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuMetal
+    second: {fileID: 2100000, guid: e0ef20c9aa2203544a16c5b6ba992a54, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuOutline
+    second: {fileID: 2100000, guid: 9f85c54eba72b2849b465ab5449ae1f4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuShirt
+    second: {fileID: 2100000, guid: 4082c75328b5f194f8fa73b5ad8785e2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuSkin
+    second: {fileID: 2100000, guid: 923de62d882d7d24587bde89dba12dfa, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuSkirt
+    second: {fileID: 2100000, guid: fa2f9cdce47d8e34a99dc067326b6e37, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: MokuWarmer
+    second: {fileID: 2100000, guid: 05fc320d7e1c3fc47ba16325f66e9ffb, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -40,9 +120,9 @@ ModelImporter:
     sortHierarchyByName: 1
     importPhysicalCameras: 1
     importVisibility: 1
-    importBlendShapes: 1
-    importCameras: 1
-    importLights: 1
+    importBlendShapes: 0
+    importCameras: 0
+    importLights: 0
     nodeNameCollisionStrategy: 1
     fileIdsGeneration: 2
     swapUVChannels: 0
@@ -79,7 +159,7 @@ ModelImporter:
     blendShapeNormalImportMode: 1
     normalSmoothingSource: 0
   referencedClips: []
-  importAnimation: 1
+  importAnimation: 0
   humanDescription:
     serializedVersion: 3
     human: []
@@ -98,7 +178,7 @@ ModelImporter:
     skeletonHasParents: 1
   lastHumanDescriptionAvatarSource: {instanceID: 0}
   autoGenerateAvatarMappingIfUnspecified: 1
-  animationType: 2
+  animationType: 0
   humanoidOversampling: 1
   avatarSetup: 0
   addHumanoidExtraRootOnlyWhenUsingAvatar: 1

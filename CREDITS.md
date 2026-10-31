@@ -26,3 +26,7 @@ Both fonts are under the SIL Open Font License 1.1; the license texts are in Ass
 |---|---|---|
 | Galmuri11.ttf | "Galmuri11" by Lee Minseo (quiple), https://github.com/quiple/galmuri | SIL OFL 1.1 |
 | SpookyTitle.ttf | Subset of "Creepster" by Font Diner, Inc, https://fonts.google.com/specimen/Creepster. Renamed to SpookyTitle because the Reserved Font Name "Creepster" may not be used for a modified version. | SIL OFL 1.1 |
+
+## Background music (Assets/Audio/Bgm)
+
+halloween_ambient.wav: synthesized in-house with Tools/Audio/bgm_synth.py (numpy). No outside source.

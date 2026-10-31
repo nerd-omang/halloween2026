@@ -8,7 +8,7 @@ using UnityEngine.UI;
 public class SettingsScreen
 {
     const float BoxWidth = 860f;
-    const float BoxHeight = 710f;
+    const float BoxHeight = 760f;
     const float LabelX = 36f;
     const float ControlX = 270f;
     const float OptionWidth = 130f;
@@ -28,6 +28,7 @@ public class SettingsScreen
     Text presetHint;
     readonly SimpleButton[] languageButtons = new SimpleButton[2];
     readonly SimpleButton[] shareButtons = new SimpleButton[2];
+    readonly SimpleButton[] skipIntroButtons = new SimpleButton[2];
     GameObject shareRow;
     GameObject confirmReset;
     Text resetDone;
@@ -161,20 +162,24 @@ public class SettingsScreen
         languageButtons[1] = Option(page, "LangEn", -466f, 1, () => Loc.Current = Lang.En, null);
         languageButtons[1].Text = "English";
 
+        RowLabel(page, "SkipIntroLabel", "settings.skipIntro", -512f);
+        skipIntroButtons[0] = Option(page, "SkipIntroOn", -512f, 0, () => Settings.SkipIntro = true, "settings.on");
+        skipIntroButtons[1] = Option(page, "SkipIntroOff", -512f, 1, () => Settings.SkipIntro = false, "settings.off");
+
         // Only offered when a ranking server is configured.
         shareRow = UiKit.Fill("ShareRow", page).gameObject;
-        var shareLabel = UiKit.Label(shareRow.transform, "ShareLabel", "", 22, TextAnchor.MiddleLeft, topLeft, topLeft, new Vector2(LabelX, -512f), new Vector2(ControlX - LabelX - 8f, 40f), UiKit.Dim);
+        var shareLabel = UiKit.Label(shareRow.transform, "ShareLabel", "", 22, TextAnchor.MiddleLeft, topLeft, topLeft, new Vector2(LabelX, -558f), new Vector2(ControlX - LabelX - 8f, 40f), UiKit.Dim);
         UiKit.Bind(shareLabel, "settings.share");
-        shareButtons[0] = Option(shareRow.transform, "ShareOn", -512f, 0, () => Settings.ShareOnline = true, "settings.on");
-        shareButtons[1] = Option(shareRow.transform, "ShareOff", -512f, 1, () => Settings.ShareOnline = false, "settings.off");
-        UiKit.Bind(UiKit.Label(shareRow.transform, "ShareHint", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -558f), new Vector2(BoxWidth - 2f * LabelX - 240f, 56f), UiKit.Dim),
+        shareButtons[0] = Option(shareRow.transform, "ShareOn", -558f, 0, () => Settings.ShareOnline = true, "settings.on");
+        shareButtons[1] = Option(shareRow.transform, "ShareOff", -558f, 1, () => Settings.ShareOnline = false, "settings.off");
+        UiKit.Bind(UiKit.Label(shareRow.transform, "ShareHint", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -604f), new Vector2(BoxWidth - 2f * LabelX - 240f, 56f), UiKit.Dim),
             "settings.shareHint");
 
         // Apart from the other settings, at the very bottom.
-        var reset = UiKit.Button(page, "ResetAll", "", 22, topLeft, topLeft, new Vector2(LabelX, -650f), new Vector2(300f, 40f), OpenResetConfirm);
+        var reset = UiKit.Button(page, "ResetAll", "", 22, topLeft, topLeft, new Vector2(LabelX, -696f), new Vector2(300f, 40f), OpenResetConfirm);
         UiKit.Bind(reset.Label, "settings.resetAll");
         reset.Label.color = UiKit.Danger;
-        resetDone = UiKit.Label(page, "ResetDone", "", 22, TextAnchor.MiddleLeft, topLeft, topLeft, new Vector2(LabelX + 312f, -650f), new Vector2(240f, 40f), UiKit.Accent);
+        resetDone = UiKit.Label(page, "ResetDone", "", 22, TextAnchor.MiddleLeft, topLeft, topLeft, new Vector2(LabelX + 312f, -696f), new Vector2(240f, 40f), UiKit.Accent);
         UiKit.Bind(resetDone, "settings.resetDone");
         resetDone.gameObject.SetActive(false);
     }
@@ -292,6 +297,8 @@ public class SettingsScreen
         RefreshPresets();
         languageButtons[0].Highlighted = Loc.Current == Lang.Ko;
         languageButtons[1].Highlighted = Loc.Current == Lang.En;
+        skipIntroButtons[0].Highlighted = Settings.SkipIntro;
+        skipIntroButtons[1].Highlighted = !Settings.SkipIntro;
         shareRow.SetActive(WorldBoard.Configured);
         shareButtons[0].Highlighted = Settings.ShareOnline;
         shareButtons[1].Highlighted = !Settings.ShareOnline;

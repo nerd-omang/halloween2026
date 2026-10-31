@@ -10,12 +10,16 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] float disguiseChanceMax = 0.5f;
     [SerializeField] int scoreForMaxDisguise = 30;
     [SerializeField] int firstDisguisedOmangiScore = 5;
+    [Header("Disguise ramp: single prop first, paint later")]
+    [SerializeField] int multiDisguiseStartScore = 12;
+    [SerializeField] int furChangeStartScore = 15;
+    [SerializeField] int paintBucketStartScore = 22;
     [SerializeField] int sheetStartScore = 10;
     [SerializeField] float sheetChanceStart = 0.15f;
     [SerializeField] float sheetChanceMax = 0.35f;
     [SerializeField] int scoreForMaxSheet = 35;
     [Header("Halloween costumes (visual noise, never the answer)")]
-    [SerializeField] int costumeStartScore = 6;
+    [SerializeField] int costumeStartScore = 10;
     [SerializeField] float costumeChanceStart = 0.15f;
     [SerializeField] float costumeChanceMax = 0.6f;
     [SerializeField] int scoreForMaxCostume = 40;
@@ -79,10 +83,7 @@ public class VisitorQueue : MonoBehaviour
         Visitor prefab = isOmangi ? omangiPrefab : kunmungchiPrefab;
         int index = line.Count;
         var v = Instantiate(prefab, SlotPos(visibleCount), Quaternion.identity, transform);
-        if (disguised && v.TryGetComponent(out VisitorDisguise disguise))
-        {
-            disguise.Randomize(DisguiseElements(disguiseT, disguise.ElementCount), disguiseT);
-        }
+        if (disguised) WearDisguise(v, isOmangi ? VisitorKind.Omangi : VisitorKind.Kunmungchi, futureScore);
 
         // Costumes are independent of the disguise: more of them, and more often, as the score rises.
         float costumeT = Mathf.InverseLerp(costumeStartScore, scoreForMaxCostume, futureScore);
@@ -106,8 +107,47 @@ public class VisitorQueue : MonoBehaviour
         return v;
     }
 
-    // How many disguise elements to wear. Early disguises are sloppy (mostly one element: just the
-    // fur change or a single prop); by scoreForMaxChance they wear nearly everything.
+    // Puts a disguise on the visitor. The early game is gentle: exactly one fake prop (no fur change, no
+    // paint bucket). Two or more elements come from multiDisguiseStartScore, the fur change (paint) from
+    // furChangeStartScore and the paint bucket from paintBucketStartScore.
+    void WearDisguise(Visitor v, VisitorKind kind, int futureScore)
+    {
+        var candidates = new List<ItemDef>();
+        foreach (var def in ItemTable.For(kind, ItemCategory.Prop))
+        {
+            if (def.BringsFur && futureScore < paintBucketStartScore) continue;
+            candidates.Add(def);
+        }
+        if (futureScore >= furChangeStartScore) candidates.AddRange(ItemTable.For(kind, ItemCategory.Fur));
+        if (candidates.Count == 0) return;
+
+        int count = 1;
+        if (futureScore >= multiDisguiseStartScore)
+        {
+            float skill = Mathf.InverseLerp(multiDisguiseStartScore, scoreForMaxDisguise, futureScore);
+            count = DisguiseElements(skill, candidates.Count);
+        }
+
+        var outfit = new Outfit { kind = kind };
+        for (int picked = 0; picked < count; picked++)
+        {
+            int i = Random.Range(0, candidates.Count);
+            outfit.Set(candidates[i].Bit, true);
+            candidates.RemoveAt(i);
+        }
+
+        // How thorough the paint job is: sloppy (partial) when the fur change first appears, full later.
+        if (v.TryGetComponent(out VisitorDisguise disguise))
+        {
+            float furSkill = Mathf.InverseLerp(furChangeStartScore, scoreForMaxDisguise, futureScore);
+            float expected = furSkill * (disguise.DyeLevelCount - 1);
+            outfit.dyeLevel = Mathf.Clamp(Mathf.RoundToInt(expected + Random.Range(-0.6f, 0.6f)), 0, disguise.DyeLevelCount - 1);
+        }
+        outfit.items = ItemTable.Normalize(kind, outfit.items);
+        OutfitApplier.Apply(v, outfit);
+    }
+
+    // How many disguise elements to wear once several are allowed: one at first, nearly all by the end of the ramp.
     static int DisguiseElements(float skill, int max)
     {
         float expected = 1f + skill * (max - 1);

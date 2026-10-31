@@ -20,6 +20,7 @@ public static class Settings
     const string FlatKey = "set_flat";
     const string InitKey = "set_init";
     const string ShareKey = "set_share";
+    const string SkipIntroKey = "set_skipintro";
     const string QualityKey = "set_quality";
 
     // _MatrixSize values: blue noise, then Bayer-style fine to coarse.
@@ -67,6 +68,13 @@ public static class Settings
     {
         get => PlayerPrefs.GetInt(ShareKey, 1) != 0;
         set => PlayerPrefs.SetInt(ShareKey, value ? 1 : 0);
+    }
+
+    // Start a game right away, without the Kunmungchi introduction.
+    public static bool SkipIntro
+    {
+        get => PlayerPrefs.GetInt(SkipIntroKey, 0) != 0;
+        set => PlayerPrefs.SetInt(SkipIntroKey, value ? 1 : 0);
     }
 
     public static bool DitherOn { get => ditherOn; set { ditherOn = value; PlayerPrefs.SetInt(DitherKey, value ? 1 : 0); ApplyGraphics(); } }

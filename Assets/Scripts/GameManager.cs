@@ -183,6 +183,11 @@ public class GameManager : MonoBehaviour
 
     void StartIntro()
     {
+        if (Settings.SkipIntro)
+        {
+            StartGame();
+            return;
+        }
         StopAllCoroutines();
         HideScreens();
         state = GameState.Intro;

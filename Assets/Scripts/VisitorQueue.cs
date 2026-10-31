@@ -9,11 +9,11 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] Visitor[] specialPrefabs = new Visitor[SpecialGuest.Count];
     [SerializeField] int[] specialStartScores = { 20, 40 };
     [SerializeField] float specialChance = 0.04f;
-    [SerializeField] int disguiseStartScore = 3;
+    [SerializeField] int disguiseStartScore = 6;
     [SerializeField] float disguiseChanceStart = 0.2f;
     [SerializeField] float disguiseChanceMax = 0.5f;
     [SerializeField] int scoreForMaxDisguise = 30;
-    [SerializeField] int firstDisguisedOmangiScore = 5;
+    [SerializeField] int firstDisguisedOmangiScore = 8;
     [Header("Disguise ramp: single prop first, paint later")]
     [SerializeField] int multiDisguiseStartScore = 12;
     [SerializeField] int furChangeStartScore = 15;

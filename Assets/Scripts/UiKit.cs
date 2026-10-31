@@ -19,7 +19,8 @@ public static class UiKit
     {
         get
         {
-            if (body == null) body = Resources.Load<Font>("Fonts/Galmuri11") ?? Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (body == null) body = Resources.Load<Font>("Fonts/Galmuri11");
+            if (body == null) body = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             return body;
         }
         set => body = value;
@@ -68,6 +69,20 @@ public static class UiKit
     {
         float pad = GameInput.UsingTouch ? -TouchPadding : 0f;
         return RectTransformUtility.RectangleContainsScreenPoint(rt, screenPoint, null, new Vector4(pad, pad, pad, pad));
+    }
+
+    // Press test: with the larger touch hit areas neighbours overlap, so an edge press goes to the control
+    // that really contains the point, and to none of the padded ones if another control contains it.
+    public static bool PressHits(RectTransform rt, Vector2 screenPoint)
+    {
+        if (RectTransformUtility.RectangleContainsScreenPoint(rt, screenPoint, null)) return true;
+        if (!GameInput.UsingTouch || !Hits(rt, screenPoint)) return false;
+        foreach (var other in controls)
+        {
+            if (other != null && other != rt && other.gameObject.activeInHierarchy
+                && RectTransformUtility.RectangleContainsScreenPoint(other, screenPoint, null)) return false;
+        }
+        return true;
     }
 
     // Hover highlight: a finger only "hovers" while it is down.
@@ -162,7 +177,7 @@ public static class UiKit
     public static Color ComboColor(int streak)
     {
         if (streak < 2) return ComboSteps[0];
-        float t = Mathf.Clamp01((streak - 1) / 11f) * (ComboSteps.Length - 1);
+        float t = Mathf.Clamp01(streak / 12f) * (ComboSteps.Length - 1);
         int i = Mathf.Min((int)t, ComboSteps.Length - 2);
         return Color.Lerp(ComboSteps[i], ComboSteps[i + 1], t - i);
     }
@@ -263,6 +278,30 @@ public static class UiKit
         return rt;
     }
 
+    // A framed box in the middle of the screen.
+    public static RectTransform Card(string name, Transform parent, Vector2 size)
+    {
+        var center = new Vector2(0.5f, 0.5f);
+        var rt = Rect(name, parent, center, center, Vector2.zero, size);
+        var image = rt.gameObject.AddComponent<Image>();
+        StyleBox(image, PixelBox(PanelColor, PanelEdge, Ink));
+        image.raycastTarget = false;
+        return rt;
+    }
+
+    // The same framed column along the right edge.
+    public static RectTransform SidePanelRight(string name, Transform parent, float width)
+    {
+        var rt = Fill(name, parent);
+        rt.anchorMin = new Vector2(1f, 0f);
+        rt.offsetMin = new Vector2(-width, -30f);
+        rt.offsetMax = new Vector2(30f, 30f);
+        var image = rt.gameObject.AddComponent<Image>();
+        StyleBox(image, PixelBox(PanelColor, PanelEdge, Ink));
+        image.raycastTarget = false;
+        return rt;
+    }
+
     public static Text Label(Transform parent, string name, string text, int size, TextAnchor align,
         Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 box, Color? color = null, bool useTitleFont = false)
     {
@@ -286,6 +325,8 @@ public static class UiKit
         var rt = Rect(name, parent, anchor, pivot, position, size);
         var background = rt.gameObject.AddComponent<Image>();
         StyleBox(background, SimpleButton.Look(SimpleButton.Normal));
+        // Small controls (list rows, tabs) get a thinner frame so text is not drawn over it.
+        if (size.y < 44f) background.pixelsPerUnitMultiplier = 1f / 2f;
         var label = Label(rt, "Label", text, fontSize, TextAnchor.MiddleCenter, Vector2.zero, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
         label.rectTransform.anchorMax = Vector2.one;
         label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
@@ -325,6 +366,8 @@ public static class UiKit
 
         var label = Label(rt, "Label", text, fontSize, TextAnchor.MiddleLeft, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
             new Vector2(38f, 0f), new Vector2(size.x - 38f, size.y));
+        // Toggle labels are one line; wrapping would drop the "%" of narrow ones like "30%" onto a second line.
+        label.horizontalOverflow = HorizontalWrapMode.Overflow;
         var toggle = rt.gameObject.AddComponent<SimpleToggle>();
         toggle.Init(dotImage, label, radio);
         return toggle;
@@ -463,6 +506,7 @@ public class SimpleButton : MonoBehaviour
     Image background;
     Text label;
     Action clicked;
+    int lastState = -1;
     RectTransform rt;
     int enabledFrame;
 
@@ -498,11 +542,16 @@ public class SimpleButton : MonoBehaviour
     {
         bool over = Interactable && Pointer.current != null && UiKit.Usable(transform) && UiKit.Hits(rt, GameInput.PointerPosition);
         bool hover = UiKit.Hovering(over);
-        background.sprite = Look(!Interactable ? Disabled : Highlighted ? Selected : hover ? Hover : Normal);
+        int state = !Interactable ? 0 : Highlighted ? 1 : hover ? 2 : 3;
+        if (state != lastState)
+        {
+            lastState = state;
+            background.sprite = Look(state == 0 ? Disabled : state == 1 ? Selected : state == 2 ? Hover : Normal);
+        }
         label.color = !Interactable ? UiKit.Dim * 0.7f : Highlighted || hover ? Color.white : UiKit.Dim * 1.15f;
         if (IconImage != null) IconImage.color = label.color;
 
-        if (!over || !GameInput.PointerPressedThisFrame) return;
+        if (!over || !GameInput.PointerPressedThisFrame || !UiKit.PressHits(rt, GameInput.PointerPosition)) return;
         if (UiKit.ClickFrame == Time.frameCount || enabledFrame == Time.frameCount) return;
         UiKit.ClickFrame = Time.frameCount;
         AudioManager.Play(Sfx.CandyAppear);
@@ -562,7 +611,7 @@ public class SimpleToggle : MonoBehaviour
         bool over = Interactable && Pointer.current != null && UiKit.Usable(transform) && UiKit.Hits(rt, GameInput.PointerPosition);
         label.color = !Interactable ? UiKit.Dim * 0.6f : UiKit.Hovering(over) || Value ? Color.white : UiKit.Dim * 1.15f;
 
-        if (!over || !GameInput.PointerPressedThisFrame) return;
+        if (!over || !GameInput.PointerPressedThisFrame || !UiKit.PressHits(rt, GameInput.PointerPosition)) return;
         if (UiKit.ClickFrame == Time.frameCount || enabledFrame == Time.frameCount) return;
         UiKit.ClickFrame = Time.frameCount;
         AudioManager.Play(Sfx.CandyAppear);
@@ -601,7 +650,11 @@ public class SimpleSlider : MonoBehaviour
     public void Set(float value)
     {
         Value = Mathf.Clamp01(value);
-        if (fill != null) fill.anchorMax = new Vector2(Value, 1f);
+        if (fill != null)
+        {
+            fill.anchorMax = new Vector2(Value, 1f);
+            fill.gameObject.SetActive(Value > 0.04f); // below that the inset would give the fill a negative width
+        }
         if (handle != null) handle.anchorMin = handle.anchorMax = new Vector2(Value, 0.5f);
     }
 
@@ -627,7 +680,7 @@ public class SimpleSlider : MonoBehaviour
         if (!dragging)
         {
             bool over = UiKit.Usable(transform) && UiKit.Hits(rt, point);
-            if (!over || !GameInput.PointerPressedThisFrame) return;
+            if (!over || !GameInput.PointerPressedThisFrame || !UiKit.PressHits(rt, point)) return;
             if (UiKit.ClickFrame == Time.frameCount || enabledFrame == Time.frameCount) return;
             UiKit.ClickFrame = Time.frameCount;
             dragging = true;
@@ -646,4 +699,36 @@ public class SimpleSlider : MonoBehaviour
         Set(t);
         Changed?.Invoke(Value);
     }
+}
+
+// Scales a screen box down so it fits when the canvas is short (21:9, phones in landscape).
+public class ScreenFit : MonoBehaviour
+{
+    RectTransform root;
+    RectTransform target;
+    float designHeight;
+    float reserve;
+
+    public void Init(RectTransform screen, RectTransform content, float height, float margin)
+    {
+        root = screen;
+        target = content;
+        designHeight = height;
+        reserve = margin;
+    }
+
+    void Update()
+    {
+        if (root == null) return;
+        float scale = Mathf.Clamp((root.rect.height - reserve) / designHeight, 0.5f, 1f);
+        target.localScale = new Vector3(scale, scale, 1f);
+    }
+}
+
+// Runs a callback every frame while its GameObject is active (screens are plain classes, not MonoBehaviours).
+public class Ticker : MonoBehaviour
+{
+    public Action OnUpdate;
+
+    void Update() => OnUpdate?.Invoke();
 }

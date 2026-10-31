@@ -15,16 +15,26 @@ public static class Loc
 
     public static event Action Changed;
 
-    static Lang lang = (Lang)PlayerPrefs.GetInt(SaveKey, (int)Lang.Ko);
+    static Lang lang;
+    static bool loaded;
 
     public static Lang Current
     {
-        get => lang;
+        get
+        {
+            if (!loaded)
+            {
+                lang = (Lang)PlayerPrefs.GetInt(SaveKey, (int)Lang.Ko);
+                loaded = true;
+            }
+            return lang;
+        }
         set
         {
-            if (lang == value) return;
+            if (Current == value) return;
             lang = value;
             PlayerPrefs.SetInt(SaveKey, (int)value);
+            PlayerPrefs.Save(); // WebGL writes PlayerPrefs to IndexedDB only on Save
             Changed?.Invoke();
         }
     }
@@ -32,7 +42,7 @@ public static class Loc
     public static string T(string key)
     {
         if (!Table.TryGetValue(key, out var pair)) return key;
-        return lang == Lang.Ko ? pair.ko : pair.en;
+        return Current == Lang.Ko ? pair.ko : pair.en;
     }
 
     public static string T(string key, params object[] args) => string.Format(T(key), args);
@@ -50,8 +60,7 @@ public static class Loc
         ["menu.give"] = ("Give candy", "사탕 주기"),
         ["menu.away"] = ("Send away", "쫓아내기"),
         ["menu.blast"] = ("Palm blast", "손바닥 날리기"),
-        ["menu.blastKeys"] = ("Space / wheel click / scroll", "스페이스 / 휠클릭 / 휠"),
-        ["menu.blastHint"] = ("Blows off a sheet and knocks off a prop.", "시트를 날리고 소품을 떨어뜨려요."),
+        ["menu.blastCaption"] = ("Palm blast: Space / wheel click / scroll. Blows off a sheet and knocks off a prop.", "손바닥 날리기: 스페이스 / 휠클릭 / 휠. 시트를 날리고 소품을 떨어뜨려요."),
 
         // Settings
         ["menu.settings"] = ("SETTINGS", "설정"),
@@ -76,7 +85,7 @@ public static class Loc
         ["settings.off"] = ("OFF", "꺼짐"),
         ["settings.flat"] = ("Flat areas clean", "평평한 면 유지"),
         ["settings.pattern"] = ("Pattern", "무늬"),
-        ["settings.patNoise"] = ("Blue noise", "블루노이즈"),
+        ["settings.patNoise"] = ("Noise", "블루노이즈"),
         ["settings.patFine"] = ("Fine", "촘촘함"),
         ["settings.patMedium"] = ("Medium", "보통"),
         ["settings.patCoarse"] = ("Coarse", "굵게"),
@@ -86,6 +95,41 @@ public static class Loc
         ["settings.resolutionHint"] = ("Resolution is the share of screen pixels drawn. Higher is sharper but slower.", "해상도는 화면 픽셀 중 그려지는 비율이에요. 높을수록 선명하지만 느려요."),
         ["settings.language"] = ("Language", "언어"),
         ["settings.close"] = ("CLOSE", "닫기"),
+
+        // Records, score and initials
+        ["menu.records"] = ("RECORDS", "기록"),
+        ["records.header"] = ("RECORDS", "기록"),
+        ["ranking.header"] = ("RANKING", "내 랭킹"),
+        ["records.tabMine"] = ("My records", "내 기록"),
+        ["records.tabStats"] = ("My stats", "내 통계"),
+        ["records.tabWorld"] = ("World", "월드"),
+        ["records.empty"] = ("No records yet.\nPlay a game to set one.", "아직 기록이 없어요.\n게임을 하고 기록을 남겨 보세요."),
+        ["records.world"] = ("The world ranking is coming soon.", "월드 랭킹은 준비 중이에요."),
+        ["records.page"] = ("{0} / {1}", "{0} / {1}"),
+        ["stats.games"] = ("Games played: {0}", "플레이 횟수: {0}판"),
+        ["stats.total"] = ("Total score: {0}", "총점: {0}"),
+        ["stats.average"] = ("Average score: {0}", "평균 점수: {0}"),
+        ["stats.gave"] = ("Gave candy to an Omangi: {0}", "오망이에게 사탕을 줌: {0}"),
+        ["stats.sent"] = ("Sent a Kunmungchi away: {0}", "쿤뭉치를 쫓아냄: {0}"),
+        ["stats.fooled"] = ("Looks that fooled you most", "나를 가장 많이 속인 변장"),
+        ["stats.times"] = ("{0} times", "{0}번"),
+        ["stats.none"] = ("Nothing yet.", "아직 없어요."),
+        ["stats.reset"] = ("RESET RECORDS AND STATS", "기록과 통계 초기화"),
+        ["stats.resetConfirm"] = ("REALLY RESET? PRESS AGAIN", "정말 지울까요? 한 번 더 누르세요"),
+        ["score.newBest"] = ("NEW BEST!", "최고 기록!"),
+        ["score.best"] = ("Best {0}", "최고 {0}"),
+        ["score.rank"] = ("Local rank #{0}", "내 기록 {0}위"),
+        ["score.notRanked"] = ("Not in your top 20 this time.", "이번엔 내 기록 20위 안에 들지 못했어요."),
+        ["score.question"] = ("Record this score?", "이 점수를 기록할까요?"),
+        ["score.record"] = ("RECORD", "기록하기"),
+        ["score.skip"] = ("SKIP", "건너뛰기"),
+        ["score.next"] = ("NEXT", "다음"),
+        ["initials.header"] = ("NEW RECORD #{0}", "새 기록 #{0}"),
+        ["initials.hint"] = ("Pick 3 letters. Type A-Z or use the arrows.", "글자 3개를 골라요. A-Z를 입력하거나 화살표를 써요."),
+        ["initials.ok"] = ("OK", "확인"),
+        ["review.tabLooks"] = ("This game", "이번 판"),
+        ["review.tabRanking"] = ("Ranking", "랭킹"),
+        ["review.localRank"] = ("Local #{0}", "내 기록 {0}위"),
 
         // Touch and phone
         ["touch.hint"] = ("← Send away     Tap / ↑↓: palm blast     Give candy →", "← 쫓아내기     탭 / ↑↓ : 손바닥 날리기     사탕 주기 →"),
@@ -152,6 +196,10 @@ public static class Loc
         ["costume.Bandage"] = ("Bandages", "붕대"),
         ["costume.BatWings"] = ("Bat wings", "박쥐 날개"),
         ["costume.BowTie"] = ("Bow tie", "나비넥타이"),
+        ["costume.MaidHeadband"] = ("Maid headband", "메이드 머리띠"),
+        ["costume.BunnyHeadband"] = ("Bunny ears", "토끼귀 머리띠"),
+        ["costume.StarSunglasses"] = ("Star sunglasses", "별 선글라스"),
+        ["costume.AlienSunglasses"] = ("Alien sunglasses", "외계인 선글라스"),
     };
 
     public static bool Has(string key) => Table.ContainsKey(key);

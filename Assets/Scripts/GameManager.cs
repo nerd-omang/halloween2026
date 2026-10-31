@@ -10,7 +10,8 @@ public enum GameState
     Playing,
     Review,
     Gallery,
-    DressUp
+    DressUp,
+    Records
 }
 
 public class GameManager : MonoBehaviour
@@ -34,6 +35,7 @@ public class GameManager : MonoBehaviour
     MenuScreen menu;
     GalleryScreen gallery;
     DressUpScreen dressUp;
+    RecordsScreen records;
     ReviewScreen review;
     SettingsScreen settings;
     Text toast;
@@ -69,24 +71,35 @@ public class GameManager : MonoBehaviour
         menu.StartClicked += StartGame;
         menu.GalleryClicked += OpenGallery;
         menu.DressUpClicked += OpenDressUp;
+        menu.RecordsClicked += OpenRecords;
         menu.SettingsClicked += () => settings.Open(false);
 
         gallery = new GalleryScreen(canvasRoot, catalog, stage);
         gallery.Back += EnterMenu;
         dressUp = new DressUpScreen(canvasRoot, catalog, stage);
         dressUp.Back += EnterMenu;
+        records = new RecordsScreen(canvasRoot, catalog, stage);
+        records.Back += EnterMenu;
         review = new ReviewScreen(canvasRoot, catalog, stage);
         review.PlayAgain += StartGame;
         review.Title += EnterMenu;
+        review.Commit = CommitRecord;
         settings = new SettingsScreen(canvasRoot);
         TouchControls.Create(canvasRoot, () => state == GameState.Playing && !over && !settings.IsOpen);
         RotateOverlay.Create(canvasRoot);
 
-        hand.CanAct = () => !settings.IsOpen && state == GameState.Playing && !over && queue.FrontReady && Time.time >= inputUnlockTime;
+        hand.CanAct = () => !settings.IsOpen && UiKit.ModalRoot == null && state == GameState.Playing && !over && queue.FrontReady && Time.time >= inputUnlockTime;
         hand.TossTarget = GetTossTarget;
-        hand.CanBlast = () => !settings.IsOpen && state == GameState.Playing && !over && queue.FrontReady && Time.time >= inputUnlockTime;
+        hand.CanBlast = () => !settings.IsOpen && UiKit.ModalRoot == null && state == GameState.Playing && !over && queue.FrontReady && Time.time >= inputUnlockTime;
         hand.Blasted += OnBlast;
         hand.Performed += OnAction;
+
+        // Texts already on screen would stay in the old language after a switch.
+        Loc.Changed += () =>
+        {
+            messageText.text = "";
+            toast.text = "";
+        };
 
         best = PlayerPrefs.GetInt(BestKey, 0);
         EnterMenu();
@@ -97,6 +110,7 @@ public class GameManager : MonoBehaviour
         menu.Hide();
         gallery.Hide();
         dressUp.Hide();
+        records.Hide();
         review.Hide();
         stage.Exit();
     }
@@ -129,6 +143,14 @@ public class GameManager : MonoBehaviour
         state = GameState.Gallery;
         stage.Enter();
         gallery.Show();
+    }
+
+    void OpenRecords()
+    {
+        HideScreens();
+        state = GameState.Records;
+        stage.Enter();
+        records.Show();
     }
 
     void OpenDressUp()
@@ -233,14 +255,53 @@ public class GameManager : MonoBehaviour
         {
             over = true;
             AudioManager.Play(Sfx.GameOver);
+            lastWasNewBest = score > best;
             if (score > best)
             {
                 best = score;
                 PlayerPrefs.SetInt(BestKey, best);
                 PlayerPrefs.Save();
             }
+            RecordFinishedGame();
             StartCoroutine(ShowReview());
         }
+    }
+
+    // Local rank (1 = best) of the game that just ended, 0 if it did not make the local top 20.
+    // The initials start as the ones used last time; the initials screen changes them with LocalRanking.SetInitials.
+    public int LastLocalRank { get; private set; }
+
+    bool lastWasNewBest;
+    int pendingRank; // the local rank the finished game would get if recorded, 0 = would not rank
+    string pendingCode;
+
+    // Keeps the finished game on this device: personal statistics and the local ranking.
+    void RecordFinishedGame()
+    {
+        var looks = new List<Outfit>();
+        foreach (var mistake in mistakes) looks.Add(mistake.outfit);
+        LocalStats.RecordGame(score, looks);
+        pendingCode = LookCode.Encode(score, null, looks);
+        LastLocalRank = 0;
+        pendingRank = 0;
+        if (LocalRanking.Qualifies(score))
+        {
+            // The rank this score would get: after every equal or higher score already in the list.
+            pendingRank = 1;
+            foreach (var entry in LocalRanking.Entries)
+            {
+                if (entry.score >= score) pendingRank++;
+            }
+        }
+    }
+
+    // The player chose to record the finished game: adds it to the local ranking and returns its rank.
+    int CommitRecord(string initials)
+    {
+        int rank = LocalRanking.Add(score, initials, pendingCode);
+        if (rank > 0) LocalRanking.SetInitials(rank, initials); // also remembers them as the next default
+        LastLocalRank = rank;
+        return rank;
     }
 
     IEnumerator ShowReview()
@@ -251,7 +312,7 @@ public class GameManager : MonoBehaviour
         hand.ResetPose();
         hand.SetVisible(false);
         stage.Enter();
-        review.Show(mistakes, score, best);
+        review.Show(mistakes, score, best, lastWasNewBest, pendingRank);
 
         // What will be sent to the leaderboard server: score and the three looks, as a short code.
         var looks = new List<Outfit>();
@@ -320,7 +381,9 @@ public class GameManager : MonoBehaviour
             if (settings.IsOpen) settings.Close();
             else if (state == GameState.Playing) settings.Open(true);
             else if (state == GameState.Menu) settings.Open(false);
+            else if (state == GameState.Gallery || state == GameState.DressUp || state == GameState.Records || (state == GameState.Review && !review.Busy)) EnterMenu();
         }
+        Settings.Tick();
 
         scoreText.color = Color.Lerp(scoreText.color, UiKit.ComboColor(streak), 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
         if (messageTimer > 0f)
@@ -341,7 +404,7 @@ public class GameManager : MonoBehaviour
         }
 
         var kb = Keyboard.current;
-        if (state == GameState.Review && Time.time >= reviewUnlockTime && kb != null
+        if (state == GameState.Review && !review.Busy && Time.time >= reviewUnlockTime && kb != null
             && (kb.rKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame))
         {
             StartGame();

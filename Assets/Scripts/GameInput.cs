@@ -46,15 +46,22 @@ public static class GameInput
         switch (action)
         {
             case GameAction.Give:
-                // A click on a UI control (settings gear...) is not a game action.
-                return mouse != null && mouse.leftButton.wasPressedThisFrame && !UiKit.OverControl(mouse.position.ReadValue());
+                return mouse != null && mouse.leftButton.wasPressedThisFrame && !HitUi(mouse.position.ReadValue());
             case GameAction.Reject:
-                return mouse != null && mouse.rightButton.wasPressedThisFrame && !UiKit.OverControl(mouse.position.ReadValue());
+                return mouse != null && mouse.rightButton.wasPressedThisFrame && !HitUi(mouse.position.ReadValue());
             default:
                 var keyboard = Keyboard.current;
                 return (mouse != null && (mouse.middleButton.wasPressedThisFrame || Mathf.Abs(mouse.scroll.ReadValue().y) > 0.01f))
                     || (keyboard != null && keyboard.spaceKey.wasPressedThisFrame);
         }
+    }
+
+    // A click that landed on a UI control is not a game action. This also covers a button that hid itself
+    // when clicked (settings Close): it is no longer under the pointer by the time the hand reads input,
+    // but UiKit remembers the frame of the last UI click.
+    static bool HitUi(Vector2 screenPoint)
+    {
+        return UiKit.ClickFrame == Time.frameCount || UiKit.OverControl(screenPoint);
     }
 
     // ---- Pointer (mouse, touch or pen) ----

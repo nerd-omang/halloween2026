@@ -9,9 +9,10 @@ public class DressUpScreen
 {
     public event Action Back;
 
-    const float PanelWidth = 790f;
-    const float RightColumn = 410f;
-    const float ModelViewportX = 0.82f;
+    // Two side panels (controls left, props and costumes right) with the model between them.
+    const float PanelWidth = 400f;
+    const float RightColumn = 1280f - PanelWidth + 24f;
+    const float ModelViewportX = 0.5f;
 
     readonly OutfitCatalog catalog;
     readonly ModelStage stage;
@@ -34,6 +35,7 @@ public class DressUpScreen
         var root = UiKit.Fill("DressUpScreen", parent);
         panel = root.gameObject;
         UiKit.SidePanel("Controls", root, PanelWidth);
+        UiKit.SidePanelRight("Items", root, PanelWidth);
 
         var topLeft = new Vector2(0f, 1f);
         UiKit.Bind(UiKit.Label(root, "Header", "", 55, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(24f, -12f), new Vector2(360f, 60f), UiKit.Accent, true), "dress.header", true);
@@ -104,8 +106,8 @@ public class DressUpScreen
         var bottomRight = new Vector2(1f, 0f);
         var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
         UiKit.Bind(back.Label, "back");
-        descriptionText = UiKit.Label(root, "Description", "", 33, TextAnchor.UpperCenter, new Vector2(0f, 0f), new Vector2(0.5f, 0f),
-            new Vector2(PanelWidth + (1280f - PanelWidth) * 0.5f, 100f), new Vector2(470f, 90f), Color.white);
+        descriptionText = UiKit.Label(root, "Description", "", 33, TextAnchor.LowerCenter, new Vector2(0f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(640f, 104f), new Vector2(440f, 90f), Color.white);
 
         panel.SetActive(false);
     }
@@ -168,8 +170,8 @@ public class DressUpScreen
         if (rebuild || stage.Count == 0) stage.Show(new List<Outfit> { current }, ModelViewportX);
         else stage.SetOutfit(0, current);
 
-        descriptionText.text = OutfitCatalog.KindName(current.kind) + "\n" + catalog.Describe(current)
-            + "\n<size=22>" + Loc.T("drag.rotate") + "</size>";
+        descriptionText.text = OutfitCatalog.KindName(current.kind) + "\n<size=22>" + catalog.Describe(current)
+            + "</size>\n<size=22><color=#c8b8d9>" + Loc.T("drag.rotate") + "</color></size>";
     }
 
     void SyncControls()

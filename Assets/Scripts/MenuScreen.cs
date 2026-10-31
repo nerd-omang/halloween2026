@@ -8,9 +8,16 @@ public class MenuScreen
     public event Action StartClicked;
     public event Action GalleryClicked;
     public event Action SettingsClicked;
+    public event Action RecordsClicked;
     public event Action DressUpClicked;
 
+    // Height of the title/button column in canvas units (see MenuFit).
+    const float ColumnHeight = 616f;
+
     readonly GameObject panel;
+    GameObject guide;
+    GameObject guideCaption;
+    Text touchHint;
     int best;
     int found;
     int total;
@@ -24,24 +31,28 @@ public class MenuScreen
         shade.raycastTarget = false;
 
         var top = new Vector2(0.5f, 1f);
-        var mid = new Vector2(0.5f, 0.5f);
         var bottom = new Vector2(0.5f, 0f);
-        var center = new Vector2(0.5f, 0.5f);
 
-        UiKit.Bind(UiKit.Label(root, "Title", "", 120, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -44f), new Vector2(1100f, 130f), UiKit.Accent, true),
+        // Title and buttons stack from the top inside a column that shrinks on short (wide) screens,
+        // so nothing overlaps whatever the aspect ratio. The control guide stays at the screen bottom.
+        var column = UiKit.Rect("Column", root, top, top, Vector2.zero, new Vector2(1280f, ColumnHeight));
+        column.gameObject.AddComponent<MenuFit>().Init(root, column);
+
+        UiKit.Bind(UiKit.Label(column, "Title", "", 120, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -12f), new Vector2(1100f, 130f), UiKit.Accent, true),
             "menu.title", true);
-        UiKit.Bind(UiKit.Label(root, "Subtitle", "", 33, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -185f), new Vector2(1200f, 44f), UiKit.Dim),
+        UiKit.Bind(UiKit.Label(column, "Subtitle", "", 33, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -148f), new Vector2(1280f, 44f), UiKit.Dim),
             "menu.subtitle");
-
-        UiKit.Bind(UiKit.Label(root, "Best", "", 33, TextAnchor.MiddleCenter, mid, center, new Vector2(0f, 126f), new Vector2(600f, 44f), Color.white),
+        UiKit.Bind(UiKit.Label(column, "Best", "", 33, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -204f), new Vector2(600f, 44f), Color.white),
             () => Loc.T("menu.best", best));
-        var start = UiKit.Button(root, "Start", "", 55, mid, center, new Vector2(0f, 50f), new Vector2(380f, 84f), () => StartClicked?.Invoke());
+        var start = UiKit.Button(column, "Start", "", 55, top, top, new Vector2(0f, -258f), new Vector2(380f, 84f), () => StartClicked?.Invoke());
         UiKit.Bind(start.Label, "menu.start");
-        var gallery = UiKit.Button(root, "Gallery", "", 33, mid, center, new Vector2(0f, -44f), new Vector2(380f, 56f), () => GalleryClicked?.Invoke());
+        var gallery = UiKit.Button(column, "Gallery", "", 33, top, top, new Vector2(0f, -354f), new Vector2(380f, 56f), () => GalleryClicked?.Invoke());
         UiKit.Bind(gallery.Label, () => Loc.T("menu.gallery", found, total));
-        var dressUp = UiKit.Button(root, "DressUp", "", 33, mid, center, new Vector2(0f, -108f), new Vector2(380f, 56f), () => DressUpClicked?.Invoke());
+        var records = UiKit.Button(column, "Records", "", 33, top, top, new Vector2(0f, -420f), new Vector2(380f, 56f), () => RecordsClicked?.Invoke());
+        UiKit.Bind(records.Label, "menu.records");
+        var dressUp = UiKit.Button(column, "DressUp", "", 33, top, top, new Vector2(0f, -486f), new Vector2(380f, 56f), () => DressUpClicked?.Invoke());
         UiKit.Bind(dressUp.Label, "menu.dressup");
-        var settings = UiKit.Button(root, "Settings", "", 33, mid, center, new Vector2(0f, -172f), new Vector2(380f, 56f), () => SettingsClicked?.Invoke());
+        var settings = UiKit.Button(column, "Settings", "", 33, top, top, new Vector2(0f, -552f), new Vector2(380f, 56f), () => SettingsClicked?.Invoke());
         UiKit.Bind(settings.Label, "menu.settings");
 
         var topRight = new Vector2(1f, 1f);
@@ -52,7 +63,7 @@ public class MenuScreen
         // Control guide: a mouse icon with the pressed button lit, and what it does.
         // A centered row at the bottom: the layout group sizes each entry from its text, so the row stays
         // centered whatever the language or aspect ratio.
-        var strip = UiKit.Rect("Controls", root, bottom, bottom, new Vector2(0f, 20f), new Vector2(1200f, 48f));
+        var strip = UiKit.Rect("Controls", root, bottom, bottom, new Vector2(0f, 54f), new Vector2(1200f, 48f));
         var row = strip.gameObject.AddComponent<HorizontalLayoutGroup>();
         row.childAlignment = TextAnchor.MiddleCenter;
         row.spacing = 56f;
@@ -60,7 +71,13 @@ public class MenuScreen
         row.childForceExpandWidth = row.childForceExpandHeight = false;
         ControlHint(strip, UiKit.MouseButtonIcon.Left, () => Loc.T("menu.give"));
         ControlHint(strip, UiKit.MouseButtonIcon.Right, () => Loc.T("menu.away"));
-        ControlHint(strip, UiKit.MouseButtonIcon.Middle, () => Loc.T("menu.blast") + "\n<color=#c8b8d9>" + Loc.T("menu.blastKeys") + "</color>");
+        ControlHint(strip, UiKit.MouseButtonIcon.Middle, () => Loc.T("menu.blast"));
+        guide = strip.gameObject;
+        touchHint = UiKit.Label(root, "TouchHint", "", 22, TextAnchor.LowerCenter, bottom, bottom, new Vector2(0f, 40f), new Vector2(1200f, 32f), UiKit.Dim);
+        UiKit.Bind(touchHint, "touch.hint");
+        UiKit.Bind(UiKit.Label(root, "BlastCaption", "", 22, TextAnchor.LowerCenter, bottom, bottom, new Vector2(0f, 18f), new Vector2(1200f, 28f), UiKit.Dim),
+            "menu.blastCaption");
+        guideCaption = root.Find("BlastCaption").gameObject;
 
         panel.SetActive(false);
     }
@@ -90,9 +107,36 @@ public class MenuScreen
         this.best = best;
         this.found = found;
         this.total = total;
+        // Touch devices see the swipe guide, others the mouse icons.
+        bool touch = GameInput.UsingTouch;
+        guide.SetActive(!touch);
+        guideCaption.SetActive(!touch);
+        touchHint.gameObject.SetActive(touch);
         panel.SetActive(true);
         foreach (var bound in panel.GetComponentsInChildren<LocText>(true)) bound.Refresh();
     }
 
     public void Hide() => panel.SetActive(false);
+}
+
+// Shrinks the menu column so it fits above the control guide on short screens (21:9 and the like).
+public class MenuFit : MonoBehaviour
+{
+    const float GuideHeight = 104f; // room kept free at the bottom for the control guide
+
+    RectTransform root;
+    RectTransform column;
+
+    public void Init(RectTransform screen, RectTransform content)
+    {
+        root = screen;
+        column = content;
+    }
+
+    void Update()
+    {
+        if (root == null) return;
+        float scale = Mathf.Clamp((root.rect.height - GuideHeight) / column.sizeDelta.y, 0.55f, 1f);
+        column.localScale = new Vector3(scale, scale, 1f);
+    }
 }

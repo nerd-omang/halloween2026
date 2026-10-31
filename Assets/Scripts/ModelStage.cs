@@ -9,12 +9,16 @@ public class ModelStage : MonoBehaviour
 {
     [SerializeField] OutfitCatalog catalog;
     [SerializeField] Material floorMaterial;
+    [SerializeField] Visitor[] guestPrefabs = new Visitor[SpecialGuest.Count]; // by SpecialGuest id
     [SerializeField] Vector3 origin = new Vector3(0f, 200f, 0f);
     [SerializeField] float pivotHeight = 0.45f;
     [SerializeField] float spacing = 1.5f;
     [SerializeField] float dragYawSpeed = 0.5f;
     [SerializeField] float dragPitchSpeed = 0.25f;
     [SerializeField] float maxPitch = 35f;
+    [SerializeField] float modelLift = 0.3f; // lowers the camera so models sit higher on screen, clear of the text below
+    [SerializeField] float minZoom = 0.6f;
+    [SerializeField] float maxZoom = 3f;
 
     class Slot
     {
@@ -30,6 +34,12 @@ public class ModelStage : MonoBehaviour
     Quaternion savedRotation;
     GameObject floor;
     int dragging = -1;
+    Vector3 basePosition;
+    Quaternion baseRotation;
+    float baseDistance = 2.2f;
+    float zoom = 1f;
+    Vector2 pan; // camera-space offset in world units
+    float lastPinch;
 
     public bool Active { get; private set; }
     public int Count => slots.Count;
@@ -73,14 +83,7 @@ public class ModelStage : MonoBehaviour
         Clear();
 
         int n = outfits.Count;
-        bool group = n > 1;
-        float distance = group ? 3.2f : 2.2f;
-        float height = group ? 1f : 0.9f;
-        float pitch = group ? 12f : 6f;
-        cam.transform.SetPositionAndRotation(origin + new Vector3(0f, height, -distance), Quaternion.Euler(pitch, 0f, 0f));
-
-        float halfWidth = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * cam.aspect * distance;
-        float centerX = (viewportX - 0.5f) * 2f * halfWidth;
+        PlaceCamera(n, viewportX, out float centerX);
         for (int i = 0; i < n; i++)
         {
             float x = centerX + (i - (n - 1) * 0.5f) * spacing;
@@ -93,6 +96,44 @@ public class ModelStage : MonoBehaviour
         }
     }
 
+    // Camera framing for n models, and the x where the group is centered so it sits at viewportX on screen.
+    void PlaceCamera(int n, float viewportX, out float centerX)
+    {
+        bool group = n > 1;
+        float distance = group ? 3.2f : 2.2f;
+        float height = group ? 1f : 0.9f;
+        float pitch = group ? 12f : 6f;
+        basePosition = origin + new Vector3(0f, height - modelLift, -distance);
+        baseRotation = Quaternion.Euler(pitch, 0f, 0f);
+        baseDistance = distance;
+        zoom = 1f;
+        pan = Vector2.zero;
+        ApplyView();
+
+        float halfWidth = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * cam.aspect * distance;
+        centerX = (viewportX - 0.5f) * 2f * halfWidth;
+    }
+
+    // Shows one special guest (SpecialGuest id) alone, with the same camera and controls as Show().
+    public void ShowGuest(int guestId, float viewportX = 0.5f)
+    {
+        if (!Active) return;
+        Clear();
+        if (guestId < 0 || guestId >= guestPrefabs.Length || guestPrefabs[guestId] == null) return;
+
+        PlaceCamera(1, viewportX, out float centerX);
+        var pivot = new GameObject("Slot0").transform;
+        pivot.SetParent(transform, false);
+        pivot.position = origin + new Vector3(centerX, pivotHeight, 0f);
+        var slot = new Slot { pivot = pivot };
+        var visitor = Instantiate(guestPrefabs[guestId], pivot);
+        visitor.enabled = false; // no waddling on the stage
+        visitor.transform.localPosition = new Vector3(0f, -pivotHeight, 0f);
+        visitor.transform.localRotation = Quaternion.identity;
+        slot.model = visitor.gameObject;
+        slots.Add(slot);
+    }
+
     // Changes the look in one slot, keeping how far the player has turned it.
     public void SetOutfit(int index, Outfit outfit)
     {
@@ -100,6 +141,73 @@ public class ModelStage : MonoBehaviour
         var slot = slots[index];
         if (slot.model != null) Destroy(slot.model);
         slot.model = MakeModel(slot, outfit);
+    }
+
+    // Puts the camera back where Show() left it and turns every model to face front again.
+    public void ResetView()
+    {
+        if (!Active) return;
+        zoom = 1f;
+        pan = Vector2.zero;
+        ApplyView();
+        foreach (var slot in slots)
+        {
+            slot.yaw = 0f;
+            slot.pitch = 0f;
+            slot.pivot.rotation = Quaternion.identity;
+        }
+    }
+
+    void ApplyView()
+    {
+        // Zooming moves the camera along its view direction; panning slides it sideways and up/down.
+        Vector3 offset = baseRotation * new Vector3(-pan.x, -pan.y, (1f - 1f / zoom) * baseDistance);
+        cam.transform.SetPositionAndRotation(basePosition + offset, baseRotation);
+    }
+
+    // Mouse wheel, two-finger pinch (zoom) and right/middle drag or two-finger drag (move the view).
+    void UpdateView()
+    {
+        float factor = 1f;
+        Vector2 move = Vector2.zero;
+
+        var mouse = Mouse.current;
+        if (mouse != null)
+        {
+            float wheel = mouse.scroll.ReadValue().y;
+            if (Mathf.Abs(wheel) > 0.01f && !UiKit.OverControl(GameInput.PointerPosition)) factor *= wheel > 0f ? 1.1f : 1f / 1.1f;
+            if (mouse.rightButton.isPressed || mouse.middleButton.isPressed) move = mouse.delta.ReadValue();
+        }
+
+        var touch = Touchscreen.current;
+        if (touch != null && touch.touches.Count >= 2 && touch.touches[0].press.isPressed && touch.touches[1].press.isPressed)
+        {
+            Vector2 a = touch.touches[0].position.ReadValue();
+            Vector2 b = touch.touches[1].position.ReadValue();
+            float pinch = (a - b).magnitude;
+            if (lastPinch > 1f && pinch > 1f) factor *= pinch / lastPinch;
+            lastPinch = pinch;
+            move = (touch.touches[0].delta.ReadValue() + touch.touches[1].delta.ReadValue()) * 0.5f;
+        }
+        else
+        {
+            lastPinch = 0f;
+        }
+
+        if (factor == 1f && move == Vector2.zero) return;
+        zoom = Mathf.Clamp(zoom * factor, minZoom, maxZoom);
+        float perPixel = 2f * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * baseDistance / Mathf.Max(1, Screen.height);
+        pan += move * perPixel / zoom;
+        ApplyView();
+    }
+
+    bool TwoFingers
+    {
+        get
+        {
+            var touch = Touchscreen.current;
+            return touch != null && touch.touches.Count >= 2 && touch.touches[1].press.isPressed;
+        }
     }
 
     public float SlotViewportX(int index)
@@ -127,6 +235,12 @@ public class ModelStage : MonoBehaviour
     void Update()
     {
         if (!Active || slots.Count == 0) return;
+        UpdateView();
+        if (TwoFingers || (Mouse.current != null && (Mouse.current.rightButton.isPressed || Mouse.current.middleButton.isPressed)))
+        {
+            dragging = -1;
+            return;
+        }
         Vector2 position = GameInput.PointerPosition;
         if (GameInput.PointerPressedThisFrame && !UiKit.OverControl(position))
         {

@@ -50,6 +50,7 @@ public class Visitor : MonoBehaviour
     public bool IsMoving { get; private set; }
     public bool IsCoveredBySheet => ghostSheet != null && ghostSheet.Covered;
     public bool IsDown { get; private set; }
+    public SpecialGuest Special => GetComponent<SpecialGuest>(); // null for ordinary visitors
 
     GhostSheet ghostSheet;
 

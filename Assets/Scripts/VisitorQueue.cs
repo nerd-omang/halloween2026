@@ -5,6 +5,10 @@ public class VisitorQueue : MonoBehaviour
 {
     [SerializeField] Visitor kunmungchiPrefab;
     [SerializeField] Visitor omangiPrefab;
+    [Header("Special guests (index = SpecialGuest id: Moku, Myeong7)")]
+    [SerializeField] Visitor[] specialPrefabs = new Visitor[SpecialGuest.Count];
+    [SerializeField] int[] specialStartScores = { 20, 40 };
+    [SerializeField] float specialChance = 0.04f;
     [SerializeField] int disguiseStartScore = 3;
     [SerializeField] float disguiseChanceStart = 0.2f;
     [SerializeField] float disguiseChanceMax = 0.5f;
@@ -35,6 +39,7 @@ public class VisitorQueue : MonoBehaviour
 
     readonly List<Visitor> line = new List<Visitor>();
     bool firstDisguisedOmangiSpawned;
+    readonly bool[] specialSpawned = new bool[SpecialGuest.Count]; // each shows up at most once per game
 
     public Visitor Front => line.Count > 0 ? line[0] : null;
     public bool FrontReady => Front != null && Front.Arrived && !Front.IsDown;
@@ -53,6 +58,7 @@ public class VisitorQueue : MonoBehaviour
         }
         line.Clear();
         firstDisguisedOmangiSpawned = false;
+        for (int i = 0; i < specialSpawned.Length; i++) specialSpawned[i] = false;
         while (line.Count < visibleCount)
         {
             Spawn(0, true);
@@ -64,6 +70,9 @@ public class VisitorQueue : MonoBehaviour
         // A visitor spawned at the back reaches the front after the ones ahead are resolved,
         // so judge difficulty by the score the player will have by then.
         int futureScore = score + line.Count;
+
+        var special = TrySpawnSpecial(futureScore, immediate);
+        if (special != null) return special;
 
         float t = Mathf.Clamp01(futureScore / (float)scoreForMaxChance);
         float chance = Mathf.Lerp(omangiChanceStart, omangiChanceMax, t);
@@ -105,6 +114,26 @@ public class VisitorQueue : MonoBehaviour
         else v.SetTarget(SlotPos(index));
         line.Add(v);
         return v;
+    }
+
+    // Now and then a special guest takes the place of an ordinary visitor (never inside the first screenful).
+    Visitor TrySpawnSpecial(int futureScore, bool immediate)
+    {
+        if (immediate || Random.value >= specialChance) return null;
+        for (int id = 0; id < SpecialGuest.Count; id++)
+        {
+            if (specialSpawned[id] || id >= specialPrefabs.Length || specialPrefabs[id] == null) continue;
+            if (futureScore < specialStartScores[Mathf.Min(id, specialStartScores.Length - 1)]) continue;
+
+            specialSpawned[id] = true;
+            var v = Instantiate(specialPrefabs[id], SlotPos(visibleCount), Quaternion.identity, transform);
+            v.gameObject.GetComponent<SpecialGuest>().Id = id;
+            int index = line.Count;
+            v.SetTarget(SlotPos(index));
+            line.Add(v);
+            return v;
+        }
+        return null;
     }
 
     // Puts a disguise on the visitor. The early game is gentle: exactly one fake prop (no fur change, no

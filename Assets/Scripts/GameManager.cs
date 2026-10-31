@@ -107,6 +107,7 @@ public class GameManager : MonoBehaviour
 
     void HideScreens()
     {
+        if (state == GameState.Review) SubmitOnline(null); // left without recording: still counts for the statistics
         menu.Hide();
         gallery.Hide();
         dressUp.Hide();
@@ -225,9 +226,10 @@ public class GameManager : MonoBehaviour
         var visitor = queue.Front;
         if (visitor == null) return;
 
-        bool correct = action == HandAction.Give
+        // A special guest is right either way.
+        bool correct = visitor.Special != null || (action == HandAction.Give
             ? visitor.kind == VisitorKind.Kunmungchi
-            : visitor.kind == VisitorKind.Omangi;
+            : visitor.kind == VisitorKind.Omangi);
 
         if (correct)
         {
@@ -274,6 +276,9 @@ public class GameManager : MonoBehaviour
     bool lastWasNewBest;
     int pendingRank; // the local rank the finished game would get if recorded, 0 = would not rank
     string pendingCode;
+    bool resultSent;
+
+    static string CleanForServer(string initials) => LocalRanking.CleanInitials(initials);
 
     // Keeps the finished game on this device: personal statistics and the local ranking.
     void RecordFinishedGame()
@@ -282,6 +287,7 @@ public class GameManager : MonoBehaviour
         foreach (var mistake in mistakes) looks.Add(mistake.outfit);
         LocalStats.RecordGame(score, looks);
         pendingCode = LookCode.Encode(score, null, looks);
+        resultSent = false;
         LastLocalRank = 0;
         pendingRank = 0;
         if (LocalRanking.Qualifies(score))
@@ -295,9 +301,22 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Sends the finished game to the online board once: with initials when the player recorded it,
+    // without when the review is left without recording. Does nothing when sharing is off.
+    void SubmitOnline(string initials)
+    {
+        if (resultSent) return;
+        resultSent = true;
+        if (!Settings.ShareOnline || !WorldBoard.Configured) return;
+        var looks = new List<Outfit>();
+        foreach (var mistake in mistakes) looks.Add(mistake.outfit);
+        WorldBoard.Submit(LookCode.Encode(score, initials, looks));
+    }
+
     // The player chose to record the finished game: adds it to the local ranking and returns its rank.
     int CommitRecord(string initials)
     {
+        SubmitOnline(CleanForServer(initials));
         int rank = LocalRanking.Add(score, initials, pendingCode);
         if (rank > 0) LocalRanking.SetInitials(rank, initials); // also remembers them as the next default
         LastLocalRank = rank;
@@ -344,6 +363,13 @@ public class GameManager : MonoBehaviour
     {
         var front = queue.Front;
         if (front == null || !front.Arrived) return;
+
+        var guest = front.Special;
+        if (guest != null)
+        {
+            ShowToast(Loc.T(SpecialGuest.MarkSeen(guest.Id) ? "hud.specialNew" : "hud.special", guest.GuestName));
+            return;
+        }
 
         var outfit = front.CurrentOutfit;
         newEntries.Clear();

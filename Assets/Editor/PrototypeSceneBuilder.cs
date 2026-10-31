@@ -11,6 +11,9 @@ public static class PrototypeSceneBuilder
     const float RenderScale = 1f / 3f;
     const int BlastPeakFrame = 8;
     const string MaterialDir = "Assets/Materials";
+    // Moku's prefab is made by MokuModelBuilder; Myeong7 reuses it until its own model is made.
+    const string MokuModelPath = "Assets/Prefabs/Characters/Moku.prefab";
+    const string Myeong7ModelPath = "Assets/Prefabs/Characters/Moku.prefab";
     const string GameVisitorDir = "Assets/Prefabs/Game";
     const string KunmungchiModelPath = "Assets/Prefabs/Visitors/Koonmungchi.prefab";
     const string OmangiModelPath = "Assets/Prefabs/Visitors/Omangi.prefab";
@@ -33,6 +36,9 @@ public static class PrototypeSceneBuilder
 
         BuildGameVisitor(KunmungchiModelPath, "Visitor_Kunmungchi", VisitorKind.Kunmungchi);
         BuildGameVisitor(OmangiModelPath, "Visitor_Omangi", VisitorKind.Omangi);
+        // Easter-egg guests. Myeong7 uses the Moku model until its own model exists.
+        BuildSpecialVisitor(MokuModelPath, "Visitor_Moku", 0);
+        BuildSpecialVisitor(Myeong7ModelPath, "Visitor_Myeong7", 1);
         AssetDatabase.SaveAssets();
 
         // Disguises are put together at runtime by VisitorDisguise (on the model prefabs).
@@ -42,7 +48,7 @@ public static class PrototypeSceneBuilder
         BuildWorld();
         var hand = BuildCameraAndHand();
         EnvironmentBuilder.Build(); // after the camera: the porch frame is fitted to it
-        var queue = BuildQueue(kunPrefab, omangiPrefab);
+        var queue = BuildQueue(kunPrefab, omangiPrefab, LoadGameVisitor("Visitor_Moku"), LoadGameVisitor("Visitor_Myeong7"));
         BuildCatalogAndStage(kunPrefab, omangiPrefab, out var catalog, out var stage);
         BuildUiAndManager(queue, hand, catalog, stage);
         ConfigureSfxImport();
@@ -187,6 +193,22 @@ public static class PrototypeSceneBuilder
         return go;
     }
 
+    static void BuildSpecialVisitor(string modelPath, string name, int guestId)
+    {
+        var model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
+        if (model == null)
+        {
+            Debug.LogWarning("Special guest model not found: " + modelPath + " (skipped)");
+            return;
+        }
+        var instance = (GameObject)PrefabUtility.InstantiatePrefab(model);
+        instance.name = name;
+        instance.AddComponent<Visitor>().kind = VisitorKind.Kunmungchi; // kind is unused for guests
+        instance.AddComponent<SpecialGuest>().Id = guestId;
+        PrefabUtility.SaveAsPrefabAsset(instance, GameVisitorDir + "/" + name + ".prefab");
+        Object.DestroyImmediate(instance);
+    }
+
     static void BuildGameVisitor(string modelPath, string name, VisitorKind kind)
     {
         var model = AssetDatabase.LoadAssetAtPath<GameObject>(modelPath);
@@ -320,13 +342,17 @@ public static class PrototypeSceneBuilder
         return AssetDatabase.LoadAssetAtPath<Visitor>(GameVisitorDir + "/" + name + ".prefab");
     }
 
-    static VisitorQueue BuildQueue(Visitor kun, Visitor omangi)
+    static VisitorQueue BuildQueue(Visitor kun, Visitor omangi, Visitor moku, Visitor myeong7)
     {
         var go = new GameObject("VisitorQueue");
         var queue = go.AddComponent<VisitorQueue>();
         var so = new SerializedObject(queue);
         so.FindProperty("kunmungchiPrefab").objectReferenceValue = kun;
         so.FindProperty("omangiPrefab").objectReferenceValue = omangi;
+        var specials = so.FindProperty("specialPrefabs");
+        specials.arraySize = SpecialGuest.Count;
+        specials.GetArrayElementAtIndex(0).objectReferenceValue = moku;
+        specials.GetArrayElementAtIndex(1).objectReferenceValue = myeong7;
         so.FindProperty("groundY").floatValue = 0f;
         so.ApplyModifiedProperties();
         return queue;
@@ -491,6 +517,10 @@ public static class PrototypeSceneBuilder
         var stageSo = new SerializedObject(stage);
         stageSo.FindProperty("catalog").objectReferenceValue = catalog;
         stageSo.FindProperty("floorMaterial").objectReferenceValue = AssetDatabase.LoadAssetAtPath<Material>(MaterialDir + "/Ground.mat");
+        var guests = stageSo.FindProperty("guestPrefabs");
+        guests.arraySize = SpecialGuest.Count;
+        guests.GetArrayElementAtIndex(0).objectReferenceValue = LoadGameVisitor("Visitor_Moku");
+        guests.GetArrayElementAtIndex(1).objectReferenceValue = LoadGameVisitor("Visitor_Myeong7");
         stageSo.ApplyModifiedProperties();
     }
 }

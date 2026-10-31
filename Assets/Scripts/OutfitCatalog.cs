@@ -14,7 +14,7 @@ public class OutfitCatalog : MonoBehaviour
 
     const string SaveKey = "gallery_v3";
     const int NaturalBit = 31;
-    static readonly int[] DefaultDyePercent = { 30, 60, 90, 100 };
+    static readonly int[] DefaultDyePercent = { 15, 30, 60, 90 };
 
     VisitorDisguise[] disguises;
     // Per kind: entry -> item (null = natural look).
@@ -136,6 +136,17 @@ public class OutfitCatalog : MonoBehaviour
             newEntries?.Add(entry);
         }
         if (changed) Save();
+    }
+
+    // Opens every gallery entry of both species (and every special guest), as if all had been met.
+    public void UnlockAll()
+    {
+        for (int k = 0; k < 2; k++)
+        {
+            foreach (var def in entries[k]) unlocked[k] |= 1u << BitOf(def);
+        }
+        SpecialGuest.UnlockAll();
+        Save();
     }
 
     // Gallery numbers of the items in an outfit ("07" or "02+05").

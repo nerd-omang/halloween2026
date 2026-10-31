@@ -35,6 +35,7 @@ public class IntroScreen
     public void Show()
     {
         nameText.text = OutfitCatalog.KindName(VisitorKind.Kunmungchi);
+        nameText.font = UiKit.FontFor(nameText.text, true); // the spooky font has no Korean glyphs
         skipText.text = Loc.T(GameInput.UsingTouch ? "intro.skipTouch" : "intro.skip");
         panel.SetActive(true);
 

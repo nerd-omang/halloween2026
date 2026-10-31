@@ -16,6 +16,7 @@ public class ModelStage : MonoBehaviour
     [SerializeField] float dragYawSpeed = 0.5f;
     [SerializeField] float dragPitchSpeed = 0.25f;
     [SerializeField] float maxPitch = 35f;
+    const float ModelHalfWidth = 0.7f; // room kept around one model (arms, props, tail)
     [SerializeField] float modelLift = 0.3f; // lowers the camera so models sit higher on screen, clear of the text below
     [SerializeField] float minZoom = 0.6f;
     [SerializeField] float maxZoom = 3f;
@@ -104,6 +105,13 @@ public class ModelStage : MonoBehaviour
         float distance = group ? 3.2f : 2.2f;
         float height = group ? 1f : 0.9f;
         float pitch = group ? 12f : 6f;
+
+        // Back away until the whole row fits on the side of the screen the group is centered on
+        // (a control column on the left leaves less room on the right than the screen center suggests).
+        float perDistance = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * cam.aspect;
+        float room = 2f * Mathf.Min(viewportX, 1f - viewportX) * perDistance;
+        float halfExtent = (n - 1) * 0.5f * spacing + ModelHalfWidth;
+        if (room > 0.01f) distance = Mathf.Max(distance, halfExtent / room);
         basePosition = origin + new Vector3(0f, height - modelLift, -distance);
         baseRotation = Quaternion.Euler(pitch, 0f, 0f);
         baseDistance = distance;

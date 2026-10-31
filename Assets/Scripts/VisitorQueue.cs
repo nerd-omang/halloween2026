@@ -39,6 +39,7 @@ public class VisitorQueue : MonoBehaviour
 
     readonly List<Visitor> line = new List<Visitor>();
     bool firstDisguisedOmangiSpawned;
+    int spawnedThisGame; // the first two visitors are fixed: a plain Kunmungchi, then a plain Omangi
     readonly bool[] specialSpawned = new bool[SpecialGuest.Count]; // each shows up at most once per game
 
     public Visitor Front => line.Count > 0 ? line[0] : null;
@@ -58,6 +59,7 @@ public class VisitorQueue : MonoBehaviour
         }
         line.Clear();
         firstDisguisedOmangiSpawned = false;
+        spawnedThisGame = 0;
         for (int i = 0; i < specialSpawned.Length; i++) specialSpawned[i] = false;
         while (line.Count < visibleCount)
         {
@@ -89,6 +91,15 @@ public class VisitorQueue : MonoBehaviour
         }
         if (isOmangi && disguised) firstDisguisedOmangiSpawned = true;
 
+        // A fixed, plain start teaches the two answers: candy for the gray one, away for the red one.
+        bool teaching = spawnedThisGame < 2;
+        if (teaching)
+        {
+            isOmangi = spawnedThisGame == 1;
+            disguised = false;
+        }
+        spawnedThisGame++;
+
         Visitor prefab = isOmangi ? omangiPrefab : kunmungchiPrefab;
         int index = line.Count;
         var v = Instantiate(prefab, SlotPos(visibleCount), Quaternion.identity, transform);
@@ -97,7 +108,7 @@ public class VisitorQueue : MonoBehaviour
         // Costumes are independent of the disguise: more of them, and more often, as the score rises.
         float costumeT = Mathf.InverseLerp(costumeStartScore, scoreForMaxCostume, futureScore);
         float costumeChance = Mathf.Lerp(costumeChanceStart, costumeChanceMax, costumeT);
-        if (futureScore >= costumeStartScore && Random.value < costumeChance && v.TryGetComponent(out VisitorCostume costume))
+        if (!teaching && futureScore >= costumeStartScore && Random.value < costumeChance && v.TryGetComponent(out VisitorCostume costume))
         {
             int count = Mathf.Clamp(Mathf.RoundToInt(1f + costumeT * (maxCostumes - 1) + Random.Range(-0.6f, 0.6f)), 1, maxCostumes);
             costume.Randomize(count);
@@ -105,7 +116,7 @@ public class VisitorQueue : MonoBehaviour
 
         float sheetT = Mathf.InverseLerp(sheetStartScore, scoreForMaxSheet, futureScore);
         float sheetChance = Mathf.Lerp(sheetChanceStart, sheetChanceMax, sheetT);
-        if (futureScore >= sheetStartScore && Random.value < sheetChance && v.TryGetComponent(out GhostSheet sheet))
+        if (!teaching && futureScore >= sheetStartScore && Random.value < sheetChance && v.TryGetComponent(out GhostSheet sheet))
         {
             sheet.Wear();
         }

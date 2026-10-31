@@ -40,6 +40,9 @@ public class GameManager : MonoBehaviour
     ReviewScreen review;
     SettingsScreen settings;
     IntroScreen intro;
+    Text guide;
+    int served;
+    bool guideOn;
     float introStartTime;
     Text toast;
 
@@ -79,6 +82,10 @@ public class GameManager : MonoBehaviour
         var canvasRoot = scoreText.canvas.transform;
         toast = UiKit.Label(canvasRoot, "Toast", "", 33, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
             new Vector2(0f, -135f), new Vector2(1000f, 44f), UiKit.Accent);
+
+        guide = UiKit.Label(canvasRoot, "Guide", "", 44, TextAnchor.LowerCenter, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f),
+            new Vector2(0f, 120f), new Vector2(1000f, 60f), Color.white);
+        guide.gameObject.SetActive(false);
 
         menu = new MenuScreen(canvasRoot);
         menu.StartClicked += StartIntro;
@@ -134,6 +141,7 @@ public class GameManager : MonoBehaviour
     void SetHud(bool visible)
     {
         scoreText.gameObject.SetActive(visible);
+        if (!visible && guide != null) guide.gameObject.SetActive(false);
         heartsDisplay.gameObject.SetActive(visible);
         messageText.gameObject.SetActive(visible);
         toast.gameObject.SetActive(visible);
@@ -199,6 +207,26 @@ public class GameManager : MonoBehaviour
         intro.Show();
     }
 
+    // First game only: tell the player what to do with the first two visitors (candy, then away).
+    void UpdateGuide()
+    {
+        if (!guideOn) return;
+        if (served >= 2 || over)
+        {
+            guideOn = false;
+            guide.gameObject.SetActive(false);
+            PlayerPrefs.SetInt(Progress.GuideKey, 1);
+            PlayerPrefs.Save();
+            return;
+        }
+
+        bool show = queue.FrontReady;
+        guide.gameObject.SetActive(show);
+        if (!show) return;
+        string key = (served == 0 ? "guide.give" : "guide.away") + (GameInput.UsingTouch ? "Touch" : "");
+        guide.text = Loc.T(key);
+    }
+
     void UpdateIntro()
     {
         float elapsed = Time.unscaledTime - introStartTime;
@@ -219,6 +247,9 @@ public class GameManager : MonoBehaviour
         toastTimer = 0f;
         inputUnlockTime = Time.time + 0.25f;
         mistakes.Clear();
+        served = 0;
+        guideOn = PlayerPrefs.GetInt(Progress.GuideKey, 0) == 0; // spoken hints only in the very first game
+        guide.gameObject.SetActive(false);
         queue.Begin();
         hand.ResetPose();
         hand.SetVisible(true);
@@ -295,6 +326,7 @@ public class GameManager : MonoBehaviour
         }
 
         queue.ResolveFront(action == HandAction.Give ? Vector3.right : Vector3.left, score);
+        served++;
         Refresh();
 
         if (hearts <= 0)
@@ -476,6 +508,7 @@ public class GameManager : MonoBehaviour
         if (state == GameState.Playing)
         {
             if (!over) RecordEncounter();
+            UpdateGuide();
             return;
         }
 

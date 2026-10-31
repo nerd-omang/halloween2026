@@ -1,0 +1,35 @@
+# Halloween 2026 leaderboard. Change `app` to a name nobody else on fly.io has taken.
+app = "halloween2026-board"
+primary_region = "nrt"   # Tokyo. Pick the region closest to the players and to the Redis you create.
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Not secrets, so they live here. REDIS_URL is a secret: `fly secrets set REDIS_URL=...`.
+[env]
+  PORT = "8080"
+  ALLOWED_ORIGINS = "https://nerd-omang.github.io"   # add "http://localhost:8000" etc. for local development
+  BOARD_SIZE = "10"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"    # no traffic -> the machine is stopped and costs (almost) nothing
+  auto_start_machines = true     # the first request starts it again (about a second)
+  min_machines_running = 0       # scale to zero
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 50
+    hard_limit = 100
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/healthz"
+    interval = "30s"
+    timeout = "3s"
+    grace_period = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

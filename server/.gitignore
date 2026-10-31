@@ -1,0 +1,5 @@
+node_modules/
+test/vector-gen/bin/
+test/vector-gen/obj/
+.env
+!*.csproj

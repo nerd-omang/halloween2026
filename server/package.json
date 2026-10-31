@@ -1,0 +1,20 @@
+{
+  "name": "halloween2026-leaderboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Leaderboard and fooled-by statistics backend for the Halloween 2026 trick-or-treat game",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/dev.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.1"
+  },
+  "devDependencies": {
+    "ioredis-mock": "^8.9.0"
+  }
+}

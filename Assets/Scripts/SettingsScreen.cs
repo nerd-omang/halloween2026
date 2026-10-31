@@ -15,6 +15,7 @@ public class SettingsScreen
     const float OptionStep = 138f;
 
     public event Action Closed;
+    public event Action GiveUpClicked;
 
     readonly GameObject panel;
     readonly GameObject gear;
@@ -31,6 +32,8 @@ public class SettingsScreen
     readonly SimpleButton[] skipIntroButtons = new SimpleButton[2];
     GameObject shareRow;
     GameObject confirmReset;
+    GameObject confirmGiveUp;
+    GameObject giveUpButton;
     Text resetDone;
 
     // Advanced look tab
@@ -89,7 +92,15 @@ public class SettingsScreen
         gear = gearButton.gameObject;
         gear.SetActive(false);
 
+        // In-game only: leave the run and go back to the title. Top right, in the danger color.
+        var topRightCorner = new Vector2(1f, 1f);
+        var giveUp = UiKit.Button(box, "GiveUp", "", 22, topRightCorner, topRightCorner, new Vector2(-LabelX, -20f), new Vector2(280f, 40f), OpenGiveUpConfirm);
+        UiKit.Bind(giveUp.Label, "settings.giveUp");
+        giveUp.Label.color = UiKit.Danger;
+        giveUpButton = giveUp.gameObject;
+
         confirmReset = BuildResetConfirm(root);
+        confirmGiveUp = BuildGiveUpConfirm(root);
 
         Loc.Changed += Refresh;
         panel.SetActive(false);
@@ -115,6 +126,40 @@ public class SettingsScreen
         UiKit.Bind(no.Label, "settings.resetNo");
         modal.gameObject.SetActive(false);
         return modal.gameObject;
+    }
+
+    GameObject BuildGiveUpConfirm(RectTransform root)
+    {
+        var center = new Vector2(0.5f, 0.5f);
+        var modal = UiKit.Fill("ConfirmGiveUp", root);
+        modal.gameObject.AddComponent<Image>().color = new Color(0.03f, 0.01f, 0.06f, 0.6f);
+        var card = UiKit.Card("Card", modal, new Vector2(700f, 280f));
+        card.gameObject.AddComponent<ScreenFit>().Init(modal, card, 280f, 24f);
+        UiKit.Bind(UiKit.Label(card, "Text", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 45f), new Vector2(640f, 130f), Color.white), "settings.giveUpAsk");
+        var yes = UiKit.Button(card, "Yes", "", 33, center, center, new Vector2(-140f, -90f), new Vector2(250f, 52f), () =>
+        {
+            CloseGiveUpConfirm();
+            GiveUpClicked?.Invoke();
+        });
+        UiKit.Bind(yes.Label, "settings.giveUpYes");
+        yes.Label.color = UiKit.Danger;
+        var no = UiKit.Button(card, "No", "", 33, center, center, new Vector2(140f, -90f), new Vector2(250f, 52f), CloseGiveUpConfirm);
+        UiKit.Bind(no.Label, "settings.resetNo");
+        modal.gameObject.SetActive(false);
+        return modal.gameObject;
+    }
+
+    void OpenGiveUpConfirm()
+    {
+        confirmGiveUp.SetActive(true);
+        confirmGiveUp.transform.SetAsLastSibling();
+        UiKit.ModalRoot = confirmGiveUp.transform;
+    }
+
+    void CloseGiveUpConfirm()
+    {
+        confirmGiveUp.SetActive(false);
+        if (UiKit.ModalRoot == confirmGiveUp.transform) UiKit.ModalRoot = panel.transform;
     }
 
     void OpenResetConfirm()
@@ -331,6 +376,7 @@ public class SettingsScreen
     {
         if (IsOpen) return;
         paused = pause;
+        giveUpButton.SetActive(pause);
         if (paused) GamePause.Hold(this);
         panel.SetActive(true);
         panel.transform.SetAsLastSibling();
@@ -344,8 +390,9 @@ public class SettingsScreen
     {
         if (!IsOpen) return;
         confirmReset.SetActive(false);
+        confirmGiveUp.SetActive(false);
         panel.SetActive(false);
-        if (UiKit.ModalRoot == panel.transform || UiKit.ModalRoot == confirmReset.transform) UiKit.ModalRoot = null;
+        if (UiKit.ModalRoot == panel.transform || UiKit.ModalRoot == confirmReset.transform || UiKit.ModalRoot == confirmGiveUp.transform) UiKit.ModalRoot = null;
         if (paused) GamePause.Release(this);
         paused = false;
         Settings.Save();

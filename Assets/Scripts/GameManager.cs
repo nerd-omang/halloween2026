@@ -105,6 +105,7 @@ public class GameManager : MonoBehaviour
         review.Title += EnterMenu;
         review.Commit = CommitRecord;
         settings = new SettingsScreen(canvasRoot);
+        settings.GiveUpClicked += GiveUp;
         intro = new IntroScreen(canvasRoot);
         TouchControls.Create(canvasRoot, () => state == GameState.Playing && !over && !settings.IsOpen);
         RotateOverlay.Create(canvasRoot);

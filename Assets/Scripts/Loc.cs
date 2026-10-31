@@ -119,7 +119,7 @@ public static class Loc
         ["settings.resetDone"] = ("Reset done.", "초기화했어요."),
         ["settings.skipIntro"] = ("Skip start intro", "시작 인트로 건너뛰기"),
         ["settings.giveUp"] = ("Give up, back to title", "포기하고 타이틀로"),
-        ["settings.giveUpAsk"] = ("Give up this game and go back to the title.\nYour score and record will not be saved.", "이 판을 포기하고 타이틀로 돌아갑니다.\n점수와 기록은 저장되지 않아요."),
+        ["settings.giveUpAsk"] = ("End this game here?\nThe score so far will count.", "이 판을 여기서 끝냅니다.\n지금까지의 점수가 기록됩니다."),
         ["settings.giveUpYes"] = ("GIVE UP", "포기"),
         ["settings.share"] = ("Share results online", "결과 온라인 공유"),
         ["settings.shareHint"] = ("Only an anonymous result code is sent. Initials are sent only when you RECORD.", "익명 결과 코드만 전송돼요. 이니셜은 기록할 때만 보내요."),

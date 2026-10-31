@@ -53,21 +53,8 @@ public class Visitor : MonoBehaviour
 
     GhostSheet ghostSheet;
 
-    // The look the player sees right now (props already knocked off are not counted). With a sheet on,
-    // the mask is what is hidden underneath.
-    public Outfit CurrentOutfit
-    {
-        get
-        {
-            var outfit = new Outfit { kind = kind, sheet = IsCoveredBySheet };
-            if (TryGetComponent(out VisitorDisguise disguise))
-            {
-                outfit.mask = disguise.WornMask;
-                outfit.dyeLevel = disguise.DyeLevel;
-            }
-            return outfit;
-        }
-    }
+    // The look the player sees right now (see OutfitApplier.Read).
+    public Outfit CurrentOutfit => OutfitApplier.Read(this);
 
     public void KnockDown()
     {

@@ -9,8 +9,9 @@ public class DressUpScreen
 {
     public event Action Back;
 
-    const float PanelWidth = 400f;
-    const float ModelViewportX = 0.66f;
+    const float PanelWidth = 790f;
+    const float RightColumn = 410f;
+    const float ModelViewportX = 0.82f;
 
     readonly OutfitCatalog catalog;
     readonly ModelStage stage;
@@ -20,6 +21,7 @@ public class DressUpScreen
     readonly SimpleToggle furToggle;
     readonly SimpleToggle[] dyeToggles;
     readonly SimpleToggle[] propToggles;
+    readonly SimpleToggle[] costumeToggles;
     readonly SimpleToggle sheetToggle;
 
     Outfit current;
@@ -49,7 +51,7 @@ public class DressUpScreen
         UiKit.Bind(UiKit.Label(root, "FurLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(24f, -184f), new Vector2(360f, 26f), UiKit.Dim), "dress.fur");
         furToggle = UiKit.Toggle(root, "Fur", "", false, 22, topLeft, topLeft, new Vector2(24f, -212f), new Vector2(352f, 32f));
         UiKit.Bind(furToggle.Label, "dress.furdye");
-        furToggle.Changed += on => SetBit(0, on);
+        furToggle.Changed += on => SetItem(ItemTable.FurBit, on);
 
         dyeToggles = new SimpleToggle[catalog.DyeLevelCount];
         for (int d = 0; d < dyeToggles.Length; d++)
@@ -61,18 +63,30 @@ public class DressUpScreen
             dyeToggles[d] = toggle;
         }
 
-        UiKit.Bind(UiKit.Label(root, "PropsLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(24f, -296f), new Vector2(360f, 26f), UiKit.Dim), "dress.props");
+        UiKit.Bind(UiKit.Label(root, "PropsLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(RightColumn, -76f), new Vector2(360f, 26f), UiKit.Dim), "dress.props");
         propToggles = new SimpleToggle[catalog.MaxPropCount];
         for (int p = 0; p < propToggles.Length; p++)
         {
-            int bit = p + 1;
+            int slot = p;
             var toggle = UiKit.Toggle(root, "Prop" + p, "", false, 22, topLeft, topLeft,
-                new Vector2(24f, -324f - p * 34f), new Vector2(352f, 32f));
-            toggle.Changed += on => SetBit(bit, on);
+                new Vector2(RightColumn, -104f - p * 34f), new Vector2(352f, 32f));
+            toggle.Changed += on => SetListed(catalog.Props(current.kind), slot, on);
             propToggles[p] = toggle;
         }
 
-        float sheetY = -324f - propToggles.Length * 34f - 14f;
+        float costumeLabelY = -104f - propToggles.Length * 34f - 14f;
+        UiKit.Bind(UiKit.Label(root, "CostumesLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(RightColumn, costumeLabelY), new Vector2(360f, 26f), UiKit.Dim), "dress.costumes");
+        costumeToggles = new SimpleToggle[catalog.MaxCostumeCount];
+        for (int c = 0; c < costumeToggles.Length; c++)
+        {
+            int slot = c;
+            var toggle = UiKit.Toggle(root, "Costume" + c, "", false, 22, topLeft, topLeft,
+                new Vector2(RightColumn, costumeLabelY - 28f - c * 34f), new Vector2(352f, 32f));
+            toggle.Changed += on => SetListed(catalog.Costumes(current.kind), slot, on);
+            costumeToggles[c] = toggle;
+        }
+
+        float sheetY = -296f;
         sheetToggle = UiKit.Toggle(root, "Sheet", "", false, 22, topLeft, topLeft, new Vector2(24f, sheetY), new Vector2(352f, 32f));
         UiKit.Bind(sheetToggle.Label, "dress.sheet");
         sheetToggle.Changed += on =>
@@ -88,10 +102,10 @@ public class DressUpScreen
         UiKit.Bind(reset.Label, "dress.reset");
 
         var bottomRight = new Vector2(1f, 0f);
-        var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-24f, 24f), new Vector2(200f, 56f), () => Back?.Invoke());
+        var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
         UiKit.Bind(back.Label, "back");
         descriptionText = UiKit.Label(root, "Description", "", 33, TextAnchor.UpperCenter, new Vector2(0f, 0f), new Vector2(0.5f, 0f),
-            new Vector2(PanelWidth + (1280f - PanelWidth) * 0.5f, 100f), new Vector2(780f, 90f), Color.white);
+            new Vector2(PanelWidth + (1280f - PanelWidth) * 0.5f, 100f), new Vector2(470f, 90f), Color.white);
 
         panel.SetActive(false);
     }
@@ -112,8 +126,10 @@ public class DressUpScreen
 
     void Randomize()
     {
-        int props = catalog.PropCount(current.kind);
-        current.mask = UnityEngine.Random.Range(0, 1 << (1 + props));
+        current.items = 0;
+        current.fur = UnityEngine.Random.value < 0.5f;
+        foreach (var def in catalog.Props(current.kind)) current.Set(def.Bit, UnityEngine.Random.value < 0.4f);
+        foreach (var def in catalog.Costumes(current.kind)) current.Set(def.Bit, UnityEngine.Random.value < 0.3f);
         current.dyeLevel = UnityEngine.Random.Range(0, catalog.DyeLevelCount);
         current.sheet = UnityEngine.Random.value < 0.25f;
         Apply();
@@ -121,27 +137,33 @@ public class DressUpScreen
 
     void SetKind(VisitorKind kind)
     {
-        current.kind = kind;
-        current.mask &= (1 << (1 + catalog.PropCount(kind))) - 1;
+        current.kind = kind; // items this kind cannot wear drop out in Apply
         Apply();
     }
 
-    void SetBit(int bit, bool on)
+    void SetItem(int bit, bool on)
     {
-        if (on) current.mask |= 1 << bit;
-        else current.mask &= ~(1 << bit);
+        current.Set(bit, on);
         Apply();
+    }
+
+    void SetListed(IReadOnlyList<ItemDef> list, int slot, bool on)
+    {
+        if (slot < list.Count) SetItem(list[slot].Bit, on);
     }
 
     void SetDye(int level)
     {
         current.dyeLevel = level;
-        current.mask |= 1;
+        current.fur = true;
         Apply();
     }
 
+    // Applies the combination rules first (one head piece, the paint bucket brings the paint, no hat
+    // under the bucket), so the toggles always show what is really worn.
     void Apply(bool rebuild = false)
     {
+        current = catalog.Normalize(current);
         SyncControls();
         if (rebuild || stage.Count == 0) stage.Show(new List<Outfit> { current }, ModelViewportX);
         else stage.SetOutfit(0, current);
@@ -153,19 +175,25 @@ public class DressUpScreen
     void SyncControls()
     {
         for (int k = 0; k < 2; k++) speciesToggles[k].Set(k == (int)current.kind);
-        furToggle.Set((current.mask & 1) != 0);
-        for (int d = 0; d < dyeToggles.Length; d++) dyeToggles[d].Set((current.mask & 1) != 0 && d == current.dyeLevel);
+        furToggle.Set(current.fur);
+        for (int d = 0; d < dyeToggles.Length; d++) dyeToggles[d].Set(current.fur && d == current.dyeLevel);
 
-        int props = catalog.PropCount(current.kind);
-        for (int p = 0; p < propToggles.Length; p++)
-        {
-            bool exists = p < props;
-            propToggles[p].gameObject.SetActive(exists);
-            if (!exists) continue;
-            propToggles[p].Text = catalog.PropLabel(current.kind, p);
-            propToggles[p].Set((current.mask & (1 << (p + 1))) != 0);
-        }
+        SyncList(propToggles, catalog.Props(current.kind));
+        SyncList(costumeToggles, catalog.Costumes(current.kind));
         sheetToggle.Set(current.sheet);
         for (int k = 0; k < 2; k++) speciesToggles[k].Text = OutfitCatalog.KindName((VisitorKind)k);
+    }
+
+    // One toggle per item of the list; spare toggles (the other kind has fewer items) are hidden.
+    void SyncList(SimpleToggle[] toggles, IReadOnlyList<ItemDef> items)
+    {
+        for (int i = 0; i < toggles.Length; i++)
+        {
+            bool exists = i < items.Count;
+            toggles[i].gameObject.SetActive(exists);
+            if (!exists) continue;
+            toggles[i].Text = catalog.ItemLabel(items[i]);
+            toggles[i].Set(current.Has(items[i].Bit));
+        }
     }
 }

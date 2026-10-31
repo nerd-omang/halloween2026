@@ -28,12 +28,14 @@ public class GameManager : MonoBehaviour
     const string BestKey = "best_score";
 
     readonly List<MistakeRecord> mistakes = new List<MistakeRecord>();
+    readonly List<int> newEntries = new List<int>();
 
     GameState state;
     MenuScreen menu;
     GalleryScreen gallery;
     DressUpScreen dressUp;
     ReviewScreen review;
+    SettingsScreen settings;
     Text toast;
 
     int hearts;
@@ -45,6 +47,7 @@ public class GameManager : MonoBehaviour
     float toastTimer;
     float inputUnlockTime;
     float reviewUnlockTime;
+    bool musicStarted;
 
     void Start()
     {
@@ -55,6 +58,9 @@ public class GameManager : MonoBehaviour
         scoreText.verticalOverflow = VerticalWrapMode.Overflow;
         scoreText.color = UiKit.ComboColor(0);
         messageText.fontSize = 44;
+        // Score and hearts sit a little inside the screen corners.
+        scoreText.rectTransform.anchoredPosition = new Vector2(UiKit.MarginX, -UiKit.MarginY);
+        heartsDisplay.GetComponent<RectTransform>().anchoredPosition = new Vector2(-UiKit.MarginX, -UiKit.MarginY);
         var canvasRoot = scoreText.canvas.transform;
         toast = UiKit.Label(canvasRoot, "Toast", "", 33, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
             new Vector2(0f, -135f), new Vector2(1000f, 44f), UiKit.Accent);
@@ -63,6 +69,7 @@ public class GameManager : MonoBehaviour
         menu.StartClicked += StartGame;
         menu.GalleryClicked += OpenGallery;
         menu.DressUpClicked += OpenDressUp;
+        menu.SettingsClicked += () => settings.Open(false);
 
         gallery = new GalleryScreen(canvasRoot, catalog, stage);
         gallery.Back += EnterMenu;
@@ -71,10 +78,13 @@ public class GameManager : MonoBehaviour
         review = new ReviewScreen(canvasRoot, catalog, stage);
         review.PlayAgain += StartGame;
         review.Title += EnterMenu;
+        settings = new SettingsScreen(canvasRoot);
+        TouchControls.Create(canvasRoot, () => state == GameState.Playing && !over && !settings.IsOpen);
+        RotateOverlay.Create(canvasRoot);
 
-        hand.CanAct = () => state == GameState.Playing && !over && queue.FrontReady && Time.time >= inputUnlockTime;
+        hand.CanAct = () => !settings.IsOpen && state == GameState.Playing && !over && queue.FrontReady && Time.time >= inputUnlockTime;
         hand.TossTarget = GetTossTarget;
-        hand.CanBlast = () => state == GameState.Playing && !over && queue.FrontReady && Time.time >= inputUnlockTime;
+        hand.CanBlast = () => !settings.IsOpen && state == GameState.Playing && !over && queue.FrontReady && Time.time >= inputUnlockTime;
         hand.Blasted += OnBlast;
         hand.Performed += OnAction;
 
@@ -97,6 +107,7 @@ public class GameManager : MonoBehaviour
         heartsDisplay.gameObject.SetActive(visible);
         messageText.gameObject.SetActive(visible);
         toast.gameObject.SetActive(visible);
+        settings.SetGearVisible(visible);
     }
 
     void EnterMenu()
@@ -165,10 +176,15 @@ public class GameManager : MonoBehaviour
         }
 
         visitor.KnockDown();
-        if (visitor.TryGetComponent(out VisitorDisguise disguise))
-        {
-            disguise.DropOneFakeProp(direction);
-        }
+
+        // One loose item comes off per blast, picked evenly among fake props and loose costumes.
+        visitor.TryGetComponent(out VisitorDisguise disguise);
+        visitor.TryGetComponent(out VisitorCostume costume);
+        int props = disguise != null ? disguise.FakePropCount : 0;
+        int loose = costume != null ? costume.LooseCount : 0;
+        if (props + loose == 0) return;
+        if (Random.Range(0, props + loose) < props) disguise.DropOneFakeProp(direction);
+        else costume.DropOne(direction);
     }
 
     Vector3? GetTossTarget()
@@ -236,6 +252,11 @@ public class GameManager : MonoBehaviour
         hand.SetVisible(false);
         stage.Enter();
         review.Show(mistakes, score, best);
+
+        // What will be sent to the leaderboard server: score and the three looks, as a short code.
+        var looks = new List<Outfit>();
+        foreach (var mistake in mistakes) looks.Add(mistake.outfit);
+        Debug.Log("[Result] " + LookCode.Encode(score, null, looks));
         reviewUnlockTime = Time.time + 0.6f;
     }
 
@@ -264,13 +285,43 @@ public class GameManager : MonoBehaviour
         if (front == null || !front.Arrived) return;
 
         var outfit = front.CurrentOutfit;
-        if (!catalog.Unlock(outfit)) return;
-        if (outfit.mask == 0 && !outfit.sheet) return;
-        ShowToast(Loc.T("hud.newLook", OutfitCatalog.KindName(outfit.kind), catalog.EntryNumber(outfit)));
+        newEntries.Clear();
+        catalog.Unlock(outfit, newEntries);
+        // The plain natural look (entry 0) is not worth a toast.
+        newEntries.Remove(0);
+        if (newEntries.Count == 0) return;
+
+        var numbers = new System.Text.StringBuilder();
+        foreach (int entry in newEntries)
+        {
+            if (numbers.Length > 0) numbers.Append('+');
+            numbers.Append(catalog.EntryNumber(entry));
+        }
+        ShowToast(Loc.T("hud.newLook", OutfitCatalog.KindName(outfit.kind), numbers.ToString()));
     }
 
     void Update()
     {
+        GameInput.Poll();
+
+        // Browsers only allow audio after a user gesture: start the music on the first click or key.
+        if (!musicStarted)
+        {
+            if (GameInput.AnyPressThisFrame)
+            {
+                musicStarted = true;
+                AudioManager.PlayMusic();
+            }
+        }
+
+        var escape = Keyboard.current;
+        if (escape != null && escape.escapeKey.wasPressedThisFrame)
+        {
+            if (settings.IsOpen) settings.Close();
+            else if (state == GameState.Playing) settings.Open(true);
+            else if (state == GameState.Menu) settings.Open(false);
+        }
+
         scoreText.color = Color.Lerp(scoreText.color, UiKit.ComboColor(streak), 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
         if (messageTimer > 0f)
         {

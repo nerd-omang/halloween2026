@@ -53,7 +53,7 @@ public class GalleryScreen
         }
 
         var bottomRight = new Vector2(1f, 0f);
-        var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-24f, 24f), new Vector2(200f, 56f), () => Back?.Invoke());
+        var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
         UiKit.Bind(back.Label, "back");
         nameText = UiKit.Label(root, "Name", "", 33, TextAnchor.UpperCenter, new Vector2(0f, 0f), new Vector2(0.5f, 0f),
             new Vector2(ListWidth + (1280f - ListWidth) * 0.5f, 100f), new Vector2(780f, 90f), Color.white);
@@ -84,7 +84,7 @@ public class GalleryScreen
             if (!valid) continue;
 
             bool open = catalog.IsUnlocked(kind, i);
-            rows[i].Text = (i + 1).ToString("00") + "  " + (open ? catalog.Describe(catalog.EntryOutfit(kind, i)) : "???");
+            rows[i].Text = catalog.EntryNumber(i) + "  " + (open ? catalog.EntryLabel(kind, i) : "???");
             rows[i].Interactable = open;
             if (open && firstUnlocked < 0) firstUnlocked = i;
         }
@@ -105,6 +105,6 @@ public class GalleryScreen
 
         var outfit = catalog.EntryOutfit(kind, selected);
         stage.Show(new List<Outfit> { outfit }, ModelViewportX);
-        nameText.text = OutfitCatalog.KindName(kind) + "\n" + catalog.Describe(outfit) + "\n<size=22>" + Loc.T("drag.rotate") + "</size>";
+        nameText.text = OutfitCatalog.KindName(kind) + "\n" + catalog.EntryLabel(kind, selected) + "\n<size=22>" + Loc.T("drag.rotate") + "</size>";
     }
 }

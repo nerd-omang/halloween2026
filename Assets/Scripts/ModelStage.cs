@@ -127,21 +127,20 @@ public class ModelStage : MonoBehaviour
     void Update()
     {
         if (!Active || slots.Count == 0) return;
-        var mouse = Mouse.current;
-        if (mouse == null) return;
-
-        Vector2 position = mouse.position.ReadValue();
-        if (mouse.leftButton.wasPressedThisFrame && !UiKit.OverControl(position))
+        Vector2 position = GameInput.PointerPosition;
+        if (GameInput.PointerPressedThisFrame && !UiKit.OverControl(position))
         {
             dragging = NearestSlot(position.x);
         }
-        if (!mouse.leftButton.isPressed) dragging = -1;
+        if (!GameInput.PointerHeld) dragging = -1;
         if (dragging < 0) return;
 
-        Vector2 delta = mouse.delta.ReadValue();
+        Vector2 delta = GameInput.PointerDelta;
         var slot = slots[dragging];
-        slot.yaw += delta.x * dragYawSpeed;
-        slot.pitch = Mathf.Clamp(slot.pitch - delta.y * dragPitchSpeed, -maxPitch, maxPitch);
+        // The surface under the cursor follows the drag: drag right turns the front to the right
+        // (negative yaw), drag up tips the front up (positive pitch).
+        slot.yaw -= delta.x * dragYawSpeed;
+        slot.pitch = Mathf.Clamp(slot.pitch + delta.y * dragPitchSpeed, -maxPitch, maxPitch);
         slot.pivot.rotation = Quaternion.Euler(slot.pitch, slot.yaw, 0f);
     }
 

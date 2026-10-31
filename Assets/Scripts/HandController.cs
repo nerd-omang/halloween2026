@@ -81,19 +81,13 @@ public class HandController : MonoBehaviour
 
     void Update()
     {
-        var mouse = Mouse.current;
-        if (Busy || mouse == null) return;
+        if (Busy) return;
         if (CanAct != null && !CanAct()) return;
 
-        var keyboard = Keyboard.current;
-        bool blastPressed = Time.time >= blastReadyTime
-            && (mouse.middleButton.wasPressedThisFrame
-                || Mathf.Abs(mouse.scroll.ReadValue().y) > 0.01f
-                || (keyboard != null && keyboard.spaceKey.wasPressedThisFrame));
-
-        if (mouse.leftButton.wasPressedThisFrame) StartCoroutine(Perform(HandAction.Give));
-        else if (mouse.rightButton.wasPressedThisFrame) StartCoroutine(Perform(HandAction.Reject));
-        else if (blastPressed && CanBlast != null && CanBlast()) StartCoroutine(PerformBlast());
+        if (GameInput.Consume(GameAction.Give)) StartCoroutine(Perform(HandAction.Give));
+        else if (GameInput.Consume(GameAction.Reject)) StartCoroutine(Perform(HandAction.Reject));
+        else if (Time.time >= blastReadyTime && GameInput.Consume(GameAction.Blast) && CanBlast != null && CanBlast())
+            StartCoroutine(PerformBlast());
     }
 
     IEnumerator PerformBlast()

@@ -14,6 +14,12 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] float sheetChanceStart = 0.15f;
     [SerializeField] float sheetChanceMax = 0.35f;
     [SerializeField] int scoreForMaxSheet = 35;
+    [Header("Halloween costumes (visual noise, never the answer)")]
+    [SerializeField] int costumeStartScore = 6;
+    [SerializeField] float costumeChanceStart = 0.15f;
+    [SerializeField] float costumeChanceMax = 0.6f;
+    [SerializeField] int scoreForMaxCostume = 40;
+    [SerializeField] int maxCostumes = 3;
     [SerializeField] int visibleCount = 8;
     [SerializeField] float frontZ = 2.6f;
     [SerializeField] float spacing = 1.1f;
@@ -76,6 +82,15 @@ public class VisitorQueue : MonoBehaviour
         if (disguised && v.TryGetComponent(out VisitorDisguise disguise))
         {
             disguise.Randomize(DisguiseElements(disguiseT, disguise.ElementCount), disguiseT);
+        }
+
+        // Costumes are independent of the disguise: more of them, and more often, as the score rises.
+        float costumeT = Mathf.InverseLerp(costumeStartScore, scoreForMaxCostume, futureScore);
+        float costumeChance = Mathf.Lerp(costumeChanceStart, costumeChanceMax, costumeT);
+        if (futureScore >= costumeStartScore && Random.value < costumeChance && v.TryGetComponent(out VisitorCostume costume))
+        {
+            int count = Mathf.Clamp(Mathf.RoundToInt(1f + costumeT * (maxCostumes - 1) + Random.Range(-0.6f, 0.6f)), 1, maxCostumes);
+            costume.Randomize(count);
         }
 
         float sheetT = Mathf.InverseLerp(sheetStartScore, scoreForMaxSheet, futureScore);

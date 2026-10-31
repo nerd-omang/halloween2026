@@ -1,15 +1,34 @@
 using System;
 
-// A visitor's look as plain data: who they are plus the VisitorDisguise mask (bit 0 = fur change,
-// bit i = props[i - 1]), the fur change level and whether a ghost sheet is worn.
-// Enough to rebuild the same look later (review, gallery, dress-up).
+// A visitor's look as plain data: who they are, the worn items (one bit per ItemTable item, including the
+// fur change and the ghost sheet) and the level of the fur change. Enough to rebuild the same look later
+// (review, gallery, dress-up) and to send it to a server as a LookCode.
 [Serializable]
 public struct Outfit
 {
     public VisitorKind kind;
-    public int mask;
+    public uint items;
     public int dyeLevel;
-    public bool sheet;
+
+    public bool Has(int bit) => (items & ItemTable.Mask(bit)) != 0;
+
+    public void Set(int bit, bool on)
+    {
+        if (on) items |= ItemTable.Mask(bit);
+        else items &= ~ItemTable.Mask(bit);
+    }
+
+    public bool fur
+    {
+        get => Has(ItemTable.FurBit);
+        set => Set(ItemTable.FurBit, value);
+    }
+
+    public bool sheet
+    {
+        get => Has(ItemTable.SheetBit);
+        set => Set(ItemTable.SheetBit, value);
+    }
 }
 
 public struct MistakeRecord

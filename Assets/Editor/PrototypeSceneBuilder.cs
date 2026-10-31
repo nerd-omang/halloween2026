@@ -16,6 +16,7 @@ public static class PrototypeSceneBuilder
     const string OmangiModelPath = "Assets/Prefabs/Visitors/Omangi.prefab";
     const string HandArtDir = "Assets/Art/Hand";
     const string SfxDir = "Assets/Audio/Sfx";
+    const string BgmDir = "Assets/Audio/Bgm";
     const string ScenePath = "Assets/Scenes/Main.unity";
 
     [MenuItem("Fangame/Build Prototype Scene")]
@@ -40,10 +41,12 @@ public static class PrototypeSceneBuilder
         var omangiPrefab = LoadGameVisitor("Visitor_Omangi");
         BuildWorld();
         var hand = BuildCameraAndHand();
+        EnvironmentBuilder.Build(); // after the camera: the porch frame is fitted to it
         var queue = BuildQueue(kunPrefab, omangiPrefab);
         BuildCatalogAndStage(kunPrefab, omangiPrefab, out var catalog, out var stage);
         BuildUiAndManager(queue, hand, catalog, stage);
         ConfigureSfxImport();
+        ConfigureMusicImport();
         BuildAudioManager();
 
         EditorSceneManager.SaveScene(scene, ScenePath);
@@ -55,6 +58,7 @@ public static class PrototypeSceneBuilder
     [MenuItem("Fangame/Build WebGL")]
     public static void BuildWebGL()
     {
+        WebBuildSettings.Apply(false); // template, compression, memory, stripping: see Docs/MobileWeb.md
         var options = new BuildPlayerOptions
         {
             scenes = new[] { ScenePath },
@@ -64,7 +68,8 @@ public static class PrototypeSceneBuilder
         };
         var report = BuildPipeline.BuildPlayer(options);
         Debug.Log("WebGL build result: " + report.summary.result + ", size " + report.summary.totalSize);
-        if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded)
+        WebBuildSettings.LogSizeReport(report);
+        if (report.summary.result != UnityEditor.Build.Reporting.BuildResult.Succeeded && Application.isBatchMode)
         {
             EditorApplication.Exit(1);
         }
@@ -246,7 +251,7 @@ public static class PrototypeSceneBuilder
         var candyGo = new GameObject("CandySprite");
         candyGo.transform.SetParent(handRoot.transform, false);
         candyGo.transform.localPosition = Vector3.zero;
-        candyGo.transform.localScale = Vector3.one * 0.25f;
+        candyGo.transform.localScale = Vector3.one * 0.34f;
         var candySr = candyGo.AddComponent<SpriteRenderer>();
         candySr.sharedMaterial = spriteMat;
         candySr.sortingOrder = 1;
@@ -388,6 +393,7 @@ public static class PrototypeSceneBuilder
                 clips.GetArrayElementAtIndex(j).objectReferenceValue = clip;
             }
         }
+        so.FindProperty("music").objectReferenceValue = AssetDatabase.LoadAssetAtPath<AudioClip>($"{BgmDir}/halloween_ambient.wav");
         so.ApplyModifiedProperties();
     }
 
@@ -396,6 +402,26 @@ public static class PrototypeSceneBuilder
         var files = new string[10];
         for (int i = 0; i < files.Length; i++) files[i] = "visitor_step_" + i;
         return files;
+    }
+
+    // Looping music: mono, 22.05 kHz, Vorbis, kept compressed in memory (a long clip would bloat decoding if decompressed).
+    public static void ConfigureMusicImport()
+    {
+        foreach (var guid in AssetDatabase.FindAssets("t:AudioClip", new[] { BgmDir }))
+        {
+            var importer = AssetImporter.GetAtPath(AssetDatabase.GUIDToAssetPath(guid)) as AudioImporter;
+            if (importer == null) continue;
+
+            importer.forceToMono = true;
+            var settings = importer.defaultSampleSettings;
+            settings.loadType = AudioClipLoadType.CompressedInMemory;
+            settings.compressionFormat = AudioCompressionFormat.Vorbis;
+            settings.quality = 0.4f;
+            settings.sampleRateSetting = AudioSampleRateSetting.OverrideSampleRate;
+            settings.sampleRateOverride = 22050;
+            importer.defaultSampleSettings = settings;
+            importer.SaveAndReimport();
+        }
     }
 
     // Short effects: decompress on load, mono, 22.05 kHz, Vorbis. Keeps the WebGL download small.

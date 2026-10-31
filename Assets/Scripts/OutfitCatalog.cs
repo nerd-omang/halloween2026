@@ -2,26 +2,31 @@ using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
 
-// Knows the visitor prefabs and every look they can be put together in. Builds display models from an
-// Outfit, names looks, and remembers which looks the player has met (the gallery).
-// A gallery entry is one disguise mask per visitor (the fur change level does not matter) plus one
-// "ghost sheet" entry. Entry i of a kind is mask i; the last entry is the sheet.
+// Knows the visitor prefabs and what they can wear (ItemTable). Builds display models from an Outfit,
+// names looks, and remembers which items the player has met (the gallery).
+// A gallery entry is one item per visitor, not a combination. Entries of a kind, in order: 0 = natural
+// look, 1 = fur change, then its props and costumes in table order, and the ghost sheet last. Unlocks are
+// saved by item bit, so adding items to the table never scrambles old saves.
 public class OutfitCatalog : MonoBehaviour
 {
     [SerializeField] Visitor kunmungchiPrefab;
     [SerializeField] Visitor omangiPrefab;
 
-    const string SaveKey = "gallery_v1";
+    const string SaveKey = "gallery_v3";
+    const int NaturalBit = 31;
     static readonly int[] DefaultDyePercent = { 30, 60, 90, 100 };
 
     VisitorDisguise[] disguises;
-    int stride;
-    bool[] unlocked;
+    // Per kind: entry -> item (null = natural look).
+    readonly List<ItemDef>[] entries = new List<ItemDef>[2];
+    readonly List<ItemDef>[] props = new List<ItemDef>[2];
+    readonly List<ItemDef>[] costumes = new List<ItemDef>[2];
+    readonly uint[] unlocked = new uint[2];
 
-    public int EntryCount => stride;
-    public int SheetEntry => stride - 1;
+    public int EntryCount { get; private set; }
     public int DyeLevelCount => disguises[0].DyeLevelCount;
     public int MaxPropCount { get; private set; }
+    public int MaxCostumeCount { get; private set; }
 
     void Awake()
     {
@@ -30,37 +35,35 @@ public class OutfitCatalog : MonoBehaviour
             kunmungchiPrefab.GetComponent<VisitorDisguise>(),
             omangiPrefab.GetComponent<VisitorDisguise>(),
         };
-        MaxPropCount = Mathf.Max(disguises[0].PropCount, disguises[1].PropCount);
-        stride = (1 << (1 + MaxPropCount)) + 1;
+        for (int k = 0; k < 2; k++)
+        {
+            var kind = (VisitorKind)k;
+            props[k] = ItemTable.For(kind, ItemCategory.Prop);
+            costumes[k] = ItemTable.For(kind, ItemCategory.Costume);
+            var list = new List<ItemDef> { null };
+            list.AddRange(ItemTable.For(kind, ItemCategory.Fur));
+            list.AddRange(props[k]);
+            list.AddRange(costumes[k]);
+            list.AddRange(ItemTable.For(kind, ItemCategory.Sheet));
+            entries[k] = list;
+            EntryCount = Mathf.Max(EntryCount, list.Count);
+            MaxPropCount = Mathf.Max(MaxPropCount, props[k].Count);
+            MaxCostumeCount = Mathf.Max(MaxCostumeCount, costumes[k].Count);
+        }
         Load();
     }
-
-    public int PropCount(VisitorKind kind) => disguises[(int)kind].PropCount;
 
     public static string KindName(VisitorKind kind) => Loc.T(kind == VisitorKind.Kunmungchi ? "kind.kun" : "kind.oma");
 
     Visitor Prefab(VisitorKind kind) => kind == VisitorKind.Kunmungchi ? kunmungchiPrefab : omangiPrefab;
 
-    public bool EntryValid(VisitorKind kind, int entry)
-    {
-        return entry == SheetEntry || entry < (1 << (1 + PropCount(kind)));
-    }
+    // The props and costumes this kind can wear, in the order the dress-up screen lists them.
+    public IReadOnlyList<ItemDef> Props(VisitorKind kind) => props[(int)kind];
+    public IReadOnlyList<ItemDef> Costumes(VisitorKind kind) => costumes[(int)kind];
 
-    public int TotalCount
-    {
-        get
-        {
-            int total = 0;
-            for (int k = 0; k < 2; k++)
-            {
-                for (int e = 0; e < stride; e++)
-                {
-                    if (EntryValid((VisitorKind)k, e)) total++;
-                }
-            }
-            return total;
-        }
-    }
+    public bool EntryValid(VisitorKind kind, int entry) => entry >= 0 && entry < entries[(int)kind].Count;
+
+    public int TotalCount => entries[0].Count + entries[1].Count;
 
     public int UnlockedCount
     {
@@ -69,50 +72,117 @@ public class OutfitCatalog : MonoBehaviour
             int count = 0;
             for (int k = 0; k < 2; k++)
             {
-                for (int e = 0; e < stride; e++)
+                for (int e = 0; e < entries[k].Count; e++)
                 {
-                    if (EntryValid((VisitorKind)k, e) && unlocked[k * stride + e]) count++;
+                    if (IsUnlocked((VisitorKind)k, e)) count++;
                 }
             }
             return count;
         }
     }
 
-    public bool IsUnlocked(VisitorKind kind, int entry) => unlocked[(int)kind * stride + entry];
+    static int BitOf(ItemDef def) => def == null ? NaturalBit : def.Bit;
 
-    // The look shown for a gallery entry (the full fur change level when the fur is changed).
+    public bool IsUnlocked(VisitorKind kind, int entry)
+    {
+        return (unlocked[(int)kind] & (1u << BitOf(entries[(int)kind][entry]))) != 0;
+    }
+
+    // The look shown for a gallery entry: just that item (a prop that comes with the fur change brings it,
+    // the fur change shows at the full level).
     public Outfit EntryOutfit(VisitorKind kind, int entry)
     {
-        if (entry == SheetEntry) return new Outfit { kind = kind, sheet = true };
-        return new Outfit { kind = kind, mask = entry, dyeLevel = (entry & 1) != 0 ? DyeLevelCount - 1 : 0 };
+        var outfit = new Outfit { kind = kind, dyeLevel = DyeLevelCount - 1 };
+        var def = entries[(int)kind][entry];
+        if (def != null) outfit.Set(def.Bit, true);
+        return Normalize(outfit);
     }
 
-    // Marks the look as met. Returns true the first time.
-    public bool Unlock(Outfit outfit)
+    // Applies the combination rules so the outfit is one the visitors can really wear.
+    public Outfit Normalize(Outfit outfit)
     {
-        int entry = outfit.sheet ? SheetEntry : outfit.mask;
-        if (entry < 0 || entry >= stride || !EntryValid(outfit.kind, entry)) return false;
-        int index = (int)outfit.kind * stride + entry;
-        if (unlocked[index]) return false;
-        unlocked[index] = true;
-        Save();
-        return true;
+        outfit.items = ItemTable.Normalize(outfit.kind, outfit.items);
+        outfit.dyeLevel = Mathf.Clamp(outfit.dyeLevel, 0, DyeLevelCount - 1);
+        return outfit;
     }
 
-    // The gallery number of a look ("07"); the same number the gallery list shows.
+    // Entries of the items an outfit shows. A sheet hides everything under it, so a sheeted outfit
+    // counts as the sheet only.
+    void CollectEntries(Outfit outfit, List<int> result)
+    {
+        var list = entries[(int)outfit.kind];
+        for (int e = 1; e < list.Count; e++)
+        {
+            var def = list[e];
+            bool isSheet = def.Category == ItemCategory.Sheet;
+            if (outfit.sheet ? isSheet : (!isSheet && outfit.Has(def.Bit))) result.Add(e);
+        }
+        if (result.Count == 0) result.Add(0);
+    }
+
+    // Marks every item of the outfit as met. Entries met for the first time are added to newEntries.
+    public void Unlock(Outfit outfit, List<int> newEntries)
+    {
+        var found = new List<int>(4);
+        CollectEntries(outfit, found);
+        var list = entries[(int)outfit.kind];
+        bool changed = false;
+        foreach (int entry in found)
+        {
+            uint bit = 1u << BitOf(list[entry]);
+            if ((unlocked[(int)outfit.kind] & bit) != 0) continue;
+            unlocked[(int)outfit.kind] |= bit;
+            changed = true;
+            newEntries?.Add(entry);
+        }
+        if (changed) Save();
+    }
+
+    // Gallery numbers of the items in an outfit ("07" or "02+05").
     public string EntryNumber(Outfit outfit)
     {
-        return ((outfit.sheet ? SheetEntry : outfit.mask) + 1).ToString("00");
+        var found = new List<int>(4);
+        CollectEntries(outfit, found);
+        var sb = new StringBuilder();
+        foreach (int entry in found)
+        {
+            if (sb.Length > 0) sb.Append('+');
+            sb.Append(EntryNumber(entry));
+        }
+        return sb.ToString();
+    }
+
+    public string EntryNumber(int entry) => (entry + 1).ToString("00");
+
+    public string EntryLabel(VisitorKind kind, int entry)
+    {
+        var def = entries[(int)kind][entry];
+        return def == null ? Loc.T("outfit.none") : ItemLabel(def);
+    }
+
+    public string ItemLabel(ItemDef def)
+    {
+        switch (def.Category)
+        {
+            case ItemCategory.Fur: return Loc.T("dress.furdye");
+            case ItemCategory.Sheet: return Loc.T("outfit.sheet");
+            case ItemCategory.Costume: return NodeLabel(def.Node, "Costume_", "costume.");
+            default: return NodeLabel(def.Node, "Fake_", "prop.");
+        }
     }
 
     public string Describe(Outfit outfit)
     {
         if (outfit.sheet) return Loc.T("outfit.sheet");
         var parts = new List<string>();
-        if ((outfit.mask & 1) != 0) parts.Add(Loc.T("outfit.dye", DyeLabel(outfit.dyeLevel)));
-        for (int i = 0; i < PropCount(outfit.kind); i++)
+        if (outfit.fur) parts.Add(Loc.T("outfit.dye", DyeLabel(outfit.dyeLevel)));
+        foreach (var def in props[(int)outfit.kind])
         {
-            if ((outfit.mask & (1 << (i + 1))) != 0) parts.Add(PropLabel(outfit.kind, i));
+            if (outfit.Has(def.Bit)) parts.Add(ItemLabel(def));
+        }
+        foreach (var def in costumes[(int)outfit.kind])
+        {
+            if (outfit.Has(def.Bit)) parts.Add(ItemLabel(def));
         }
         return parts.Count == 0 ? Loc.T("outfit.none") : string.Join(" + ", parts);
     }
@@ -124,11 +194,11 @@ public class OutfitCatalog : MonoBehaviour
         return percent + "%";
     }
 
-    public string PropLabel(VisitorKind kind, int index)
+    // Localized name from a model node name; falls back to the node name split into words.
+    static string NodeLabel(string name, string prefix, string keyPrefix)
     {
-        string name = disguises[(int)kind].PropName(index);
-        if (name.StartsWith("Fake_")) name = name.Substring(5);
-        if (Loc.Has("prop." + name)) return Loc.T("prop." + name);
+        if (name.StartsWith(prefix)) name = name.Substring(prefix.Length);
+        if (Loc.Has(keyPrefix + name)) return Loc.T(keyPrefix + name);
         var sb = new StringBuilder();
         for (int i = 0; i < name.Length; i++)
         {
@@ -156,30 +226,23 @@ public class OutfitCatalog : MonoBehaviour
         var visitor = Instantiate(Prefab(outfit.kind), parent);
         visitor.transform.localPosition = Vector3.zero;
         visitor.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-        if (visitor.TryGetComponent(out VisitorDisguise disguise))
-        {
-            disguise.Apply(outfit.mask, Mathf.Clamp(outfit.dyeLevel, 0, disguise.DyeLevelCount - 1));
-        }
-        if (outfit.sheet && visitor.TryGetComponent(out GhostSheet sheet)) sheet.Wear();
+        OutfitApplier.Apply(visitor, outfit);
         visitor.enabled = false;
         return visitor.gameObject;
     }
 
     void Load()
     {
-        unlocked = new bool[stride * 2];
-        string saved = PlayerPrefs.GetString(SaveKey, "");
-        for (int i = 0; i < unlocked.Length && i < saved.Length; i++)
+        string[] parts = PlayerPrefs.GetString(SaveKey, "").Split(',');
+        for (int k = 0; k < 2 && k < parts.Length; k++)
         {
-            unlocked[i] = saved[i] == '1';
+            if (uint.TryParse(parts[k], System.Globalization.NumberStyles.HexNumber, null, out uint bits)) unlocked[k] = bits;
         }
     }
 
     void Save()
     {
-        var sb = new StringBuilder(unlocked.Length);
-        foreach (bool b in unlocked) sb.Append(b ? '1' : '0');
-        PlayerPrefs.SetString(SaveKey, sb.ToString());
+        PlayerPrefs.SetString(SaveKey, unlocked[0].ToString("x") + "," + unlocked[1].ToString("x"));
         PlayerPrefs.Save();
     }
 
@@ -187,6 +250,6 @@ public class OutfitCatalog : MonoBehaviour
     void ForgetAll()
     {
         PlayerPrefs.DeleteKey(SaveKey);
-        Load();
+        unlocked[0] = unlocked[1] = 0;
     }
 }

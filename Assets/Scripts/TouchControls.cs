@@ -38,7 +38,9 @@ public class TouchControls : MonoBehaviour
     void Update()
     {
         bool active = GameInput.UsingTouch && playing != null && playing() && UiKit.ModalRoot == null;
-        if (hint != null && hint.activeSelf != active) hint.SetActive(active);
+        // The gesture line is a first-game help: once the opening hints are done it would only be in the way.
+        bool showHint = active && PlayerPrefs.GetInt(Progress.GuideKey, 0) == 0;
+        if (hint != null && hint.activeSelf != showHint) hint.SetActive(showHint);
         if (!active)
         {
             tracking = false;

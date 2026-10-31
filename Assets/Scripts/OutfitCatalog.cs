@@ -28,6 +28,9 @@ public class OutfitCatalog : MonoBehaviour
     public int MaxPropCount { get; private set; }
     public int MaxCostumeCount { get; private set; }
 
+    void OnEnable() => Progress.Cleared += ForgetAll;
+    void OnDisable() => Progress.Cleared -= ForgetAll;
+
     void Awake()
     {
         disguises = new[]

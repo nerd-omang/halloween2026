@@ -26,7 +26,7 @@ public class GameManager : MonoBehaviour
     [SerializeField] int maxHearts = 3;
     [SerializeField] float reviewDelay = 1.3f;
 
-    const string BestKey = "best_score";
+    const string BestKey = Progress.BestKey;
 
     readonly List<MistakeRecord> mistakes = new List<MistakeRecord>();
     readonly List<int> newEntries = new List<int>();
@@ -50,6 +50,16 @@ public class GameManager : MonoBehaviour
     float inputUnlockTime;
     float reviewUnlockTime;
     bool musicStarted;
+
+    void OnEnable() => Progress.Cleared += OnProgressCleared;
+    void OnDisable() => Progress.Cleared -= OnProgressCleared;
+
+    void OnProgressCleared()
+    {
+        best = 0;
+        LastLocalRank = 0;
+        pendingRank = 0;
+    }
 
     void Start()
     {

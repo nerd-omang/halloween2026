@@ -16,6 +16,8 @@ public class SpecialGuest : MonoBehaviour
 
     public static bool Seen(int guest) => (PlayerPrefs.GetInt(SeenKey, 0) & (1 << guest)) != 0;
 
+    public static void Forget() => PlayerPrefs.DeleteKey(SeenKey);
+
     public static void UnlockAll()
     {
         PlayerPrefs.SetInt(SeenKey, (1 << Count) - 1);

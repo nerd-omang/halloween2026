@@ -99,12 +99,19 @@ public static class Loc
         // Records, score and initials
         ["menu.records"] = ("RECORDS", "기록"),
         ["records.header"] = ("RECORDS", "기록"),
-        ["ranking.header"] = ("RANKING", "내 랭킹"),
+        ["ranking.header"] = ("RANKING", "랭킹"),
         ["records.tabMine"] = ("My records", "내 기록"),
         ["records.tabStats"] = ("My stats", "내 통계"),
-        ["records.tabWorld"] = ("World", "월드"),
         ["records.empty"] = ("No records yet.\nPlay a game to set one.", "아직 기록이 없어요.\n게임을 하고 기록을 남겨 보세요."),
-        ["records.world"] = ("The world ranking is coming soon.", "월드 랭킹은 준비 중이에요."),
+        ["ranking.tabLocal"] = ("LOCAL", "로컬"),
+        ["ranking.tabOnline"] = ("ONLINE", "온라인"),
+        ["ranking.retry"] = ("RETRY", "다시 시도"),
+        ["online.notConfigured"] = ("Online ranking is offline.", "서버가 설정되지 않았어요."),
+        ["online.loading"] = ("Loading...", "불러오는 중..."),
+        ["online.failed"] = ("Could not load the ranking.", "랭킹을 불러오지 못했어요."),
+        ["online.empty"] = ("No records yet.", "아직 기록이 없어요."),
+        ["settings.share"] = ("Share results online", "결과 온라인 공유"),
+        ["settings.shareHint"] = ("Only an anonymous result code is sent. Initials are sent only when you RECORD.", "익명 결과 코드만 전송돼요. 이니셜은 기록할 때만 보내요."),
         ["records.page"] = ("{0} / {1}", "{0} / {1}"),
         ["stats.games"] = ("Games played: {0}", "플레이 횟수: {0}판"),
         ["stats.total"] = ("Total score: {0}", "총점: {0}"),
@@ -138,7 +145,14 @@ public static class Loc
 
         // Common
         ["back"] = ("BACK", "뒤로"),
-        ["drag.rotate"] = ("Drag to rotate", "드래그해서 돌려보기"),
+        ["drag.rotate"] = ("Drag to rotate · Wheel to zoom", "드래그: 회전 · 휠: 확대"),
+        ["drag.rotateTouch"] = ("Drag to rotate · Pinch to zoom", "드래그: 회전 · 핀치: 확대"),
+        ["gallery.special"] = ("SPECIAL", "특별"),
+        ["gallery.unlockAll"] = ("UNLOCK ALL", "전부 해금"),
+        ["gallery.unlockAsk"] = ("Unlock everything?\nThis cannot be undone.", "모든 항목을 해금할까요?\n되돌릴 수 없어요."),
+        ["gallery.unlockYes"] = ("UNLOCK", "해금"),
+        ["gallery.unlockNo"] = ("CANCEL", "취소"),
+        ["view.reset"] = ("VIEW RESET", "시점 초기화"),
 
         // Gallery
         ["gallery.header"] = ("GALLERY", "도감"),
@@ -179,6 +193,8 @@ public static class Loc
         ["kind.kun"] = ("Kunmungchi", "쿤뭉치"),
         ["kind.oma"] = ("Omangi", "오망이"),
         ["outfit.sheet"] = ("Ghost sheet", "유령 시트"),
+        ["hud.special"] = ("SPECIAL GUEST: {0}", "SPECIAL GUEST: {0}"),
+        ["hud.specialNew"] = ("NEW SPECIAL GUEST: {0}", "NEW SPECIAL GUEST: {0}"),
         ["outfit.dye"] = ("Fur dye {0}", "털 염색 {0}"),
         ["outfit.none"] = ("No disguise", "변장 없음"),
 

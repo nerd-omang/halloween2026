@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Records from the title menu: the local ranking with each game's looks, the player's statistics, and a
-// placeholder for the world ranking.
+// Records from the title menu: the rankings (local with each game's looks, online) and the player's statistics.
 public class RecordsScreen
 {
     const int TopFooledCount = 5;
@@ -19,9 +18,8 @@ public class RecordsScreen
     readonly GameObject panel;
     readonly RankingView ranking;
     readonly GameObject statsPage;
-    readonly GameObject worldPage;
     readonly GameObject header;
-    readonly SimpleButton[] tabs = new SimpleButton[3];
+    readonly SimpleButton[] tabs = new SimpleButton[2];
     readonly Text[] statLines = new Text[5];
     readonly Text noFooledText;
     readonly Text[] fooledLabels = new Text[TopFooledCount];
@@ -42,12 +40,12 @@ public class RecordsScreen
 
         // Tabs at the top right.
         var topRight = new Vector2(1f, 1f);
-        string[] tabKeys = { "records.tabMine", "records.tabStats", "records.tabWorld" };
-        for (int i = 0; i < 3; i++)
+        string[] tabKeys = { "records.tabMine", "records.tabStats" };
+        for (int i = 0; i < tabs.Length; i++)
         {
             int index = i;
             tabs[i] = UiKit.Button(root, "Tab" + i, "", 22, topRight, topRight,
-                new Vector2(-UiKit.MarginX - (2 - i) * 158f, -UiKit.MarginY), new Vector2(150f, 44f), () => SetTab(index));
+                new Vector2(-UiKit.MarginX - (1 - i) * 158f, -UiKit.MarginY), new Vector2(150f, 44f), () => SetTab(index));
             UiKit.Bind(tabs[i].Label, tabKeys[i]);
         }
 
@@ -58,7 +56,6 @@ public class RecordsScreen
         ranking = new RankingView(root, catalog, stage, "records.header");
 
         statsPage = BuildStats(out statLines, out noFooledText, out fooledLabels, out fooledBars, out fooledCounts, out resetButton);
-        worldPage = BuildWorld();
 
         var bottomRight = new Vector2(1f, 0f);
         var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
@@ -103,14 +100,6 @@ public class RecordsScreen
         return card.gameObject;
     }
 
-    GameObject BuildWorld()
-    {
-        var center = new Vector2(0.5f, 0.5f);
-        var card = UiKit.Card("WorldCard", root, new Vector2(760f, 260f));
-        UiKit.Bind(UiKit.Label(card, "Text", "", 33, TextAnchor.MiddleCenter, center, center, Vector2.zero, new Vector2(680f, 120f), UiKit.Dim), "records.world");
-        return card.gameObject;
-    }
-
     public void Show()
     {
         panel.SetActive(true);
@@ -127,7 +116,6 @@ public class RecordsScreen
     {
         for (int i = 0; i < tabs.Length; i++) tabs[i].Highlighted = i == index;
         statsPage.SetActive(index == 1);
-        worldPage.SetActive(index == 2);
         header.SetActive(index != 0);
         if (index == 0)
         {

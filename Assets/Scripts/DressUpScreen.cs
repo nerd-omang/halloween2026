@@ -106,8 +106,12 @@ public class DressUpScreen
         var bottomRight = new Vector2(1f, 0f);
         var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
         UiKit.Bind(back.Label, "back");
+        // Top left of the middle area, away from the model in its center.
+        var viewReset = UiKit.Button(root, "ViewReset", "", 22, topLeft, topLeft, new Vector2(424f, -UiKit.MarginY), new Vector2(190f, 44f), stage.ResetView);
+        UiKit.Bind(viewReset.Label, "view.reset");
+        // A low strip at the bottom edge, between the two side panels.
         descriptionText = UiKit.Label(root, "Description", "", 33, TextAnchor.LowerCenter, new Vector2(0f, 0f), new Vector2(0.5f, 0f),
-            new Vector2(640f, 104f), new Vector2(440f, 90f), Color.white);
+            new Vector2(640f, 14f), new Vector2(440f, 84f), Color.white);
 
         panel.SetActive(false);
     }
@@ -171,7 +175,7 @@ public class DressUpScreen
         else stage.SetOutfit(0, current);
 
         descriptionText.text = OutfitCatalog.KindName(current.kind) + "\n<size=22>" + catalog.Describe(current)
-            + "</size>\n<size=22><color=#c8b8d9>" + Loc.T("drag.rotate") + "</color></size>";
+            + "</size>\n<size=22><color=#c8b8d9>" + Loc.T(GameInput.UsingTouch ? "drag.rotateTouch" : "drag.rotate") + "</color></size>";
     }
 
     void SyncControls()

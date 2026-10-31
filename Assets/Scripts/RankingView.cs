@@ -60,10 +60,15 @@ public class RankingView
     readonly SimpleButton nextButton;
     readonly Text pageText;
     readonly Text emptyText;
+    readonly Text statusText;
+    readonly SimpleButton localTab;
+    readonly SimpleButton onlineTab;
+    readonly SimpleButton retryButton;
     readonly List<GameObject> captions = new List<GameObject>();
 
     int page;
     int selected; // 1-based rank, 0 = none
+    bool online;  // showing the world ranking (initials and score only, no looks)
 
     // headerKey: the Loc key of the panel title.
     public RankingView(Transform parentTransform, OutfitCatalog catalog, ModelStage stage, string headerKey)
@@ -97,6 +102,15 @@ public class RankingView
         emptyText = UiKit.Label(content, "Empty", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(24f, -RowTop), new Vector2(PanelWidth - 48f, 120f), UiKit.Dim);
         UiKit.Bind(emptyText, "records.empty");
 
+        // LOCAL / ONLINE switch under the header.
+        localTab = UiKit.Button(content, "TabLocal", "", 22, topLeft, topLeft, new Vector2(24f, -72f), new Vector2(160f, 34f), () => SetOnline(false));
+        UiKit.Bind(localTab.Label, "ranking.tabLocal");
+        onlineTab = UiKit.Button(content, "TabOnline", "", 22, topLeft, topLeft, new Vector2(192f, -72f), new Vector2(160f, 34f), () => SetOnline(true));
+        UiKit.Bind(onlineTab.Label, "ranking.tabOnline");
+        statusText = UiKit.Label(content, "Status", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(24f, -RowTop), new Vector2(PanelWidth - 48f, 120f), UiKit.Dim);
+        retryButton = UiKit.Button(content, "Retry", "", 22, topLeft, topLeft, new Vector2(24f, -RowTop - LocalRanking.PageSize * RowStep - 10f), new Vector2(200f, 38f), () => WorldBoard.Refresh(true));
+        UiKit.Bind(retryButton.Label, "ranking.retry");
+
         var bottomLeft = new Vector2(0f, 1f);
         float navY = -RowTop - LocalRanking.PageSize * RowStep - 10f;
         prevButton = UiKit.Button(content, "Prev", "←", 22, bottomLeft, bottomLeft, new Vector2(24f, navY), new Vector2(72f, 38f), () => ChangePage(-1));
@@ -110,20 +124,77 @@ public class RankingView
     public bool IsActive => root.gameObject.activeSelf;
 
     // Shows the list. highlightRank > 0 opens its page and selects it; otherwise the best game is selected.
+    // It always opens on the local list.
     public void Show(int highlightRank)
     {
         root.gameObject.SetActive(true);
         root.SetAsFirstSibling();
         selected = highlightRank > 0 ? highlightRank : (LocalRanking.Entries.Count > 0 ? 1 : 0);
         page = selected > 0 ? (selected - 1) / LocalRanking.PageSize : 0;
-        Layout();
-        ShowSelected();
+        WorldBoard.Changed -= OnWorldChanged;
+        WorldBoard.Changed += OnWorldChanged;
+        SetOnline(false);
     }
 
     public void Hide()
     {
+        WorldBoard.Changed -= OnWorldChanged;
         root.gameObject.SetActive(false);
         LookCaptions.Clear(captions);
+    }
+
+    void SetOnline(bool value)
+    {
+        online = value;
+        localTab.Highlighted = !online;
+        onlineTab.Highlighted = online;
+        if (online)
+        {
+            LookCaptions.Clear(captions);
+            stage.Show(new List<Outfit>(), StageViewportX);
+            WorldBoard.Refresh();
+            LayoutOnline();
+            return;
+        }
+        statusText.gameObject.SetActive(false);
+        retryButton.gameObject.SetActive(false);
+        Layout();
+        ShowSelected();
+    }
+
+    void OnWorldChanged()
+    {
+        if (online) LayoutOnline();
+    }
+
+    void LayoutOnline()
+    {
+        var entries = WorldBoard.Entries;
+        emptyText.gameObject.SetActive(false);
+        prevButton.gameObject.SetActive(false);
+        nextButton.gameObject.SetActive(false);
+        pageText.gameObject.SetActive(false);
+        for (int i = 0; i < rows.Length; i++)
+        {
+            bool shown = i < entries.Count;
+            rows[i].gameObject.SetActive(shown);
+            if (!shown) continue;
+
+            rankTexts[i].text = (i + 1).ToString();
+            initialsTexts[i].text = entries[i].initials;
+            scoreTexts[i].text = entries[i].score.ToString();
+            dateTexts[i].gameObject.SetActive(false);
+            rows[i].Highlighted = false;
+        }
+
+        var status = WorldBoard.Status;
+        statusText.gameObject.SetActive(entries.Count == 0);
+        retryButton.gameObject.SetActive(status == WorldBoard.LoadStatus.Failed);
+        string key = "online.empty";
+        if (status == WorldBoard.LoadStatus.NotConfigured) key = "online.notConfigured";
+        else if (status == WorldBoard.LoadStatus.Loading) key = "online.loading";
+        else if (status == WorldBoard.LoadStatus.Failed) key = "online.failed";
+        statusText.text = Loc.T(key);
     }
 
     void Layout()
@@ -143,6 +214,7 @@ public class RankingView
             rankTexts[i].text = rank.ToString();
             initialsTexts[i].text = entries[i].initials;
             scoreTexts[i].text = entries[i].score.ToString();
+            dateTexts[i].gameObject.SetActive(true);
             dateTexts[i].text = entries[i].Date.ToString("MM-dd");
             rows[i].Highlighted = rank == selected;
         }
@@ -158,6 +230,7 @@ public class RankingView
 
     void ChangePage(int delta)
     {
+        if (online) return;
         int pages = Mathf.Max(1, Mathf.CeilToInt(LocalRanking.Entries.Count / (float)LocalRanking.PageSize));
         int next = Mathf.Clamp(page + delta, 0, pages - 1);
         if (next == page) return;
@@ -167,6 +240,7 @@ public class RankingView
 
     void Select(int rank)
     {
+        if (online) return;
         selected = rank;
         Layout();
         ShowSelected();

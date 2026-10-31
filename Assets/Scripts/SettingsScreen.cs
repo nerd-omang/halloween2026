@@ -8,7 +8,7 @@ using UnityEngine.UI;
 public class SettingsScreen
 {
     const float BoxWidth = 860f;
-    const float BoxHeight = 580f;
+    const float BoxHeight = 650f;
     const float LabelX = 36f;
     const float ControlX = 270f;
     const float OptionWidth = 130f;
@@ -27,6 +27,8 @@ public class SettingsScreen
     readonly SimpleButton[] presetButtons = new SimpleButton[Settings.PresetCount];
     Text presetHint;
     readonly SimpleButton[] languageButtons = new SimpleButton[2];
+    readonly SimpleButton[] shareButtons = new SimpleButton[2];
+    GameObject shareRow;
 
     // Advanced look tab
     readonly SimpleButton[] ditherButtons = new SimpleButton[2];
@@ -119,6 +121,15 @@ public class SettingsScreen
         languageButtons[0].Text = "한국어";
         languageButtons[1] = Option(page, "LangEn", -466f, 1, () => Loc.Current = Lang.En, null);
         languageButtons[1].Text = "English";
+
+        // Only offered when a ranking server is configured.
+        shareRow = UiKit.Fill("ShareRow", page).gameObject;
+        var shareLabel = UiKit.Label(shareRow.transform, "ShareLabel", "", 22, TextAnchor.MiddleLeft, topLeft, topLeft, new Vector2(LabelX, -512f), new Vector2(ControlX - LabelX - 8f, 40f), UiKit.Dim);
+        UiKit.Bind(shareLabel, "settings.share");
+        shareButtons[0] = Option(shareRow.transform, "ShareOn", -512f, 0, () => Settings.ShareOnline = true, "settings.on");
+        shareButtons[1] = Option(shareRow.transform, "ShareOff", -512f, 1, () => Settings.ShareOnline = false, "settings.off");
+        UiKit.Bind(UiKit.Label(shareRow.transform, "ShareHint", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -558f), new Vector2(BoxWidth - 2f * LabelX - 240f, 56f), UiKit.Dim),
+            "settings.shareHint");
     }
 
     void BuildAdvanced(Transform page)
@@ -234,6 +245,9 @@ public class SettingsScreen
         RefreshPresets();
         languageButtons[0].Highlighted = Loc.Current == Lang.Ko;
         languageButtons[1].Highlighted = Loc.Current == Lang.En;
+        shareRow.SetActive(WorldBoard.Configured);
+        shareButtons[0].Highlighted = Settings.ShareOnline;
+        shareButtons[1].Highlighted = !Settings.ShareOnline;
 
         bool dither = Settings.DitherOn;
         ditherButtons[0].Highlighted = dither;

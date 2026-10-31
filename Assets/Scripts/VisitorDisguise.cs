@@ -20,6 +20,8 @@ public class VisitorDisguise : MonoBehaviour
 
     // Props that cover the head (the paint bucket): a costume head piece (VisitorCostume) is not worn with them.
     [SerializeField] GameObject[] headCoverProps;
+    // Props over the eyes (the X glasses): costume sunglasses are not worn with them.
+    [SerializeField] GameObject[] eyeCoverProps;
 
     [Header("Knocked-off props")]
     [SerializeField] PropFlight flight = new PropFlight();
@@ -197,18 +199,36 @@ public class VisitorDisguise : MonoBehaviour
     }
 
     // True while a worn prop covers the head (VisitorCostume leaves its head piece off then).
-    public bool HeadCovered
+    public bool HeadCovered => AnyWorn(headCoverProps);
+
+    // True while a headband prop is worn: a head prop that does not cover the head (horn band, goat ears).
+    // VisitorCostume leaves its headbands off then.
+    public bool HeadbandWorn
     {
         get
         {
-            if (headCoverProps == null) return false;
-            foreach (var p in headCoverProps)
+            if (headProps == null) return false;
+            foreach (var p in headProps)
             {
                 int i = System.Array.IndexOf(props, p);
-                if (i >= 0 && IsWorn(i)) return true;
+                if (i >= 0 && IsWorn(i) && (headCoverProps == null || System.Array.IndexOf(headCoverProps, p) < 0)) return true;
             }
             return false;
         }
+    }
+
+    // True while a worn prop covers the eyes (VisitorCostume leaves its sunglasses off then).
+    public bool EyesCovered => AnyWorn(eyeCoverProps);
+
+    bool AnyWorn(GameObject[] list)
+    {
+        if (list == null) return false;
+        foreach (var p in list)
+        {
+            int i = System.Array.IndexOf(props, p);
+            if (i >= 0 && IsWorn(i)) return true;
+        }
+        return false;
     }
 
     void Update() => flight.Update(transform);

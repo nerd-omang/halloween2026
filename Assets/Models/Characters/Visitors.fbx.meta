@@ -12,6 +12,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CostumeAlienLens
+    second: {fileID: 2100000, guid: a948eaeefa100de4d8f863209c843450, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CostumeBandage
     second: {fileID: 2100000, guid: ac06f2593760b984292f0ae9bb859b12, type: 2}
   - first:
@@ -22,8 +27,18 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CostumeBunnyInner
+    second: {fileID: 2100000, guid: 34f76391bc8c5b24bab7be4491b28385, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CostumeDark
     second: {fileID: 2100000, guid: 34246810b42f2384ea71c0d99bcfdab4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeGold
+    second: {fileID: 2100000, guid: 930b839ec2166cb4092ce20a6fecc6e5, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
@@ -32,8 +47,23 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CostumeLensAmber
+    second: {fileID: 2100000, guid: c8d4323ad7fcf8a43ad8919f715ebb1a, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeLime
+    second: {fileID: 2100000, guid: aa7813f4f73f24744afdb7f1cc199cc2, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CostumeOrange
     second: {fileID: 2100000, guid: e1c4ba1628703544faeb7dffe11affe7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeWhite
+    second: {fileID: 2100000, guid: 52f1e1e8b159f424da35ee11c79ec7da, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
@@ -64,6 +94,11 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: NoseTip
     second: {fileID: 2100000, guid: 07c8894b6a4866644a0500282c0bd142, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Piercing
+    second: {fileID: 2100000, guid: 95577a0406c008d4d8f992a14b5f9774, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule

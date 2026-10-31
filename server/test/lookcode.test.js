@@ -37,7 +37,7 @@ test('the set of producible looks equals the C# one (all kinds x fur levels x kn
   const codes = [];
   for (let kind = 0; kind < 2; kind++) {
     for (let fur = 0; fur < 4; fur++) {
-      for (let items = 0; items < 1 << 13; items++) {
+      for (let items = 0; items < 1 << 17; items++) {
         if (isPossible(kind, fur, items)) codes.push(((items << 3) | (fur << 1) | kind) >>> 0);
       }
     }
@@ -110,7 +110,10 @@ test('reject looks the game can never produce', () => {
     'two head props': ((1 << 1) | (1 << 2) | 1) << 3,
     'bucket without fur': (1 << 6) << 3,
     'witch hat under the bucket': ((1 << 6) | 1 | (1 << 7)) << 3,
-    'unknown item bit 13': (1 << 13) << 3,
+    'unknown item bit 20': (1 << 20) << 3,
+    'maid headband with the horn band': ((1 << 1) | (1 << 13)) << 3,
+    'witch hat and bunny headband': ((1 << 7) | (1 << 14)) << 3 | 1,
+    'star sunglasses with the X glasses': ((1 << 5) | (1 << 15)) << 3 | 1,
     'unknown item bit 28': ((1 << 28) << 3) >>> 0,
   };
   for (const [name, code] of Object.entries(bad)) {

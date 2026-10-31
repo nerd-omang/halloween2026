@@ -45,12 +45,19 @@ public static class VisitorModelBuilder
         ("PropBucket_Red", new Color(0.75f, 0.08f, 0.06f), 0.35f, false, 0f), // tin coated in wet paint, per visitor
         ("PropBucket_Gray", new Color(0.50f, 0.45f, 0.45f), 0.35f, false, 0f),
         ("PropTin", new Color(0.62f, 0.62f, 0.64f), 0.45f, false, 0f),
+        ("Piercing", new Color(0.78f, 0.78f, 0.80f), 0.7f, false, 0f),           // Omangi's real ear piercing
         ("CostumeHat", new Color(0.14f, 0.07f, 0.20f), 0.1f, false, 0f),
         ("CostumeOrange", new Color(0.95f, 0.42f, 0.04f), 0.2f, false, 0f),
         ("CostumeDark", new Color(0.04f, 0.03f, 0.03f), 0f, false, 0f),
         ("CostumeBandage", new Color(0.86f, 0.82f, 0.70f), 0f, false, 0f),
         ("CostumeWing", new Color(0.07f, 0.05f, 0.09f), 0.1f, false, 0f),
         ("CostumeBow", new Color(0.50f, 0.12f, 0.62f), 0.3f, false, 0f),
+        ("CostumeWhite", new Color(0.95f, 0.95f, 0.93f), 0.2f, false, 0f),
+        ("CostumeBunnyInner", new Color(0.60f, 0.58f, 0.60f), 0.1f, false, 0f),
+        ("CostumeGold", new Color(0.95f, 0.75f, 0.15f), 0.6f, false, 0f),
+        ("CostumeLensAmber", new Color(0.25f, 0.15f, 0.03f), 0.8f, false, 0f),
+        ("CostumeAlienLens", new Color(0.12f, 0.14f, 0.13f), 0.85f, false, 0f),
+        ("CostumeLime", new Color(0.45f, 0.90f, 0.12f), 0.5f, false, 0f),
     };
 
     const string SheetMaterial = "Sheet";
@@ -87,9 +94,11 @@ public static class VisitorModelBuilder
         AddDisguise(koon, "Fur_Gray", DyeLevels("Paint_Red"), "Fake_HornBand", "Fake_GoatEars", "Fake_XGlasses", "Fake_PaintBucket");
         AddDisguise(oma, "Fur_Red", DyeLevels("Fur_GrayDyed"), "Fake_ConeNose", "Fake_RaccoonTail", "Fake_XGlasses", "Fake_PaintBucket");
         // The paint bucket takes the head slot (the bucket wins over the headbands) and brings the fur paint.
+        // The X glasses cover the eyes (no costume sunglasses over them).
         SetDisguiseRules(koon, new[] { "Fake_PaintBucket", "Fake_HornBand", "Fake_GoatEars" }, new[] { "Fake_PaintBucket" },
-            new[] { "Fake_PaintBucket" });
-        SetDisguiseRules(oma, new[] { "Fake_PaintBucket" }, new[] { "Fake_PaintBucket" }, new[] { "Fake_PaintBucket" });
+            new[] { "Fake_PaintBucket" }, new[] { "Fake_XGlasses" });
+        SetDisguiseRules(oma, new[] { "Fake_PaintBucket" }, new[] { "Fake_PaintBucket" }, new[] { "Fake_PaintBucket" },
+            new[] { "Fake_XGlasses" });
         // Halloween costumes worn by either side (noise, not clues), one per slot; only the bandage cannot be knocked off.
         foreach (var prefab in new[] { koon, oma })
             AddCostumes(prefab, Costumes);
@@ -101,9 +110,9 @@ public static class VisitorModelBuilder
         // Parts that push the sheet up (props only show when worn). Surface clues (eyes, markings, dye,
         // glasses) are not listed, so the sheet hides them.
         AddGhostSheet(koon, "Ghost_Sheet", "Koon_Nose", "Koon_Tail", "Fake_HornBand", "Fake_GoatEars", "Fake_PaintBucket",
-            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings");
+            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband");
         AddGhostSheet(oma, "Ghost_Sheet", "Oma_Horns", "Oma_Ears", "Oma_Tail", "Fake_ConeNose", "Fake_RaccoonTail", "Fake_PaintBucket",
-            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings");
+            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband");
         // Fixed full-costume variants, for the preview scene.
         var koonCostume = SavePrefab(koon, "Koonmungchi_OmaCostume", "Paint_Red",
             "Body", "Koon_", "Fake_HornBand", "Fake_GoatEars");
@@ -284,17 +293,22 @@ public static class VisitorModelBuilder
     }
 
     // Combination rules for VisitorDisguise: props sharing the head (first one wins) and props that bring the fur change.
-    // VisitorCostume entries: (part, slot, stays on through a palm blast). Order is the costume bit order.
-    static readonly (string name, CostumeSlot slot, bool stays)[] Costumes =
+    // VisitorCostume entries: (part, slot, stays on through a palm blast, is a headband). Order is the costume
+    // bit order; append only. The rules match ItemTable.
+    static readonly (string name, CostumeSlot slot, bool stays, bool headband)[] Costumes =
     {
-        ("Costume_WitchHat", CostumeSlot.Head, false),
-        ("Costume_BowTie", CostumeSlot.Neck, false),
-        ("Costume_PumpkinBasket", CostumeSlot.Hand, false),
-        ("Costume_BatWings", CostumeSlot.Back, false),
-        ("Costume_Bandage", CostumeSlot.Body, true),
+        ("Costume_WitchHat", CostumeSlot.Head, false, false),
+        ("Costume_BowTie", CostumeSlot.Neck, false, false),
+        ("Costume_PumpkinBasket", CostumeSlot.Hand, false, false),
+        ("Costume_BatWings", CostumeSlot.Back, false, false),
+        ("Costume_Bandage", CostumeSlot.Body, true, false),
+        ("Costume_MaidHeadband", CostumeSlot.Head, false, true),
+        ("Costume_BunnyHeadband", CostumeSlot.Head, false, true),
+        ("Costume_StarSunglasses", CostumeSlot.Eyes, false, false),
+        ("Costume_AlienSunglasses", CostumeSlot.Eyes, false, false),
     };
 
-    static void AddCostumes(GameObject prefab, (string name, CostumeSlot slot, bool stays)[] entries)
+    static void AddCostumes(GameObject prefab, (string name, CostumeSlot slot, bool stays, bool headband)[] entries)
     {
         var path = AssetDatabase.GetAssetPath(prefab);
         var root = PrefabUtility.LoadPrefabContents(path);
@@ -311,6 +325,7 @@ public static class VisitorModelBuilder
             entry.FindPropertyRelative("item").objectReferenceValue = root.transform.Find(entries[i].name).gameObject;
             entry.FindPropertyRelative("slot").enumValueIndex = (int)entries[i].slot;
             entry.FindPropertyRelative("stays").boolValue = entries[i].stays;
+            entry.FindPropertyRelative("headband").boolValue = entries[i].headband;
         }
         so.ApplyModifiedPropertiesWithoutUndo();
 
@@ -318,12 +333,14 @@ public static class VisitorModelBuilder
         PrefabUtility.UnloadPrefabContents(root);
     }
 
-    static void SetDisguiseRules(GameObject prefab, string[] headPropNames, string[] furPropNames, string[] headCoverNames)
+    static void SetDisguiseRules(GameObject prefab, string[] headPropNames, string[] furPropNames, string[] headCoverNames,
+        string[] eyeCoverNames)
     {
         var path = AssetDatabase.GetAssetPath(prefab);
         var root = PrefabUtility.LoadPrefabContents(path);
         var so = new SerializedObject(root.GetComponent<VisitorDisguise>());
-        foreach (var (field, names) in new[] { ("headProps", headPropNames), ("furProps", furPropNames), ("headCoverProps", headCoverNames) })
+        foreach (var (field, names) in new[] { ("headProps", headPropNames), ("furProps", furPropNames),
+                     ("headCoverProps", headCoverNames), ("eyeCoverProps", eyeCoverNames) })
         {
             var list = so.FindProperty(field);
             list.arraySize = names.Length;

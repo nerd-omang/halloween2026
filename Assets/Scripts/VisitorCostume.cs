@@ -1,13 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum CostumeSlot { Head, Neck, Hand, Back, Body }
+public enum CostumeSlot { Head, Neck, Hand, Back, Body, Eyes }
 
 // Halloween costumes worn just for fun by either visitor (witch hat, pumpkin basket...). Unlike
 // VisitorDisguise they imitate nobody, so they never point to the answer; they are visual noise, and
 // the head piece can hide real parts. Kept apart from the disguise mask: bit i = costumes[i].
-// One costume per slot (the first listed wins a clash), and no head piece while a disguise prop covers
-// the head (VisitorDisguise.HeadCovered, e.g. the paint bucket). A palm blast can knock loose costumes
+// One costume per slot (the first listed wins a clash), no head piece while a disguise prop covers the
+// head (VisitorDisguise.HeadCovered, e.g. the paint bucket), no headband with a headband prop on
+// (VisitorDisguise.HeadbandWorn) and no sunglasses over the X glasses (VisitorDisguise.EyesCovered).
+// The same rules live in ItemTable.Normalize. A palm blast can knock loose costumes
 // off (DropOne); the ones marked `stays` (bandage) cannot come off.
 public class VisitorCostume : MonoBehaviour
 {
@@ -17,6 +19,8 @@ public class VisitorCostume : MonoBehaviour
         public GameObject item;
         public CostumeSlot slot;
         public bool stays;
+        // A headband (maid, bunny): left off while the disguise wears a headband prop.
+        public bool headband;
     }
 
     [SerializeField] Entry[] costumes;
@@ -62,13 +66,15 @@ public class VisitorCostume : MonoBehaviour
         }
     }
 
-    // One costume per slot (the first listed wins), no head piece under a head-covering disguise prop.
+    // One costume per slot (the first listed wins), and what the disguise has on leaves no room for.
     public int Normalize(int mask)
     {
-        return Normalize(mask, TryGetComponent(out VisitorDisguise disguise) && disguise.HeadCovered);
+        bool hasDisguise = TryGetComponent(out VisitorDisguise disguise);
+        return Normalize(mask, hasDisguise && disguise.HeadCovered, hasDisguise && disguise.HeadbandWorn,
+            hasDisguise && disguise.EyesCovered);
     }
 
-    public int Normalize(int mask, bool headCovered)
+    int Normalize(int mask, bool headCovered, bool headbandWorn, bool eyesCovered)
     {
         int taken = 0; // slots already used, one bit per CostumeSlot
         for (int i = 0; i < costumes.Length; i++)
@@ -76,7 +82,9 @@ public class VisitorCostume : MonoBehaviour
             int bit = 1 << i;
             if ((mask & bit) == 0) continue;
             int slotBit = 1 << (int)costumes[i].slot;
-            if ((taken & slotBit) != 0 || (headCovered && costumes[i].slot == CostumeSlot.Head))
+            var entry = costumes[i];
+            if ((taken & slotBit) != 0 || (headCovered && entry.slot == CostumeSlot.Head)
+                || (headbandWorn && entry.headband) || (eyesCovered && entry.slot == CostumeSlot.Eyes))
             {
                 mask &= ~bit;
                 continue;

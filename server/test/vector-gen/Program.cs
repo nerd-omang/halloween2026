@@ -97,7 +97,11 @@ static class P
         Forge("forged_two_head_props", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(1) | ItemTable.Mask(2) });
         Forge("forged_bucket_without_fur", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(6) });
         Forge("forged_hat_under_bucket", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(6) | ItemTable.Mask(0) | ItemTable.Mask(7) });
-        Forge("forged_unknown_item_bit13", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(13) });
+        Forge("forged_unknown_item_bit20", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(20) });
+        Forge("forged_maid_with_horn_band", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(1) | ItemTable.Mask(13) });
+        Forge("forged_hat_and_bunny", new Outfit { kind = VisitorKind.Omangi, items = ItemTable.Mask(7) | ItemTable.Mask(14) });
+        Forge("forged_star_with_x_glasses", new Outfit { kind = VisitorKind.Omangi, items = ItemTable.Mask(5) | ItemTable.Mask(15) });
+        Forge("bunny_and_alien_ok", new Outfit { kind = VisitorKind.Omangi, items = ItemTable.Mask(14) | ItemTable.Mask(16) });
         Forge("forged_unknown_item_bit28", new Outfit { kind = VisitorKind.Omangi, items = ItemTable.Mask(28) });
         Forge("forged_sheet_ok", new Outfit { kind = VisitorKind.Omangi, items = ItemTable.Mask(12) });
         Forge("fur_only_level3", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(0), dyeLevel = 3 });
@@ -112,6 +116,7 @@ static class P
             if (i > 0) items.Append(',');
             items.Append("{\"bit\":" + d.Bit + ",\"id\":" + J(d.Id) + ",\"category\":" + (int)d.Category + ",\"slot\":" + (int)d.Slot +
                 ",\"kinds\":" + d.Kinds + ",\"bringsFur\":" + (d.BringsFur ? "true" : "false") + ",\"coversHead\":" + (d.CoversHead ? "true" : "false") +
+                ",\"coversEyes\":" + (d.CoversEyes ? "true" : "false") + ",\"headband\":" + (d.Headband ? "true" : "false") +
                 ",\"headPriority\":" + d.HeadPriority + "}");
         }
         items.Append(']');
@@ -120,7 +125,7 @@ static class P
         var validLooks = new List<uint>();
         for (int kind = 0; kind < 2; kind++)
             for (int dye = 0; dye < 4; dye++)
-                for (uint it = 0; it < (1u << 13); it++)
+                for (uint it = 0; it < (1u << 17); it++)
                 {
                     var o = new Outfit { kind = (VisitorKind)kind, items = it, dyeLevel = dye };
                     if (LookCode.IsPossible(o)) validLooks.Add(LookCode.Pack(o));

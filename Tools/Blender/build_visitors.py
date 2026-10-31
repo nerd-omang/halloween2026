@@ -57,6 +57,7 @@ MATERIALS = {
     "TailStripe": ((1.0, 1.0, 1.0), True),
     "Horn": ((0.06, 0.05, 0.05), False),
     "Ear": ((0.07, 0.06, 0.06), False),
+    "Piercing": ((0.78, 0.78, 0.80), False),
     "PropBand": ((0.05, 0.05, 0.05), False),
     "PropHorn": ((0.10, 0.02, 0.02), False),
     "PropFelt": ((0.12, 0.11, 0.11), False),
@@ -74,6 +75,12 @@ MATERIALS = {
     "CostumeBandage": ((0.86, 0.82, 0.70), False),
     "CostumeWing": ((0.07, 0.05, 0.09), False),
     "CostumeBow": ((0.50, 0.12, 0.62), False),
+    "CostumeWhite": ((0.95, 0.95, 0.93), False),
+    "CostumeBunnyInner": ((0.60, 0.58, 0.60), False),
+    "CostumeGold": ((0.95, 0.75, 0.15), False),
+    "CostumeLensAmber": ((0.25, 0.15, 0.03), False),
+    "CostumeAlienLens": ((0.12, 0.14, 0.13), False),
+    "CostumeLime": ((0.45, 0.90, 0.12), False),
     "Sheet": ((0.90, 0.90, 0.88), False),
 }
 
@@ -487,6 +494,24 @@ def build_oma():
         add_sphere(part, "Ear", trs(anchor + d * 0.1, rot, (0.022, 0.05, 0.13)), u=6, v=4)
     part.finish()
 
+    # Silver piercing near the base of the left ear (+X, her left): one hoop through the ear's lower edge.
+    part = Part("Oma_Piercing")
+    anchor, n = surf((1.0, -0.15, 0.55))
+    d = Vector((0.85, -0.2, -0.5)).normalized()
+    face = basis(d, FRONT).col[0].to_3d()  # the ear's flat side, facing forward
+    if face.dot(FRONT) < 0:
+        face = -face
+    down = d.cross(face).normalized()  # across the ear, toward its lower edge
+    if down.z > 0:
+        down = -down
+    # The ear is an ellipsoid (half width 0.05, half length 0.13) centred 0.1 out; the hoop sits near the
+    # tip (0.07 past the centre), hanging from the lower edge, in the plane across the ear so it goes through it.
+    edge = anchor + d * 0.17 + down * 0.05 * math.sqrt(1 - (0.07 / 0.13) ** 2)
+    hoop = [edge - down * 0.004 + 0.026 * (math.cos(t) * down + math.sin(t) * face)
+            for t in (2 * math.pi * k / 12 for k in range(13))]
+    add_tube(part, "Piercing", hoop, [0.0045] * len(hoop), d, segments=5, cap_start=False, cap_end=False)
+    part.finish()
+
     # Two horns on top, curving slightly back and out.
     part = Part("Oma_Horns")
     for sx in (-1, 1):
@@ -566,13 +591,7 @@ def build_fakes():
     # Glasses with an X drawn on each lens, imitating Koonmungchi's stitched button eyes.
     part = Part("Fake_XGlasses")
     rim_r, lens_r = 0.066, 0.062
-    eye_y = 0.42
-    centers = [surf((sx * 0.36, -1.0, eye_y))[0] for sx in (-1, 1)]
-    # Lenses sit on one flat plane in front of the face, clear of Koonmungchi's button eyes (they stick out
-    # ~0.016) so either visitor can wear them; the lenses cover the eyes exactly.
-    face_y = min(project(c + AXIS_X * r * math.cos(a) + AXIS_Z * r * math.sin(a), FRONT, 0.0).y
-                 for c in centers for r in (0.0, rim_r) for a in (k * math.pi / 4 for k in range(8)))
-    centers = [Vector((c.x, face_y - 0.026, c.z)) for c in centers]
+    centers = eyewear_centers(rim_r)
     for c in centers:
         rim = [c + rim_r * (math.cos(a) * AXIS_X + math.sin(a) * AXIS_Z)
                for a in (2 * math.pi * k / 12 for k in range(13))]
@@ -581,15 +600,32 @@ def build_fakes():
     left, right = centers[0] + AXIS_X * rim_r, centers[1] - AXIS_X * rim_r
     bridge = [left.lerp(right, t) + AXIS_Z * 0.012 * math.sin(math.pi * t) for t in (k / 4 for k in range(5))]
     add_tube(part, "PropFrame", bridge, [0.005] * len(bridge), FRONT, segments=4)
-    for sx, c in zip((-1, 1), centers):
-        temple = [c + AXIS_X * sx * rim_r]
-        for a in range(40, 101, 15):
-            loc, sn = surf((sx * math.sin(math.radians(a)), -math.cos(math.radians(a)), eye_y))
-            temple.append(loc + sn * 0.012)
-        add_tube(part, "PropFrame", temple, [0.005] * len(temple), AXIS_Z, segments=4)
+    add_temples(part, "PropFrame", centers, rim_r)
     part.finish()
 
     build_paint_bucket()
+
+
+EYE_Y = 0.42  # height of both visitors' eyes
+
+
+def eyewear_centers(reach):
+    """Lens centers for glasses: one flat plane in front of the face, clear of Koonmungchi's button eyes
+    (they stick out ~0.016) so either visitor can wear them; reach is the lens extent around each eye."""
+    centers = [surf((sx * 0.36, -1.0, EYE_Y))[0] for sx in (-1, 1)]
+    face_y = min(project(c + AXIS_X * r * math.cos(a) + AXIS_Z * r * math.sin(a), FRONT, 0.0).y
+                 for c in centers for r in (0.0, reach) for a in (k * math.pi / 4 for k in range(8)))
+    return [Vector((c.x, face_y - 0.026, c.z)) for c in centers]
+
+
+def add_temples(part, mat, centers, reach):
+    """Glasses arms from the outer edge of each lens back along the head."""
+    for sx, c in zip((-1, 1), centers):
+        temple = [c + AXIS_X * sx * reach]
+        for a in range(40, 101, 15):
+            loc, sn = surf((sx * math.sin(math.radians(a)), -math.cos(math.radians(a)), EYE_Y))
+            temple.append(loc + sn * 0.012)
+        add_tube(part, mat, temple, [0.005] * len(temple), AXIS_Z, segments=4)
 
 
 def build_paint_bucket():
@@ -816,6 +852,122 @@ def build_costumes():
     add_sphere(part, "CostumeBow", trs(knot, Matrix.Identity(4), (0.02, 0.014, 0.018)), u=6, v=3)
     part.finish()
 
+    # Maid headband (head): white band behind the horns with a pleated lace frill standing on it,
+    # alternately tall and short, in and out, over a black ribbon edge.
+    part = Part("Costume_MaidHeadband")
+    y_bias, lift = 0.12, 0.012
+    band = [math.radians(a) for a in range(-95, 96, 16)]
+    add_tube(part, "CostumeWhite", band_path(y_bias, lift, band), [0.012] * len(band), AXIS_Y, segments=4)
+    lower, upper = [], []
+    for k, a in enumerate(math.radians(d) for d in range(-70, 71, 7)):
+        p, n = band_point(y_bias, lift, a)
+        lower.append(p)
+        upper.append(p + n * (0.05 if k % 2 == 0 else 0.038) + FRONT * (0.012 if k % 2 else -0.004))
+    add_strip(part, "CostumeWhite", lower, upper)
+    edge = [p + FRONT * 0.006 for p in lower]
+    add_tube(part, "CostumeDark", edge, [0.006] * len(edge), AXIS_Y, segments=4)
+    part.finish()
+
+    # Bunny headband (head): black band and long black ears with pale insides; one stands straight,
+    # the other folds forward halfway up.
+    part = Part("Costume_BunnyHeadband")
+    y_bias, lift = 0.05, 0.012
+    add_tube(part, "CostumeDark", band_path(y_bias, lift, band), [0.011] * len(band), AXIS_Y, segments=4)
+    width, length = 0.05, 0.3
+    leaf = [(-0.5, 0.0), (-1.0, 0.3), (-0.9, 0.7), (-0.5, 0.95), (0.0, 1.0), (0.5, 0.95), (0.9, 0.7),
+            (1.0, 0.3), (0.5, 0.0)]
+    stem = [(-0.5, 0.0), (-1.0, 0.25), (-1.0, 0.5), (1.0, 0.5), (1.0, 0.25), (0.5, 0.0)]
+    flap = [(-1.0, 0.0), (-0.9, 0.4), (-0.5, 0.8), (0.0, 0.9), (0.5, 0.8), (0.9, 0.4), (1.0, 0.0)]
+
+    def ear_piece(origin, side, along, outline):
+        """One flat piece of ear (outline in units of width across, length along) with its pale inside
+        on the front face."""
+        add_flat(part, "CostumeDark", outline, origin, side * width, along * length, 0.014)
+        inside = side.cross(along).normalized() * 0.009
+        inner = [(a * 0.55, 0.12 + b * 0.76) for a, b in outline]
+        add_flat(part, "CostumeBunnyInner", inner, origin + inside, side * width, along * length, 0.002)
+
+    for sx in (-1, 1):
+        p, n = band_point(y_bias, lift, math.radians(sx * 32))
+        up = (n + AXIS_Z * 0.6).normalized()
+        side = (AXIS_X - up * AXIS_X.dot(up)).normalized()
+        root = p - up * 0.01
+        if sx < 0:
+            ear_piece(root, side, up, leaf)
+        else:
+            ear_piece(root, side, up, stem)
+            facing = side.cross(up).normalized()
+            fold = math.radians(130)
+            down = up * math.cos(fold) + facing * math.sin(fold)  # folded forward and down
+            add_flat(part, "CostumeDark", flap, root + up * length * 0.5, side * width, down * length * 0.5, 0.014)
+            inside = side.cross(down).normalized() * 0.009
+            add_flat(part, "CostumeBunnyInner", [(a * 0.55, 0.1 + b * 0.75) for a, b in flap],
+                     root + up * length * 0.5 + inside, side * width, down * length * 0.5, 0.002)
+    part.finish()
+
+    # Star sunglasses (eyes): gold party glasses, a five-pointed star around each eye with dark amber lenses.
+    part = Part("Costume_StarSunglasses")
+    outer_r, inner_r = 0.11, 0.06  # big enough to hide the button eyes between the points
+    centers = eyewear_centers(outer_r)
+    star = [((outer_r if k % 2 == 0 else inner_r) * math.cos(math.radians(90 + 36 * k)),
+             (outer_r if k % 2 == 0 else inner_r) * math.sin(math.radians(90 + 36 * k))) for k in range(11)]
+    for c in centers:
+        add_flat(part, "CostumeLensAmber", star, c, AXIS_X, AXIS_Z, 0.004)
+        rim = [c + AXIS_X * a + AXIS_Z * b for a, b in star]
+        add_tube(part, "CostumeGold", rim, [0.007] * len(rim), FRONT, segments=4, cap_start=False, cap_end=False)
+    left, right = centers[0] + AXIS_X * inner_r, centers[1] - AXIS_X * inner_r
+    bridge = [left.lerp(right, t) + AXIS_Z * 0.01 * math.sin(math.pi * t) for t in (k / 4 for k in range(5))]
+    add_tube(part, "CostumeGold", bridge, [0.006] * len(bridge), FRONT, segments=4)
+    add_temples(part, "CostumeGold", centers, outer_r * 0.85)
+    part.finish()
+
+    # Alien sunglasses (eyes): thick lime-green frame around dark smoky teardrop lenses slanted like an
+    # alien's eyes: round at the inner bottom next to the low bridge, narrowing to points that sweep up
+    # and out past the temples.
+    part = Part("Costume_AlienSunglasses")
+    half_len, half_w = 0.105, 0.07
+    centers = eyewear_centers(half_len)
+    round_ends = []
+    for sx, c in zip((-1, 1), centers):
+        lean = math.radians(55)
+        axis = (sx * math.cos(lean), math.sin(lean))  # from the round end up and out to the point
+        across = (-axis[1], axis[0])
+        drop = []
+        for t in (2 * math.pi * k / 16 for k in range(17)):
+            s = math.cos(t)  # +1 at the point, -1 at the round end
+            a, b = half_len * s, half_w * math.sin(t) * (0.3 + 0.7 * (1 - s) / 2)
+            drop.append((a * axis[0] + b * across[0], a * axis[1] + b * across[1]))
+        yaw = math.radians(15)
+        u = Vector((math.cos(yaw), sx * math.sin(yaw), 0.0))  # the outer side wraps back a little
+        lens = c + u * (axis[0] * 0.045) + AXIS_Z * (axis[1] * 0.045)  # the wide part sits over the eye
+        add_flat(part, "CostumeAlienLens", drop, lens, u, AXIS_Z, 0.005)
+        rim = [lens + u * a + AXIS_Z * b for a, b in drop]
+        # The bridge joins the inner flank of each lens a little above its round end (nearest the center there).
+        low = rim[8].z
+        round_ends.append(min((p for p in rim if low + 0.025 <= p.z <= low + 0.06), key=lambda p: abs(p.x)))
+        add_tube(part, "CostumeLime", rim, [0.01] * len(rim), FRONT, segments=5, cap_start=False, cap_end=False)
+    left, right = round_ends
+    bridge = [left.lerp(right, t) + AXIS_Z * 0.012 * math.sin(math.pi * t) for t in (k / 4 for k in range(5))]  # nose arch
+    add_tube(part, "CostumeLime", bridge, [0.012] * len(bridge), FRONT, segments=5)
+    add_temples(part, "CostumeLime", centers, half_len * 0.8)
+    part.finish()
+
+
+def add_strip(part, mat, lower, upper):
+    """Two-sided strip between two rows of points (frills)."""
+    bm = part.bm
+    index = part.mat_index(mat)
+    for side in (1, -1):  # each side gets its own vertices (bmesh allows one face per vertex set)
+        lo = [bm.verts.new(p) for p in lower]
+        hi = [bm.verts.new(p) for p in upper]
+        for k in range(len(lo) - 1):
+            quad = (lo[k], lo[k + 1], hi[k + 1], hi[k])
+            f = bm.faces.new(quad if side > 0 else quad[::-1])
+            f.material_index = index
+            f.smooth = False
+            for loop in f.loops:
+                loop[part.uv].uv = WHITE_UV
+
 
 def build_ghost():
     """Ghost sheet worn over either visitor: a plain lathed bell from head to ground, no eye holes,
@@ -876,8 +1028,14 @@ PREVIEW_SETS = [
     ("Ghost", (0.42, 0.42, 0.44), False, ("Ghost_",)),
     ("Koon_Bucket", (0.75, 0.08, 0.06), False, ("Body", "Koon_", "Fake_PaintBucket")),
     ("Oma_Bucket", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Fake_PaintBucket")),
-    ("Koon_Costumes", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_")),
-    ("Oma_Costumes", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_")),
+    ("Koon_Costumes", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_WitchHat", "Costume_BowTie",
+                                                   "Costume_PumpkinBasket", "Costume_BatWings", "Costume_Bandage")),
+    ("Oma_Costumes", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_WitchHat", "Costume_BowTie",
+                                                 "Costume_PumpkinBasket", "Costume_BatWings", "Costume_Bandage")),
+    ("Koon_Maid", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_MaidHeadband", "Costume_StarSunglasses")),
+    ("Oma_Maid", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_MaidHeadband", "Costume_AlienSunglasses")),
+    ("Koon_Bunny", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_BunnyHeadband", "Costume_AlienSunglasses")),
+    ("Oma_Bunny", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_BunnyHeadband", "Costume_StarSunglasses")),
 ]
 
 
@@ -900,7 +1058,7 @@ def render_preview(out_dir):
         src.hide_render = True
 
     scene.render.engine = "BLENDER_EEVEE_NEXT"
-    scene.render.resolution_x, scene.render.resolution_y = 4200, 640
+    scene.render.resolution_x, scene.render.resolution_y = 420 * len(PREVIEW_SETS), 640
     scene.world = bpy.data.worlds.new("PreviewWorld")
     scene.world.color = (0.25, 0.25, 0.27)
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
@@ -909,7 +1067,7 @@ def render_preview(out_dir):
     scene.collection.objects.link(sun)
     cam_data = bpy.data.cameras.new("PreviewCam")
     cam_data.type = "ORTHO"
-    cam_data.ortho_scale = 11.4
+    cam_data.ortho_scale = 1.1 * len(PREVIEW_SETS) + 0.4
     cam = bpy.data.objects.new("PreviewCam", cam_data)
     scene.collection.objects.link(cam)
     scene.camera = cam

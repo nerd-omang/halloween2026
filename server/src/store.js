@@ -2,24 +2,28 @@
 // and makes the rank/insert/trim sequence atomic.
 //
 // Keys (prefix = KEY_PREFIX, default "h26:"):
-//   {p}games  string  total finished games received (INCR)
-//   {p}items  hash    field = item bit number, value = times that item was on a look that fooled a player (HINCRBY)
-//   {p}looks  hash    field = 32-bit look code (decimal), value = times that exact look fooled a player (HINCRBY)
-//   {p}board  zset    member "INITIALS:seq", score = points * 2^32 + (2^32 - 1 - seq)  (earlier game wins a tie)
-//   {p}seq    string  member id counter (INCR)
+//   {p}games   string  total finished games received (INCR)
+//   {p}items   hash    field = item bit number, value = times that item was on a look that fooled a player (HINCRBY)
+//   {p}looks   hash    field = 32-bit look code (decimal), value = times that exact look fooled a player (HINCRBY)
+//   {p}board   zset    member "INITIALS:seq", score = points * 2^32 + (2^32 - 1 - seq)  (earlier game wins a tie)
+//   {p}seq     string  member id counter (INCR)
+//   {p}boardr  hash    field = board member, value = canonical result text of that game (HSET; HDEL when trimmed)
+import { encode } from './lookcode.js';
+
 const SUBMIT_LUA = `
 local N = tonumber(ARGV[1])
 local score = tonumber(ARGV[2])
 local initials = ARGV[3]
 local eligible = ARGV[4] == '1'
-local nLooks = tonumber(ARGV[5])
+local text = ARGV[5]
+local nLooks = tonumber(ARGV[6])
 local SH = 4294967296
 
 redis.call('INCR', KEYS[1])
 for i = 1, nLooks do
-  redis.call('HINCRBY', KEYS[3], ARGV[5 + i], 1)
+  redis.call('HINCRBY', KEYS[3], ARGV[6 + i], 1)
 end
-local i = 6 + nLooks
+local i = 7 + nLooks
 while i < #ARGV do
   redis.call('HINCRBY', KEYS[2], ARGV[i], ARGV[i + 1])
   i = i + 2
@@ -35,7 +39,12 @@ if eligible then
     if initials ~= '' then
       local seq = redis.call('INCR', KEYS[5])
       local z = score * SH + (SH - 1 - seq)
-      redis.call('ZADD', KEYS[4], string.format('%.0f', z), initials .. ':' .. seq)
+      local member = initials .. ':' .. seq
+      redis.call('ZADD', KEYS[4], string.format('%.0f', z), member)
+      redis.call('HSET', KEYS[6], member, text)
+      -- members pushed out of the top N lose their result text too, so the hash never outgrows the board
+      local gone = redis.call('ZRANGE', KEYS[4], 0, -(N + 1))
+      for _, m in ipairs(gone) do redis.call('HDEL', KEYS[6], m) end
       redis.call('ZREMRANGEBYRANK', KEYS[4], 0, -(N + 1))
       entered = 1
     end
@@ -48,8 +57,10 @@ const SHIFT = 4294967296;
 
 export function createStore(redis, config) {
   const p = config.keyPrefix;
-  const keys = { games: `${p}games`, items: `${p}items`, looks: `${p}looks`, board: `${p}board`, seq: `${p}seq` };
-  redis.defineCommand('h26submit', { numberOfKeys: 5, lua: SUBMIT_LUA });
+  const keys = {
+    games: `${p}games`, items: `${p}items`, looks: `${p}looks`, board: `${p}board`, seq: `${p}seq`, boardr: `${p}boardr`,
+  };
+  redis.defineCommand('h26submit', { numberOfKeys: 6, lua: SUBMIT_LUA });
 
   return {
     keys,
@@ -63,18 +74,29 @@ export function createStore(redis, config) {
           if ((look.items >>> bit) & 1) itemCounts.set(bit, (itemCounts.get(bit) || 0) + 1);
         }
       }
-      const args = [config.boardSize, result.score, result.initials || '', eligible ? '1' : '0', result.looks.length];
+      // What is stored is the canonical text: the decoded game encoded again, so a repaired bit never survives.
+      const text = encode(result.score, result.initials, result.looks.map((l) => l.code));
+      const args = [config.boardSize, result.score, result.initials || '', eligible ? '1' : '0', text, result.looks.length];
       for (const look of result.looks) args.push(look.code);
       for (const [bit, count] of itemCounts) args.push(bit, count);
-      const [rank, entered] = await redis.h26submit(keys.games, keys.items, keys.looks, keys.board, keys.seq, ...args);
+      const [rank, entered] = await redis.h26submit(
+        keys.games, keys.items, keys.looks, keys.board, keys.seq, keys.boardr, ...args,
+      );
       return { rank: rank > 0 ? Number(rank) : null, top: Number(entered) === 1 };
     },
 
+    // [{ initials, score, r? }]; r (the result text) is missing for entries stored before it existed.
     async top() {
       const flat = await redis.zrevrange(keys.board, 0, config.boardSize - 1, 'WITHSCORES');
+      const members = [];
       const out = [];
       for (let i = 0; i < flat.length; i += 2) {
+        members.push(flat[i]);
         out.push({ initials: flat[i].split(':')[0], score: Math.floor(Number(flat[i + 1]) / SHIFT) });
+      }
+      if (members.length > 0) {
+        const texts = await redis.hmget(keys.boardr, ...members);
+        texts.forEach((t, i) => { if (t) out[i].r = t; });
       }
       return out;
     },

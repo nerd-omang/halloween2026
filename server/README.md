@@ -37,14 +37,15 @@ per-command billing).
 | `h26:looks` | hash | field = 32-bit look code in decimal, `HINCRBY field 1`: how often that exact look fooled a player |
 | `h26:board` | zset | member `INITIALS:seq`, score `points * 2^32 + (2^32 - 1 - seq)` |
 | `h26:seq` | string | `INCR` to make members unique |
+| `h26:boardr` | hash | field = board member, value = canonical result text (27 characters) of that game; `HSET` on entry, `HDEL` when the member is trimmed |
 
 Commands inside the script, in order: `INCR h26:games`; per look `HINCRBY h26:looks <code> 1`; per item bit
 `HINCRBY h26:items <bit> <count>`; then, only for a finished game (`BOARD_MIN_LOOKS`, `BOARD_MIN_SCORE`):
 `ZCOUNT h26:board <points*2^32> +inf` (entries that already rank above) and, when that is fewer than N:
-`INCR h26:seq`, `ZADD h26:board <score> INITIALS:seq` (only when the game has initials),
-`ZREMRANGEBYRANK h26:board 0 -(N+1)` (trim to N). The tie-break part of the score makes an earlier game win a tie
-and keeps members unique even for identical initials and score. Reads: `ZREVRANGE h26:board 0 N-1 WITHSCORES`;
-`GET h26:games`, `HGETALL h26:items`, `HGETALL h26:looks`. Everything is bounded: the board holds N members, `items`
+`INCR h26:seq`, `ZADD h26:board <score> INITIALS:seq` and `HSET h26:boardr INITIALS:seq <text>` (only when the game has initials),
+`ZRANGE h26:board 0 -(N+1)` + `HDEL h26:boardr <those members>`, then `ZREMRANGEBYRANK h26:board 0 -(N+1)` (trim to N). The tie-break part of the score makes an earlier game win a tie
+and keeps members unique even for identical initials and score. Reads: `ZREVRANGE h26:board 0 N-1 WITHSCORES` and `HMGET h26:boardr <members>`;
+`GET h26:games`, `HGETALL h26:items`, `HGETALL h26:looks`. Everything is bounded: the board holds N members (`boardr` too), `items`
 has at most 29 fields, `looks` at most 5760 (the number of producible looks).
 
 Plausibility: the score is rejected above `MAX_SCORE` (default 16383, the 14-bit limit; **set it to what a human
@@ -58,7 +59,7 @@ result: this protects against casual spam, not a determined cheater.
 ```bash
 cd server
 npm install
-npm test            # 21 tests, no Redis needed
+npm test            # 25 tests, no Redis needed
 npm run dev         # http://localhost:8080 on an in-memory Redis
 ```
 
@@ -158,7 +159,7 @@ curl -s https://halloween2026-board.fly.dev/api/stats
 curl -s -i -H "Origin: https://evil.example" https://halloween2026-board.fly.dev/api/top   # 403
 ```
 
-   Delete your test entry afterwards with `redis-cli`/Upstash console (`ZREMRANGEBYRANK h26:board 0 -1`, `DEL h26:games h26:items h26:looks h26:seq`)
+   Delete your test entry afterwards with `redis-cli`/Upstash console (`ZREMRANGEBYRANK h26:board 0 -1`, `DEL h26:games h26:items h26:looks h26:seq h26:boardr`)
    or by checking the numbers before the public launch.
 
 7. Optional, for CI or for a session to read status: `fly tokens create deploy -a halloween2026-board` gives a

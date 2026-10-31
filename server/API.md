@@ -43,7 +43,10 @@ yield return req.SendWebRequest();   // req.responseCode, req.downloadHandler.te
 
 ### `GET /api/top`
 
-`[ { "initials": "BBB", "score": 70 }, ... ]` best first, at most `BOARD_SIZE` (10) entries, `[]` when empty.
+`[ { "initials": "BBB", "score": 70, "r": "EAqgCLAAAABgYAABQDJAAAAAB4A" }, ... ]` best first, at most `BOARD_SIZE` (10) entries, `[]` when empty.
+`r` is the result text of that game (the same text format as the POST body, canonical: decoded and encoded again by the server),
+so the client can decode the three looks that cost the hearts with `LookCode.TryDecode`. Entries stored before `r` existed
+have no `r` field: show them without looks.
 Cached on the server for `CACHE_TTL_SEC` (20 s) and sent with `Cache-Control: public, max-age=20`. After your own
 board entry the server refreshes this list at once, but a browser may still hold the 20 s old copy: show the entry from
 the POST answer, or request `/api/top?t=<anything>` (the server ignores the query, the browser treats it as a new URL).
@@ -90,7 +93,7 @@ text (extra bytes, non-zero padding bits). Reference vectors made by the C# code
 ## Redis keys
 
 `h26:games` (string), `h26:items` (hash bit -> count), `h26:looks` (hash code -> count), `h26:board` (zset, member `INITIALS:seq`,
-score `points * 2^32 + (2^32 - 1 - seq)`), `h26:seq` (string). Details in [README.md](README.md).
+score `points * 2^32 + (2^32 - 1 - seq)`), `h26:seq` (string), `h26:boardr` (hash board member -> result text). Details in [README.md](README.md).
 
 ## Errors
 

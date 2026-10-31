@@ -37,6 +37,7 @@ public class ModelStage : MonoBehaviour
     Vector3 basePosition;
     Quaternion baseRotation;
     float baseDistance = 2.2f;
+    Vector3 focus; // the models' center: zooming moves the camera straight toward or away from it
     float zoom = 1f;
     Vector2 pan; // camera-space offset in world units
     float lastPinch;
@@ -112,6 +113,8 @@ public class ModelStage : MonoBehaviour
 
         float halfWidth = Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * cam.aspect * distance;
         centerX = (viewportX - 0.5f) * 2f * halfWidth;
+        focus = origin + new Vector3(centerX, pivotHeight, 0f);
+        ApplyView();
     }
 
     // Shows one special guest (SpecialGuest id) alone, with the same camera and controls as Show().
@@ -160,9 +163,10 @@ public class ModelStage : MonoBehaviour
 
     void ApplyView()
     {
-        // Zooming moves the camera along its view direction; panning slides it sideways and up/down.
-        Vector3 offset = baseRotation * new Vector3(-pan.x, -pan.y, (1f - 1f / zoom) * baseDistance);
-        cam.transform.SetPositionAndRotation(basePosition + offset, baseRotation);
+        // Zooming slides the camera along the line to the models' center, so the models stay where they are on
+        // screen and only grow; panning then slides the camera sideways and up/down.
+        Vector3 zoomed = focus + (basePosition - focus) / zoom;
+        cam.transform.SetPositionAndRotation(zoomed + baseRotation * new Vector3(-pan.x, -pan.y, 0f), baseRotation);
     }
 
     // Mouse wheel, two-finger pinch (zoom) and right/middle drag or two-finger drag (move the view).

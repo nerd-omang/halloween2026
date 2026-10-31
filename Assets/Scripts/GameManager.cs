@@ -234,6 +234,15 @@ public class GameManager : MonoBehaviour
         if (skip || elapsed >= IntroSpinSeconds + IntroHoldSeconds) StartGame();
     }
 
+    // Gives up the running game from the pause settings: it ends here and only the score reached so far
+    // counts, through the same game-over screens (record or skip, then back to the title).
+    void GiveUp()
+    {
+        if (state != GameState.Playing || over) return;
+        settings.Close();
+        EndGame(false);
+    }
+
     void StartGame()
     {
         StopAllCoroutines();
@@ -329,20 +338,24 @@ public class GameManager : MonoBehaviour
         served++;
         Refresh();
 
-        if (hearts <= 0)
+        if (hearts <= 0) EndGame(true);
+    }
+
+    // The game is over, by the last heart or by giving up: the score so far counts (best score, statistics,
+    // local and online results) and the game-over screens follow.
+    void EndGame(bool playSound)
+    {
+        over = true;
+        if (playSound) AudioManager.Play(Sfx.GameOver);
+        lastWasNewBest = score > best;
+        if (score > best)
         {
-            over = true;
-            AudioManager.Play(Sfx.GameOver);
-            lastWasNewBest = score > best;
-            if (score > best)
-            {
-                best = score;
-                PlayerPrefs.SetInt(BestKey, best);
-                PlayerPrefs.Save();
-            }
-            RecordFinishedGame();
-            StartCoroutine(ShowReview());
+            best = score;
+            PlayerPrefs.SetInt(BestKey, best);
+            PlayerPrefs.Save();
         }
+        RecordFinishedGame();
+        StartCoroutine(ShowReview());
     }
 
     // Local rank (1 = best) of the game that just ended, 0 if it did not make the local top 20.

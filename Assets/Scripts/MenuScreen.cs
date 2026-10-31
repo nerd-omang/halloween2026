@@ -14,12 +14,12 @@ public class MenuScreen
     public event Action DressUpClicked;
 
     // Height of the title/carousel column in canvas units (see MenuFit).
-    const float ColumnHeight = 480f;
+    const float ColumnHeight = 502f;
     const float ColumnShift = 28f;   // the whole title block sits this far below the screen top
     const int ItemCount = 5; // start, gallery, records, dress-up, settings
 
     const float SlotSpacing = 360f; // canvas units between neighbouring entries
-    const float ItemY = -330f;      // vertical center of the carousel inside the column
+    const float ItemY = -352f;      // vertical center of the carousel inside the column
     const float SlideSeconds = 0.2f;
 
     // The chosen entry is kept while the game runs, so coming back from a screen starts on the same one.
@@ -80,11 +80,11 @@ public class MenuScreen
         }
         for (int i = 0; i < ItemCount; i++)
         {
-            var dot = UiKit.Rect("Dot" + i, column, top, top, new Vector2((i - (ItemCount - 1) * 0.5f) * 22f, -396f), new Vector2(10f, 10f));
+            var dot = UiKit.Rect("Dot" + i, column, top, top, new Vector2((i - (ItemCount - 1) * 0.5f) * 22f, -418f), new Vector2(10f, 10f));
             dots[i] = dot.gameObject.AddComponent<Image>();
             dots[i].raycastTarget = false;
         }
-        carouselHint = UiKit.Label(column, "CarouselHint", "", 22, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -424f), new Vector2(1200f, 30f), UiKit.Dim * 0.8f);
+        carouselHint = UiKit.Label(column, "CarouselHint", "", 22, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -446f), new Vector2(1200f, 30f), UiKit.Dim * 0.8f);
         panel.AddComponent<Ticker>().OnUpdate = Tick;
         Loc.Changed += Refresh;
 

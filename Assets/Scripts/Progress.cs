@@ -1,8 +1,8 @@
 using System;
 using UnityEngine;
 
-// Everything the player has earned on this device: best score, local ranking and statistics, the gallery and
-// the special guests met. ResetAll() wipes all of it; settings (volumes, dither, language) are kept.
+// Everything the player has earned on this device: best score, statistics, the gallery and the special guests
+// met. ResetAll() wipes these; the local ranking, the initials and the settings (volumes, dither, language) are kept.
 public static class Progress
 {
     public const string BestKey = "best_score";
@@ -12,9 +12,7 @@ public static class Progress
 
     public static void ResetAll()
     {
-        LocalRanking.Clear();
         LocalStats.Reset();
-        PlayerPrefs.DeleteKey("last_initials");
         PlayerPrefs.DeleteKey(BestKey);
         SpecialGuest.Forget();
         Cleared?.Invoke();

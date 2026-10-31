@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-// Small runtime UI toolkit for the menu screens. Buttons and toggles poll the mouse themselves
+// Small runtime UI toolkit for the menu screens. Buttons and toggles poll the pointer (mouse, touch, pen) themselves
 // (the project uses the new Input System only and has no EventSystem).
 //
 // Look: dark violet panels with a stepped pixel frame, pumpkin-amber accents, Galmuri11 body font and the
@@ -41,6 +41,10 @@ public static class UiKit
     public static readonly Color PanelColor = new Color(0.1f, 0.05f, 0.16f, 0.94f);
     public static readonly Color PanelEdge = new Color(0.42f, 0.26f, 0.58f);
 
+    // Keeps corner UI (score, hearts, corner buttons) a little inside the screen edges.
+    public const float MarginX = 64f;
+    public const float MarginY = 32f;
+
     // One source texel is drawn this many canvas pixels wide.
     const float TexelScale = 3f;
 
@@ -50,6 +54,24 @@ public static class UiKit
 
     // Frame of the last UI click, so a press is never handled by two screens in the same frame.
     public static int ClickFrame = -1;
+
+    // While set, only controls under this transform react to the mouse (a modal screen is open).
+    public static Transform ModalRoot;
+
+    public static bool Usable(Transform control) => ModalRoot == null || control.IsChildOf(ModalRoot);
+
+    // Extra hit area (canvas units on each side) on touch devices, where fingers are bigger than a cursor.
+    const float TouchPadding = 6f;
+
+    // Is the pointer (mouse, finger or pen) over this control? Touch gets a slightly larger hit area.
+    public static bool Hits(RectTransform rt, Vector2 screenPoint)
+    {
+        float pad = GameInput.UsingTouch ? -TouchPadding : 0f;
+        return RectTransformUtility.RectangleContainsScreenPoint(rt, screenPoint, null, new Vector4(pad, pad, pad, pad));
+    }
+
+    // Hover highlight: a finger only "hovers" while it is down.
+    public static bool Hovering(bool over) => over && (!GameInput.UsingTouch || GameInput.PointerHeld);
 
     public static void Register(RectTransform rt) => controls.Add(rt);
     public static void Unregister(RectTransform rt) => controls.Remove(rt);
@@ -143,6 +165,59 @@ public static class UiKit
         float t = Mathf.Clamp01((streak - 1) / 11f) * (ComboSteps.Length - 1);
         int i = Mathf.Min((int)t, ComboSteps.Length - 2);
         return Color.Lerp(ComboSteps[i], ComboSteps[i + 1], t - i);
+    }
+
+    public enum MouseButtonIcon
+    {
+        Left,
+        Right,
+        Middle,
+    }
+
+    static readonly Dictionary<MouseButtonIcon, Sprite> mouseIcons = new Dictionary<MouseButtonIcon, Sprite>();
+
+    // 12x16 pixel mouse seen from above with one button (or the wheel) lit.
+    public static Sprite MouseIcon(MouseButtonIcon lit)
+    {
+        if (mouseIcons.TryGetValue(lit, out var cached) && cached != null) return cached;
+        const int w = 12;
+        const int h = 16;
+        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+        var body = new Color(0.82f, 0.78f, 0.88f);
+        var wheel = new Color(0.3f, 0.22f, 0.4f);
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                bool edgeX = x == 0 || x == w - 1;
+                bool edgeY = y == 0 || y == h - 1;
+                Color c = body;
+                if (edgeX && edgeY) c = Color.clear;
+                else if (edgeX || edgeY) c = Ink;
+                else if (y == 8) c = Ink;
+                else if (y > 8)
+                {
+                    bool wheelCol = x == 5 || x == 6;
+                    if (wheelCol) c = y >= 10 && y <= 13 ? (lit == MouseButtonIcon.Middle ? Accent : wheel) : Ink;
+                    else if (x < 5 && lit == MouseButtonIcon.Left) c = Accent;
+                    else if (x > 6 && lit == MouseButtonIcon.Right) c = Accent;
+                }
+                tex.SetPixel(x, y, c);
+            }
+        }
+        tex.Apply();
+        var sprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 100f);
+        mouseIcons[lit] = sprite;
+        return sprite;
+    }
+
+    public static Image Icon(Transform parent, string name, Sprite sprite, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size)
+    {
+        var rt = Rect(name, parent, anchor, pivot, position, size);
+        var image = rt.gameObject.AddComponent<Image>();
+        image.sprite = sprite;
+        image.raycastTarget = false;
+        return image;
     }
 
     // Restyles a HUD text that the scene builder created with the default font.
@@ -255,6 +330,70 @@ public static class UiKit
         return toggle;
     }
 
+    // A button showing an icon instead of text.
+    public static SimpleButton IconButton(Transform parent, string name, Sprite icon, Vector2 anchor, Vector2 pivot,
+        Vector2 position, Vector2 size, Vector2 iconSize, Action onClick)
+    {
+        var button = Button(parent, name, "", 22, anchor, pivot, position, size, onClick);
+        var image = Icon(button.transform, "Icon", icon, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, iconSize);
+        image.color = Dim * 1.15f;
+        button.IconImage = image;
+        return button;
+    }
+
+    static Sprite gear;
+
+    // 11x11 pixel gear.
+    public static Sprite GearIcon()
+    {
+        if (gear != null) return gear;
+        const int n = 11;
+        var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+        for (int y = 0; y < n; y++)
+        {
+            for (int x = 0; x < n; x++)
+            {
+                float dx = x - 5f;
+                float dy = y - 5f;
+                float r = Mathf.Sqrt(dx * dx + dy * dy);
+                float angle = Mathf.Atan2(dy, dx) * Mathf.Rad2Deg + 360f;
+                float fromTooth = Mathf.Abs(Mathf.Repeat(angle + 22.5f, 45f) - 22.5f);
+                bool body = r <= 4.1f && r >= 1.9f;
+                bool tooth = r > 3.6f && r <= 5.4f && fromTooth <= 14f;
+                tex.SetPixel(x, y, body || tooth ? Color.white : Color.clear);
+            }
+        }
+        tex.Apply();
+        gear = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f);
+        return gear;
+    }
+
+    public static SimpleSlider Slider(Transform parent, string name, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size)
+    {
+        var rt = Rect(name, parent, anchor, pivot, position, size);
+        var track = Rect("Track", rt, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, new Vector2(size.x, 18f));
+        track.anchorMax = new Vector2(1f, 0.5f);
+        track.offsetMin = new Vector2(0f, -9f);
+        track.offsetMax = new Vector2(0f, 9f);
+        var trackImage = track.gameObject.AddComponent<Image>();
+        StyleBox(trackImage, PixelBox(new Color(0.1f, 0.05f, 0.15f), PanelEdge, Ink));
+        trackImage.raycastTarget = false;
+        var fill = Rect("Fill", track, new Vector2(0f, 0f), new Vector2(0f, 0.5f), Vector2.zero, Vector2.zero);
+        fill.anchorMax = new Vector2(1f, 1f);
+        fill.offsetMin = new Vector2(6f, 6f);
+        fill.offsetMax = new Vector2(-6f, -6f);
+        var fillImage = fill.gameObject.AddComponent<Image>();
+        fillImage.color = Accent;
+        fillImage.raycastTarget = false;
+        var handle = Rect("Handle", rt, new Vector2(0f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(24f, 44f));
+        var handleImage = handle.gameObject.AddComponent<Image>();
+        StyleBox(handleImage, PixelBox(new Color(0.95f, 0.88f, 0.7f), Accent, Ink));
+        handleImage.raycastTarget = false;
+        var slider = rt.gameObject.AddComponent<SimpleSlider>();
+        slider.Init(track, fill, handle);
+        return slider;
+    }
+
     // Hard-edged 9x9 disc, so radio dots match the pixel look.
     static Sprite CircleSprite()
     {
@@ -328,6 +467,7 @@ public class SimpleButton : MonoBehaviour
     int enabledFrame;
 
     public Text Label => label;
+    public Image IconImage;
 
     public string Text
     {
@@ -356,13 +496,13 @@ public class SimpleButton : MonoBehaviour
 
     void Update()
     {
-        var mouse = Mouse.current;
-        bool over = Interactable && mouse != null
-            && RectTransformUtility.RectangleContainsScreenPoint(rt, mouse.position.ReadValue());
-        background.sprite = Look(!Interactable ? Disabled : Highlighted ? Selected : over ? Hover : Normal);
-        label.color = !Interactable ? UiKit.Dim * 0.7f : Highlighted || over ? Color.white : UiKit.Dim * 1.15f;
+        bool over = Interactable && Pointer.current != null && UiKit.Usable(transform) && UiKit.Hits(rt, GameInput.PointerPosition);
+        bool hover = UiKit.Hovering(over);
+        background.sprite = Look(!Interactable ? Disabled : Highlighted ? Selected : hover ? Hover : Normal);
+        label.color = !Interactable ? UiKit.Dim * 0.7f : Highlighted || hover ? Color.white : UiKit.Dim * 1.15f;
+        if (IconImage != null) IconImage.color = label.color;
 
-        if (!over || !mouse.leftButton.wasPressedThisFrame) return;
+        if (!over || !GameInput.PointerPressedThisFrame) return;
         if (UiKit.ClickFrame == Time.frameCount || enabledFrame == Time.frameCount) return;
         UiKit.ClickFrame = Time.frameCount;
         AudioManager.Play(Sfx.CandyAppear);
@@ -419,17 +559,91 @@ public class SimpleToggle : MonoBehaviour
 
     void Update()
     {
-        var mouse = Mouse.current;
-        bool over = Interactable && mouse != null
-            && RectTransformUtility.RectangleContainsScreenPoint(rt, mouse.position.ReadValue());
-        label.color = !Interactable ? UiKit.Dim * 0.6f : over || Value ? Color.white : UiKit.Dim * 1.15f;
+        bool over = Interactable && Pointer.current != null && UiKit.Usable(transform) && UiKit.Hits(rt, GameInput.PointerPosition);
+        label.color = !Interactable ? UiKit.Dim * 0.6f : UiKit.Hovering(over) || Value ? Color.white : UiKit.Dim * 1.15f;
 
-        if (!over || !mouse.leftButton.wasPressedThisFrame) return;
+        if (!over || !GameInput.PointerPressedThisFrame) return;
         if (UiKit.ClickFrame == Time.frameCount || enabledFrame == Time.frameCount) return;
         UiKit.ClickFrame = Time.frameCount;
         AudioManager.Play(Sfx.CandyAppear);
         if (radio && Value) return;
         Set(radio ? true : !Value);
+        Changed?.Invoke(Value);
+    }
+}
+
+// Horizontal slider, 0..1. Polls the mouse like the other controls; dragging works anywhere on the bar.
+public class SimpleSlider : MonoBehaviour
+{
+    public event Action<float> Changed;
+    public bool Interactable = true;
+    // 0 = continuous; otherwise the value snaps to this many evenly spaced positions.
+    public int Steps;
+
+    RectTransform track;
+    RectTransform fill;
+    RectTransform handle;
+    RectTransform rt;
+    bool dragging;
+    int enabledFrame;
+
+    public float Value { get; private set; }
+
+    public void Init(RectTransform trackRect, RectTransform fillRect, RectTransform handleRect)
+    {
+        track = trackRect;
+        fill = fillRect;
+        handle = handleRect;
+        Set(Value);
+    }
+
+    // Sets the value without raising Changed (used when syncing from code).
+    public void Set(float value)
+    {
+        Value = Mathf.Clamp01(value);
+        if (fill != null) fill.anchorMax = new Vector2(Value, 1f);
+        if (handle != null) handle.anchorMin = handle.anchorMax = new Vector2(Value, 0.5f);
+    }
+
+    void OnEnable()
+    {
+        rt = (RectTransform)transform;
+        enabledFrame = Time.frameCount;
+        dragging = false;
+        UiKit.Register(rt);
+    }
+
+    void OnDisable()
+    {
+        dragging = false;
+        UiKit.Unregister(rt);
+    }
+
+    void Update()
+    {
+        if (Pointer.current == null || !Interactable) return;
+        Vector2 point = GameInput.PointerPosition;
+
+        if (!dragging)
+        {
+            bool over = UiKit.Usable(transform) && UiKit.Hits(rt, point);
+            if (!over || !GameInput.PointerPressedThisFrame) return;
+            if (UiKit.ClickFrame == Time.frameCount || enabledFrame == Time.frameCount) return;
+            UiKit.ClickFrame = Time.frameCount;
+            dragging = true;
+        }
+        else if (!GameInput.PointerHeld)
+        {
+            dragging = false;
+            AudioManager.Play(Sfx.CandyAppear);
+            return;
+        }
+
+        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(track, point, null, out var local)) return;
+        float t = Mathf.Clamp01((local.x - track.rect.xMin) / track.rect.width);
+        if (Steps > 1) t = Mathf.Round(t * (Steps - 1)) / (Steps - 1);
+        if (Mathf.Approximately(t, Value)) return;
+        Set(t);
         Changed?.Invoke(Value);
     }
 }

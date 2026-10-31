@@ -26,7 +26,7 @@ public static class WorldBoard
     }
 
     // The fly.io app URL (https, no trailing slash), e.g. "https://halloween2026-board.fly.dev".
-    public const string BaseUrl = "";
+    public const string BaseUrl = "https://halloween2026-board.fly.dev";
 
     const int TimeoutSeconds = 12;
     const float MinRefreshInterval = 15f;

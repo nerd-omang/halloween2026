@@ -53,7 +53,7 @@ Moku and Myeong7 sometimes join the line later in a run. Either answer is right 
 3. `Fangame > Build Prototype Scene` generates `Assets/Scenes/Main.unity` (props, UI, audio wiring and queue).
 4. Press Play, or `Fangame > Build WebGL` for the web build (output in `Build/WebGL`, settings in `Assets/Editor/WebBuildSettings.cs`).
 
-The online ranking stays off until the server is deployed and its URL is put in `WorldBoard.BaseUrl`.
+The online ranking talks to the leaderboard server at `WorldBoard.BaseUrl`; if that is empty it stays off.
 Without it the online tab shows that no server is set and nothing is ever sent.
 
 ## Branches

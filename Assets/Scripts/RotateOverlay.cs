@@ -25,7 +25,7 @@ public class RotateOverlay : MonoBehaviour
         UiKit.Bind(UiKit.Label(root, "Hint", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -40f), new Vector2(1100f, 90f), UiKit.Dim),
             "rotate.hint");
 
-        // A pixel phone, turned on its side by the arrow glyph beside it.
+        // A small pixel phone.
         var phone = UiKit.Icon(root, "Phone", UiKit.PixelBox(new Color(0.2f, 0.1f, 0.3f), UiKit.Accent, UiKit.Ink), center, center, new Vector2(0f, -150f), new Vector2(60f, 96f));
         phone.type = Image.Type.Sliced;
         phone.pixelsPerUnitMultiplier = 1f / 3f;
@@ -49,7 +49,10 @@ public class RotateOverlay : MonoBehaviour
         }
         else
         {
-            UiKit.ModalRoot = previousModal;
+            // Restore the modal that was up before, unless it has been closed meanwhile.
+            bool stillUp = previousModal != null && previousModal.gameObject.activeInHierarchy;
+            if (UiKit.ModalRoot == panel.transform) UiKit.ModalRoot = stillUp ? previousModal : null;
+            previousModal = null;
             GamePause.Release(this);
         }
     }

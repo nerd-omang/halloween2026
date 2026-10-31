@@ -125,6 +125,13 @@ public static class Settings
 
     public static void Save() => PlayerPrefs.Save();
 
+    // The dither material may not be loaded yet at startup; call every frame until the saved look is applied.
+    public static void Tick()
+    {
+        if (captured) return;
+        if (EnsureAssets()) ApplyGraphics();
+    }
+
     public const int PresetCount = 5;
 
     // Look presets: 0 rough, 1 original (the material's tuned look), 2 gentle, 3 soft, 4 sharp. Volumes are left alone.
@@ -206,8 +213,8 @@ public static class Settings
         // First run on a phone: start with the lightest look; the saved choice wins afterwards.
         if (!PlayerPrefs.HasKey(InitKey))
         {
-            PlayerPrefs.SetInt(InitKey, 1);
-            if (Application.isMobilePlatform) pendingPreset = 0;
+            if (Application.isMobilePlatform) pendingPreset = 0; // InitKey is written once it has been applied
+            else PlayerPrefs.SetInt(InitKey, 1);
         }
         EnsureAssets();
         ApplyAudio();
@@ -245,7 +252,7 @@ public static class Settings
         {
             foreach (var candidate in Resources.FindObjectsOfTypeAll<Material>())
             {
-                if (candidate.shader != null && candidate.shader.name == "Fangame/DitherPixel")
+                if (candidate.shader != null && candidate.shader.name == "Fangame/DitherPixel" && !candidate.name.EndsWith("(Instance)"))
                 {
                     material = candidate;
                     break;
@@ -277,6 +284,8 @@ public static class Settings
             int preset = pendingPreset;
             pendingPreset = -1;
             ApplyPreset(preset);
+            PlayerPrefs.SetInt(InitKey, 1);
+            PlayerPrefs.Save();
         }
         return true;
     }

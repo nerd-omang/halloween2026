@@ -54,6 +54,7 @@ public class SettingsScreen
         var boxImage = box.gameObject.AddComponent<Image>();
         UiKit.StyleBox(boxImage, UiKit.PixelBox(UiKit.PanelColor, UiKit.PanelEdge, UiKit.Ink));
         boxImage.raycastTarget = false;
+        box.gameObject.AddComponent<ScreenFit>().Init(root, box, BoxHeight, 24f);
 
         var topLeft = new Vector2(0f, 1f);
         var topCenter = new Vector2(0.5f, 1f);
@@ -274,7 +275,7 @@ public class SettingsScreen
     {
         if (!IsOpen) return;
         panel.SetActive(false);
-        UiKit.ModalRoot = null;
+        if (UiKit.ModalRoot == panel.transform) UiKit.ModalRoot = null;
         if (paused) GamePause.Release(this);
         paused = false;
         Settings.Save();

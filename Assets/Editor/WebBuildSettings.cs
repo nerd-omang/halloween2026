@@ -62,6 +62,9 @@ public static class WebBuildSettings
 
         changes += Set(PlayerSettings.GetManagedStrippingLevel(web), ManagedStrippingLevel.High, v => PlayerSettings.SetManagedStrippingLevel(web, v));
         changes += Set(PlayerSettings.stripEngineCode, true, v => PlayerSettings.stripEngineCode = v);
+
+        // The built-in Unity logo splash texture alone is 2.7 MB uncompressed in the build report.
+        changes += Set(PlayerSettings.SplashScreen.show, false, v => PlayerSettings.SplashScreen.show = v);
         changes += Set(PlayerSettings.GetIl2CppCodeGeneration(web), Il2CppCodeGeneration.OptimizeSize, v => PlayerSettings.SetIl2CppCodeGeneration(web, v));
 
         // WebGL 2 only (OpenGLES3 is the WebGL 2 device type); no WebGPU, no WebGL 1 fallback.

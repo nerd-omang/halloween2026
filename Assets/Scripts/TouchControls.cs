@@ -53,7 +53,7 @@ public class TouchControls : MonoBehaviour
         if (primary.press.wasPressedThisFrame)
         {
             // A finger that lands on a button (gear...) belongs to that button.
-            tracking = !UiKit.OverControl(position);
+            tracking = !UiKit.OverControl(position) && UiKit.ClickFrame != Time.frameCount;
             fired = false;
             start = position;
             startTime = Time.unscaledTime;

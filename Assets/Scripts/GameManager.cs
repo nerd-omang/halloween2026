@@ -392,12 +392,12 @@ public class GameManager : MonoBehaviour
     }
 
     // Sends the finished game to the online board once: with initials when the player recorded it,
-    // without when the review is left without recording. Does nothing when sharing is off.
+    // without when the review is left without recording. Does nothing when the player chose not to upload this game.
     void SubmitOnline(string initials)
     {
         if (resultSent) return;
         resultSent = true;
-        if (!Settings.ShareOnline || !WorldBoard.Configured) return;
+        if (!review.Upload || !WorldBoard.Configured) return; // the score screen's own choice, started from the setting
         var looks = new List<Outfit>();
         foreach (var mistake in mistakes) looks.Add(mistake.outfit);
         WorldBoard.Submit(LookCode.Encode(score, initials, looks));

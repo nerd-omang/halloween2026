@@ -1,4 +1,5 @@
 using System;
+using PrimeTween;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -13,30 +14,30 @@ public class MenuScreen
     public event Action DressUpClicked;
 
     // Height of the title/carousel column in canvas units (see MenuFit).
-    const float ColumnHeight = 490f;
+    const float ColumnHeight = 440f;
     const int ItemCount = 5; // start, gallery, records, dress-up, settings
 
-    enum Armed
-    {
-        None,
-        Left,
-        Center,
-        Right,
-    }
+    const float SlotSpacing = 430f; // canvas units between neighbouring entries
+    const float ItemY = -330f;      // vertical center of the carousel inside the column
+    const float SlideSeconds = 0.2f;
 
     // The chosen entry is kept while the game runs, so coming back from a screen starts on the same one.
     static int selectedIndex;
 
     readonly GameObject panel;
-    readonly SimpleButton centerButton;
-    readonly SimpleButton leftButton;
-    readonly SimpleButton rightButton;
+    readonly SimpleButton[] items = new SimpleButton[ItemCount];
+    readonly CanvasGroup[] groups = new CanvasGroup[ItemCount];
     readonly Image[] dots = new Image[ItemCount];
-    readonly Text description;
     readonly Text carouselHint;
-    Armed armed;
+    Tween slide;
+    float pos;       // continuous carousel position in entries (not wrapped)
+    int targetPos;   // the entry the carousel is heading for (not wrapped)
+    int armedItem = -1;
     bool pressing;
     bool dragged;
+    bool cancelClick;
+    float dragSign;
+    float dragBase;
     Vector2 pressStart;
     GameObject guide;
     GameObject guideCaption;
@@ -67,20 +68,22 @@ public class MenuScreen
             "menu.subtitle");
         UiKit.Bind(UiKit.Label(column, "Best", "", 33, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -204f), new Vector2(600f, 44f), Color.white),
             () => Loc.T("menu.best", best));
-        // Carousel: the chosen entry big in the middle, the previous and next small at the sides. A press
-        // only arms an entry; Tick() decides on release whether it was a click or the start of a drag.
-        centerButton = UiKit.Button(column, "Chosen", "", 44, top, top, new Vector2(0f, -292f), new Vector2(520f, 76f), () => armed = Armed.Center);
-        centerButton.Highlighted = true;
-        leftButton = UiKit.Button(column, "Previous", "", 22, top, top, new Vector2(-430f, -302f), new Vector2(300f, 56f), () => armed = Armed.Left);
-        rightButton = UiKit.Button(column, "Next", "", 22, top, top, new Vector2(430f, -302f), new Vector2(300f, 56f), () => armed = Armed.Right);
+        // Carousel: every entry is a button that slides, shrinks and fades with its distance from the chosen
+        // one. A press only arms an entry; Tick() decides on release whether it was a click or a drag.
+        for (int i = 0; i < ItemCount; i++)
+        {
+            int index = i;
+            items[i] = UiKit.Button(column, "Item" + i, "", 44, top, top, Vector2.zero, new Vector2(520f, 76f), () => armedItem = index);
+            ((RectTransform)items[i].transform).pivot = new Vector2(0.5f, 0.5f);
+            groups[i] = items[i].gameObject.AddComponent<CanvasGroup>();
+        }
         for (int i = 0; i < ItemCount; i++)
         {
             var dot = UiKit.Rect("Dot" + i, column, top, top, new Vector2((i - (ItemCount - 1) * 0.5f) * 22f, -386f), new Vector2(10f, 10f));
             dots[i] = dot.gameObject.AddComponent<Image>();
             dots[i].raycastTarget = false;
         }
-        description = UiKit.Label(column, "Description", "", 22, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -410f), new Vector2(1100f, 30f), Color.white);
-        carouselHint = UiKit.Label(column, "CarouselHint", "", 22, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -444f), new Vector2(1200f, 30f), UiKit.Dim * 0.8f);
+        carouselHint = UiKit.Label(column, "CarouselHint", "", 22, TextAnchor.MiddleCenter, top, top, new Vector2(0f, -412f), new Vector2(1200f, 30f), UiKit.Dim * 0.8f);
         panel.AddComponent<Ticker>().OnUpdate = Tick;
         Loc.Changed += Refresh;
 
@@ -154,12 +157,12 @@ public class MenuScreen
     public void Hide()
     {
         pressing = false;
-        armed = Armed.None;
+        armedItem = -1;
+        if (slide.isAlive) slide.Stop();
         panel.SetActive(false);
     }
 
     static string[] ItemKeys = { "menu.start", "menu.gallery", "menu.records", "menu.dressup", "menu.settings" };
-    static string[] DescriptionKeys = { "menu.desc.start", "menu.desc.gallery", "menu.desc.records", "menu.desc.dressup", "menu.desc.settings" };
 
     static int Wrap(int index) => ((index % ItemCount) + ItemCount) % ItemCount;
 
@@ -167,20 +170,49 @@ public class MenuScreen
 
     void Refresh()
     {
-        centerButton.Text = ItemLabel(selectedIndex);
-        leftButton.Text = ItemLabel(Wrap(selectedIndex - 1));
-        rightButton.Text = ItemLabel(Wrap(selectedIndex + 1));
-        description.text = Loc.T(DescriptionKeys[selectedIndex]);
+        for (int i = 0; i < ItemCount; i++) items[i].Text = ItemLabel(i);
         carouselHint.text = Loc.T(GameInput.UsingTouch ? "menu.carouselHintTouch" : "menu.carouselHint");
-        for (int i = 0; i < ItemCount; i++) dots[i].color = i == selectedIndex ? UiKit.Accent : UiKit.Dim * 0.5f;
+        if (slide.isAlive) slide.Stop();
+        targetPos = selectedIndex;
+        SetPos(selectedIndex);
     }
 
-    // Moves the choice one entry; it wraps around at the ends.
-    void Move(int delta)
+    // Lays the entries out for a (fractional) position: they slide, shrink and fade with their distance.
+    void SetPos(float p)
     {
-        selectedIndex = Wrap(selectedIndex + delta);
-        Refresh();
+        pos = p;
+        int nearest = Wrap(Mathf.RoundToInt(p));
+        for (int i = 0; i < ItemCount; i++)
+        {
+            float d = i - p;
+            d -= ItemCount * Mathf.Round(d / ItemCount);
+            float distance = Mathf.Abs(d);
+            bool visible = distance < 1.95f;
+            if (items[i].gameObject.activeSelf != visible) items[i].gameObject.SetActive(visible);
+            dots[i].color = i == nearest ? UiKit.Accent : UiKit.Dim * 0.5f;
+            if (!visible) continue;
+
+            float near = Mathf.Min(distance, 1f);
+            var rect = (RectTransform)items[i].transform;
+            rect.anchoredPosition = new Vector2(d * SlotSpacing, ItemY);
+            float scale = Mathf.Lerp(1f, 0.5f, near);
+            rect.localScale = new Vector3(scale, scale, 1f);
+            groups[i].alpha = Mathf.Lerp(1f, 0.6f, near) * (1f - Mathf.Clamp01((distance - 1f) / 0.95f));
+            items[i].Highlighted = i == nearest;
+        }
     }
+
+    // Slides to an entry (counted without wrapping, so the shortest way round is taken). A new input stops
+    // the running slide and carries on from where it is.
+    void SlideTo(int target)
+    {
+        if (slide.isAlive) slide.Stop();
+        targetPos = target;
+        selectedIndex = Wrap(target);
+        slide = Tween.Custom(this, pos, target, SlideSeconds, (menu, value) => menu.SetPos(value), Ease.OutCubic, useUnscaledTime: true);
+    }
+
+    void Move(int delta) => SlideTo(targetPos + delta);
 
     void Activate()
     {
@@ -194,14 +226,12 @@ public class MenuScreen
         }
     }
 
-    RectTransform ArmedRect() => armed == Armed.Left ? (RectTransform)leftButton.transform : armed == Armed.Right ? (RectTransform)rightButton.transform : (RectTransform)centerButton.transform;
-
     void Tick()
     {
         if (UiKit.ModalRoot != null)
         {
             pressing = false;
-            armed = Armed.None;
+            armedItem = -1;
             return;
         }
 
@@ -232,44 +262,56 @@ public class MenuScreen
         if (GameInput.PointerPressedThisFrame)
         {
             // A press on another control (the language button) is that control's; anywhere else may start a drag.
-            bool mine = RectTransformUtility.RectangleContainsScreenPoint((RectTransform)leftButton.transform, position)
-                || RectTransformUtility.RectangleContainsScreenPoint((RectTransform)centerButton.transform, position)
-                || RectTransformUtility.RectangleContainsScreenPoint((RectTransform)rightButton.transform, position);
+            bool mine = false;
+            for (int i = 0; i < ItemCount && !mine; i++)
+            {
+                mine = items[i].gameObject.activeInHierarchy && RectTransformUtility.RectangleContainsScreenPoint((RectTransform)items[i].transform, position);
+            }
             pressing = mine || !UiKit.OverControl(position);
             dragged = false;
+            cancelClick = false;
             pressStart = position;
-            if (!mine) armed = Armed.None;
+            if (!mine) armedItem = -1;
         }
         else if (pressing && pointer.press.isPressed)
         {
-            // Dragging left brings the next entry, dragging right the previous one; keep dragging for more.
+            // The entries follow the finger or cursor.
             float dx = position.x - pressStart.x;
-            if (Mathf.Abs(dx) > threshold)
+            if (!dragged && Mathf.Abs(dx) > threshold)
             {
                 dragged = true;
-                Move(dx < 0f ? 1 : -1);
-                pressStart = position;
+                dragSign = Mathf.Sign(dx);
+                dragBase = pos;
+                if (slide.isAlive) slide.Stop();
             }
-            else if (Mathf.Abs(position.y - pressStart.y) > threshold * 1.5f)
+            else if (!dragged && Mathf.Abs(position.y - pressStart.y) > threshold * 1.5f)
             {
-                dragged = true;
+                cancelClick = true;
+            }
+            if (dragged)
+            {
+                float entriesPerPixel = 1f / (SlotSpacing * Screen.width / 1280f);
+                SetPos(dragBase - (dx - dragSign * threshold) * entriesPerPixel);
+                targetPos = Mathf.RoundToInt(pos);
+                selectedIndex = Wrap(targetPos);
             }
         }
-        else if (pressing && pointer.press.wasReleasedThisFrame)
+        else if (pressing)
         {
-            // A release that never turned into a drag is a click on the armed entry.
-            if (!dragged && armed != Armed.None && RectTransformUtility.RectangleContainsScreenPoint(ArmedRect(), position))
+            // Released: snap to the nearest entry after a drag, otherwise it was a click on the armed entry.
+            if (dragged)
             {
-                if (armed == Armed.Center) Activate();
-                else Move(armed == Armed.Left ? -1 : 1);
+                SlideTo(Mathf.RoundToInt(pos));
+            }
+            else if (!cancelClick && armedItem >= 0 && RectTransformUtility.RectangleContainsScreenPoint((RectTransform)items[armedItem].transform, position))
+            {
+                int d = armedItem - selectedIndex;
+                d -= ItemCount * Mathf.RoundToInt((float)d / ItemCount);
+                if (d == 0) Activate();
+                else Move(d);
             }
             pressing = false;
-            armed = Armed.None;
-        }
-        else if (!pointer.press.isPressed)
-        {
-            pressing = false;
-            armed = Armed.None;
+            armedItem = -1;
         }
     }
 }

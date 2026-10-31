@@ -60,7 +60,7 @@ public static class Loc
         ["menu.give"] = ("Give candy", "사탕 주기"),
         ["menu.away"] = ("Send away", "쫓아내기"),
         ["menu.blast"] = ("Palm blast", "손바닥 날리기"),
-        ["menu.blastCaption"] = ("Palm blast: Space / wheel click / scroll. Blows off a sheet and knocks off a prop.", "손바닥 날리기: 스페이스 / 휠클릭 / 휠. 시트를 날리고 소품을 떨어뜨려요."),
+        ["menu.blastCaption"] = ("Space / wheel: blows off sheets and props.", "스페이스 / 휠: 시트와 소품을 날려요."),
 
         // Settings
         ["menu.settings"] = ("SETTINGS", "설정"),
@@ -154,11 +154,6 @@ public static class Loc
         ["back"] = ("BACK", "뒤로"),
         ["drag.rotate"] = ("Drag to rotate · Wheel to zoom", "드래그: 회전 · 휠: 확대"),
         ["drag.rotateTouch"] = ("Drag to rotate · Pinch to zoom", "드래그: 회전 · 핀치: 확대"),
-        ["menu.desc.start"] = ("Give candy to the Omangi, send the Kunmungchi away", "오망이에게는 사탕을, 쿤뭉치는 쫓아내세요"),
-        ["menu.desc.gallery"] = ("Look back at the looks you have met", "만나 본 모습들을 다시 보기"),
-        ["menu.desc.records"] = ("Rankings and your stats", "랭킹과 내 통계"),
-        ["menu.desc.dressup"] = ("Dress a visitor up any way you like", "손님을 마음대로 꾸며 보기"),
-        ["menu.desc.settings"] = ("Sound, graphics and language", "소리, 화면, 언어"),
         ["menu.carouselHint"] = ("A / D, arrows, wheel or drag: choose    Enter or click: confirm", "A / D, 방향키, 휠, 드래그: 고르기    Enter, 클릭: 확인"),
         ["menu.carouselHintTouch"] = ("Swipe sideways to choose    Tap to confirm", "옆으로 밀어서 고르기    탭해서 확인"),
         ["gallery.special"] = ("SPECIAL", "특별"),

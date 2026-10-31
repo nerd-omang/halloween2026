@@ -11,9 +11,9 @@ public static class PrototypeSceneBuilder
     const float RenderScale = 1f / 3f;
     const int BlastPeakFrame = 8;
     const string MaterialDir = "Assets/Materials";
-    // Moku's prefab is made by MokuModelBuilder; Myeong7 reuses it until its own model is made.
+    // The model prefabs are made by MokuModelBuilder and Myeong7ModelBuilder.
     const string MokuModelPath = "Assets/Prefabs/Characters/Moku.prefab";
-    const string Myeong7ModelPath = "Assets/Prefabs/Characters/Moku.prefab";
+    const string Myeong7ModelPath = "Assets/Prefabs/Characters/Myeong7.prefab";
     const string GameVisitorDir = "Assets/Prefabs/Game";
     const string KunmungchiModelPath = "Assets/Prefabs/Visitors/Koonmungchi.prefab";
     const string OmangiModelPath = "Assets/Prefabs/Visitors/Omangi.prefab";
@@ -36,7 +36,7 @@ public static class PrototypeSceneBuilder
 
         BuildGameVisitor(KunmungchiModelPath, "Visitor_Kunmungchi", VisitorKind.Kunmungchi);
         BuildGameVisitor(OmangiModelPath, "Visitor_Omangi", VisitorKind.Omangi);
-        // Easter-egg guests. Myeong7 uses the Moku model until its own model exists.
+        // Easter-egg guests.
         BuildSpecialVisitor(MokuModelPath, "Visitor_Moku", 0);
         BuildSpecialVisitor(Myeong7ModelPath, "Visitor_Myeong7", 1);
         AssetDatabase.SaveAssets();

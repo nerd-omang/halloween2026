@@ -64,8 +64,8 @@ public static class VisitorModelBuilder
     const string SheetBumpMaterial = "Sheet_Bump"; // sheet cloth over protruding parts, no hem flutter
 
     // Partial dye: the natural fur material with whole clumps recolored to the dye color (VisitorFur
-    // _DyeCoverage). Named "<dye>_<percent>"; the plain dye material is the full (100%) level.
-    static readonly int[] DyeCoveragePercents = { 30, 60, 90 };
+    // _DyeCoverage). Named "<dye>_<percent>"; the plain dye material is not a level (paint/bucket only).
+    static readonly int[] DyeCoveragePercents = { 15, 30, 60, 90 };
 
     static readonly (string natural, string dye)[] DyePairs =
     {
@@ -73,9 +73,9 @@ public static class VisitorModelBuilder
         ("Fur_Red", "Fur_GrayDyed"),  // Omangi dyeing itself gray
     };
 
-    // Dye levels from sloppiest to full, as VisitorDisguise expects them.
+    // Dye levels from sloppiest to heaviest (never a full 100%), as VisitorDisguise expects them.
     static string[] DyeLevels(string dye) =>
-        DyeCoveragePercents.Select(p => $"{dye}_{p}").Append(dye).ToArray();
+        DyeCoveragePercents.Select(p => $"{dye}_{p}").ToArray();
 
     [MenuItem("Tools/Visitors/Rebuild Prefabs")]
     public static void Build()

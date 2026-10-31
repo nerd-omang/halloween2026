@@ -138,16 +138,16 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 3548114154589080195}
+      addedObject: {fileID: 1679810831438984249}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4129953425701728793}
+      addedObject: {fileID: 2008578830548688736}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 6827862607253547301}
+      addedObject: {fileID: 7164635226923642910}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 5233480170734403234}
+      addedObject: {fileID: 6833333813806090552}
   m_SourcePrefab: {fileID: 100100000, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
 --- !u!4 &243823037194346300 stripped
 Transform:
@@ -164,7 +164,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
   m_PrefabInstance: {fileID: 846233138622822328}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &3548114154589080195
+--- !u!114 &1679810831438984249
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -178,10 +178,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisitorDisguise
   naturalFur: {fileID: 2100000, guid: 8cd9c9b4c374a3c47b51f39ae6d53516, type: 2}
   dyeLevels:
+  - {fileID: 2100000, guid: 5fdbd425685973949935187c826a6e4a, type: 2}
   - {fileID: 2100000, guid: cfae0a85a2a706343823f99f401c18c4, type: 2}
   - {fileID: 2100000, guid: d2bc198cbe8f4f84aa71fd2b9c540dd8, type: 2}
   - {fileID: 2100000, guid: a466d88f93a911d45b724c69cca557d1, type: 2}
-  - {fileID: 2100000, guid: a2cb288202a23bc4e9abbeff9f0b85e7, type: 2}
   props:
   - {fileID: 7350652912253465477}
   - {fileID: 6970121654756164712}
@@ -203,7 +203,7 @@ MonoBehaviour:
     lift: 2.6
     spin: 720
     gravity: 9.8
---- !u!114 &4129953425701728793
+--- !u!114 &2008578830548688736
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -258,7 +258,7 @@ MonoBehaviour:
     lift: 2.6
     spin: 720
     gravity: 9.8
---- !u!114 &6827862607253547301
+--- !u!114 &7164635226923642910
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -274,7 +274,7 @@ MonoBehaviour:
   amplitude: 20
   frequency: 0.4
   blendSpeed: 3
---- !u!114 &5233480170734403234
+--- !u!114 &6833333813806090552
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

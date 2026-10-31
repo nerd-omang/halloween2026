@@ -9,7 +9,7 @@ using UnityEngine;
 public class VisitorDisguise : MonoBehaviour
 {
     [SerializeField] Material naturalFur;
-    // Fur change levels from sloppiest (patchy, partial dye) to a full dye job.
+    // Fur change levels from sloppiest (patchy, partial dye) to a heavy dye job (never a full 100%).
     [SerializeField] Material[] dyeLevels;
     // All of these are fake (look-alike) props; real parts are never listed here.
     [SerializeField] GameObject[] props;

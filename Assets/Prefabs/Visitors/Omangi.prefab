@@ -150,13 +150,13 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 9000890736275639498}
+      addedObject: {fileID: 4162531650436262488}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 4738137661899952371}
+      addedObject: {fileID: 4081441786941985711}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 8802716067361477459}
+      addedObject: {fileID: 2759251253408625155}
   m_SourcePrefab: {fileID: 100100000, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
 --- !u!4 &153991538670045206 stripped
 Transform:
@@ -228,7 +228,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
   m_PrefabInstance: {fileID: 4481695752919614802}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &9000890736275639498
+--- !u!114 &4162531650436262488
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -242,10 +242,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VisitorDisguise
   naturalFur: {fileID: 2100000, guid: 8d15c7e48e28f4a4fa68821531905253, type: 2}
   dyeLevels:
+  - {fileID: 2100000, guid: b5df800a9c7a7ca49aa97a83b11fe4d5, type: 2}
   - {fileID: 2100000, guid: b148a7d659c0a494186b9fa52f938098, type: 2}
   - {fileID: 2100000, guid: 0b6bf2c0cdff6824c910048ed6822f0d, type: 2}
   - {fileID: 2100000, guid: 7f96772eb0d7f084cbf9e70f4201bcc5, type: 2}
-  - {fileID: 2100000, guid: cd51399654dc62d4bbcc0579de6933c5, type: 2}
   props:
   - {fileID: 862875937837605740}
   - {fileID: 7024679540402304480}
@@ -265,7 +265,7 @@ MonoBehaviour:
     lift: 2.6
     spin: 720
     gravity: 9.8
---- !u!114 &4738137661899952371
+--- !u!114 &4081441786941985711
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -320,7 +320,7 @@ MonoBehaviour:
     lift: 2.6
     spin: 720
     gravity: 9.8
---- !u!114 &8802716067361477459
+--- !u!114 &2759251253408625155
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

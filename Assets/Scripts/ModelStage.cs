@@ -42,6 +42,9 @@ public class ModelStage : MonoBehaviour
     float zoom = 1f;
     Vector2 pan; // camera-space offset in world units
     float lastPinch;
+    Slot spinSlot;
+    float spinTime;
+    float spinDuration;
 
     public bool Active { get; private set; }
     public int Count => slots.Count;
@@ -154,6 +157,15 @@ public class ModelStage : MonoBehaviour
         slot.model = MakeModel(slot, outfit);
     }
 
+    // Turns the first model once around, front to front, in the given time.
+    public void SpinOnce(float seconds)
+    {
+        if (slots.Count == 0 || seconds <= 0f) return;
+        spinSlot = slots[0];
+        spinTime = 0f;
+        spinDuration = seconds;
+    }
+
     // Puts the camera back where Show() left it and turns every model to face front again.
     public void ResetView()
     {
@@ -242,12 +254,21 @@ public class ModelStage : MonoBehaviour
         }
         slots.Clear();
         dragging = -1;
+        spinSlot = null;
     }
 
     void Update()
     {
         if (!Active || slots.Count == 0) return;
         UpdateView();
+        if (spinSlot != null)
+        {
+            spinTime += Time.unscaledDeltaTime;
+            float u = Mathf.Clamp01(spinTime / spinDuration);
+            spinSlot.yaw = 360f * Mathf.SmoothStep(0f, 1f, u);
+            spinSlot.pivot.rotation = Quaternion.Euler(spinSlot.pitch, spinSlot.yaw, 0f);
+            if (u >= 1f) spinSlot = null;
+        }
         if (TwoFingers || (Mouse.current != null && (Mouse.current.rightButton.isPressed || Mouse.current.middleButton.isPressed)))
         {
             dragging = -1;

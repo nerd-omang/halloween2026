@@ -156,6 +156,8 @@ public static class Loc
         ["drag.rotateTouch"] = ("Drag to rotate · Pinch to zoom", "드래그: 회전 · 핀치: 확대"),
         ["menu.carouselHint"] = ("A / D, arrows, wheel or drag: choose    Enter or click: confirm", "A / D, 방향키, 휠, 드래그: 고르기    Enter, 클릭: 확인"),
         ["menu.carouselHintTouch"] = ("Swipe sideways to choose    Tap to confirm", "옆으로 밀어서 고르기    탭해서 확인"),
+        ["intro.skip"] = ("Click to skip", "클릭하면 건너뛰기"),
+        ["intro.skipTouch"] = ("Tap to skip", "탭하면 건너뛰기"),
         ["gallery.special"] = ("SPECIAL", "특별"),
         ["gallery.unlockAll"] = ("UNLOCK ALL", "전부 해금"),
         ["gallery.unlockAsk"] = ("Unlock everything?\nThis cannot be undone.", "모든 항목을 해금할까요?\n되돌릴 수 없어요."),

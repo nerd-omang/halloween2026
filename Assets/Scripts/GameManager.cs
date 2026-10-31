@@ -11,7 +11,8 @@ public enum GameState
     Review,
     Gallery,
     DressUp,
-    Records
+    Records,
+    Intro
 }
 
 public class GameManager : MonoBehaviour
@@ -38,6 +39,8 @@ public class GameManager : MonoBehaviour
     RecordsScreen records;
     ReviewScreen review;
     SettingsScreen settings;
+    IntroScreen intro;
+    float introStartTime;
     Text toast;
 
     int hearts;
@@ -78,7 +81,7 @@ public class GameManager : MonoBehaviour
             new Vector2(0f, -135f), new Vector2(1000f, 44f), UiKit.Accent);
 
         menu = new MenuScreen(canvasRoot);
-        menu.StartClicked += StartGame;
+        menu.StartClicked += StartIntro;
         menu.GalleryClicked += OpenGallery;
         menu.DressUpClicked += OpenDressUp;
         menu.RecordsClicked += OpenRecords;
@@ -95,6 +98,7 @@ public class GameManager : MonoBehaviour
         review.Title += EnterMenu;
         review.Commit = CommitRecord;
         settings = new SettingsScreen(canvasRoot);
+        intro = new IntroScreen(canvasRoot);
         TouchControls.Create(canvasRoot, () => state == GameState.Playing && !over && !settings.IsOpen);
         RotateOverlay.Create(canvasRoot);
 
@@ -123,6 +127,7 @@ public class GameManager : MonoBehaviour
         dressUp.Hide();
         records.Hide();
         review.Hide();
+        intro.Hide();
         stage.Exit();
     }
 
@@ -170,6 +175,30 @@ public class GameManager : MonoBehaviour
         state = GameState.DressUp;
         stage.Enter();
         dressUp.Show();
+    }
+
+    // Before the first visitor: Kunmungchi turns once with its name underneath, so the player knows who gets candy.
+    const float IntroSpinSeconds = 1.6f;
+    const float IntroHoldSeconds = 0.9f;
+
+    void StartIntro()
+    {
+        StopAllCoroutines();
+        HideScreens();
+        state = GameState.Intro;
+        introStartTime = Time.unscaledTime;
+        SetHud(false);
+        stage.Enter();
+        stage.Show(new List<Outfit> { new Outfit { kind = VisitorKind.Kunmungchi } });
+        stage.SpinOnce(IntroSpinSeconds);
+        intro.Show();
+    }
+
+    void UpdateIntro()
+    {
+        float elapsed = Time.unscaledTime - introStartTime;
+        bool skip = elapsed > 0.35f && GameInput.AnyPressThisFrame;
+        if (skip || elapsed >= IntroSpinSeconds + IntroHoldSeconds) StartGame();
     }
 
     void StartGame()
@@ -417,7 +446,7 @@ public class GameManager : MonoBehaviour
             if (settings.IsOpen) settings.Close();
             else if (state == GameState.Playing) settings.Open(true);
             else if (state == GameState.Menu) settings.Open(false);
-            else if (state == GameState.Gallery || state == GameState.DressUp || state == GameState.Records || (state == GameState.Review && !review.Busy)) EnterMenu();
+            else if (state == GameState.Gallery || state == GameState.DressUp || state == GameState.Records || state == GameState.Intro || (state == GameState.Review && !review.Busy)) EnterMenu();
         }
         Settings.Tick();
 
@@ -431,6 +460,12 @@ public class GameManager : MonoBehaviour
         {
             toastTimer -= Time.deltaTime;
             if (toastTimer <= 0f) toast.text = "";
+        }
+
+        if (state == GameState.Intro && !settings.IsOpen)
+        {
+            UpdateIntro();
+            return;
         }
 
         if (state == GameState.Playing)

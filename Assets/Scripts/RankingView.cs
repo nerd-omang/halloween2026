@@ -45,7 +45,8 @@ public class RankingView
     const float RowTop = 110f;
     const float RowStep = 42f;
     const float RowHeight = 38f;
-    const float DesignHeight = 650f;
+    const float DesignHeight = 700f;
+    const int ShareBatch = LocalRanking.Capacity; // all saved records at once; the server takes this many POSTs per minute (RATE_WRITE_MAX in server/fly.toml)
 
     readonly OutfitCatalog catalog;
     readonly ModelStage stage;
@@ -65,6 +66,9 @@ public class RankingView
     readonly SimpleButton onlineTab;
     readonly SimpleButton retryButton;
     readonly SimpleButton clearButton;
+    readonly SimpleButton shareButton; // sends the saved local records to the world ranking (records tab only)
+    bool shareBusy;
+    string shareNote;
     readonly GameObject confirm;
     readonly List<GameObject> captions = new List<GameObject>();
 
@@ -127,6 +131,11 @@ public class RankingView
             UiKit.Bind(clearButton.Label, "ranking.clear");
             clearButton.Label.color = UiKit.Danger;
             confirm = BuildConfirm();
+
+            if (WorldBoard.Configured)
+            {
+                shareButton = UiKit.Button(content, "Share", "", 20, topLeft, topLeft, new Vector2(24f, -RowTop - LocalRanking.PageSize * RowStep - 102f), new Vector2(PanelWidth - 48f, 38f), ShareRecords);
+            }
         }
 
         var bottomLeft = new Vector2(0f, 1f);
@@ -151,6 +160,8 @@ public class RankingView
         page = selected > 0 ? (selected - 1) / LocalRanking.PageSize : 0;
         WorldBoard.Changed -= OnWorldChanged;
         WorldBoard.Changed += OnWorldChanged;
+        shareNote = null;
+        WorldBoard.Refresh(); // the share button needs the ranking to know which records reach it
         SetOnline(false);
     }
 
@@ -178,6 +189,7 @@ public class RankingView
             selected = 0;
             page = 0;
             Layout();
+            RefreshShare();
             ShowSelected();
         });
         UiKit.Bind(yes.Label, "settings.resetYes");
@@ -210,18 +222,67 @@ public class RankingView
         if (online)
         {
             WorldBoard.Refresh();
+            RefreshShare();
             LayoutOnline();
             return;
         }
         statusText.gameObject.SetActive(false);
         retryButton.gameObject.SetActive(false);
         Layout();
+        RefreshShare();
         ShowSelected();
     }
 
     void OnWorldChanged()
     {
+        RefreshShare();
         if (online) LayoutOnline();
+    }
+
+    // Sends the next few saved local records to the world ranking; press again for the ones that failed. Records that would
+    // not make the world ranking only add to the statistics: they are skipped and counted as done.
+    void ShareRecords()
+    {
+        if (shareBusy) return;
+        if (WorldBoard.Status != WorldBoard.LoadStatus.Ready)
+        {
+            WorldBoard.Refresh(true);
+            RefreshShare();
+            return;
+        }
+        var skipped = new List<string>();
+        var pending = LocalRanking.PendingShare(WorldBoard.Reaches, skipped);
+        foreach (string text in skipped) LocalRanking.MarkShared(text);
+        if (pending.Count == 0)
+        {
+            RefreshShare();
+            return;
+        }
+        if (pending.Count > ShareBatch) pending.RemoveRange(ShareBatch, pending.Count - ShareBatch);
+        shareBusy = true;
+        shareNote = null;
+        RefreshShare();
+        WorldBoard.SubmitMany(pending, LocalRanking.MarkShared, (ok, failed) =>
+        {
+            shareBusy = false;
+            shareNote = Loc.T("settings.shareLocalDone", ok, failed);
+            WorldBoard.Refresh(true);
+            RefreshShare();
+        });
+    }
+
+    void RefreshShare()
+    {
+        if (shareButton == null) return;
+        shareButton.gameObject.SetActive(!online);
+        var status = WorldBoard.Status;
+        bool ready = status == WorldBoard.LoadStatus.Ready;
+        int pending = ready ? LocalRanking.PendingShare(WorldBoard.Reaches).Count : 0;
+        shareButton.Interactable = !shareBusy && (pending > 0 || status == WorldBoard.LoadStatus.Failed);
+        if (shareBusy) shareButton.Text = Loc.T("settings.shareLocalBusy");
+        else if (status == WorldBoard.LoadStatus.Failed) shareButton.Text = Loc.T("settings.shareLocalRetry");
+        else if (!ready) shareButton.Text = Loc.T("settings.shareLocalWait");
+        else shareButton.Text = shareNote ?? (pending > 0 ? Loc.T("settings.shareLocal", pending) : Loc.T("settings.shareLocalNone"));
     }
 
     void LayoutOnline()

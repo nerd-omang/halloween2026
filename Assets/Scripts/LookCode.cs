@@ -289,6 +289,79 @@ public static class LookCode
         return true;
     }
 
+    // ---- Texts written by older versions of the game ----
+
+    // Version 1: [version 4][score 14][has initials 1][initials 3 x 5][look count 2][looks 39 bits each], no checksum.
+    // Only used to read results saved on a device before version 2; nothing is sent in this format any more.
+    static bool TryDecodeV1(string text, out int score, out string initials, out Outfit[] mistakes)
+    {
+        score = 0;
+        initials = null;
+        mistakes = null;
+
+        byte[] bytes;
+        try
+        {
+            string padded = text.Replace('-', '+').Replace('_', '/');
+            padded = padded.PadRight((padded.Length + 3) / 4 * 4, '=');
+            bytes = Convert.FromBase64String(padded);
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+
+        var bits = new BitBuffer(bytes);
+        if (!bits.Has(4 + 14 + 1 + 15 + 2) || bits.Read(4) != 1) return false;
+        score = (int)bits.Read(14);
+
+        bool hasInitials = bits.Read(1) != 0;
+        var letters = new char[3];
+        bool lettersOk = true;
+        for (int i = 0; i < 3; i++)
+        {
+            ulong letter = bits.Read(5);
+            if (letter > 25) lettersOk = false;
+            letters[i] = (char)('A' + letter);
+        }
+        if (hasInitials)
+        {
+            if (!lettersOk) return false;
+            initials = new string(letters);
+        }
+
+        int count = (int)bits.Read(2);
+        if (count > MaxLooks || !bits.Has(count * WordBits)) return false;
+        mistakes = new Outfit[count];
+        for (int i = 0; i < count; i++)
+        {
+            if (!TryRecover(bits.Read(WordBits), out uint code, out _)) return false;
+            var outfit = Unpack(code);
+            if (!IsPossible(outfit)) return false;
+            mistakes[i] = outfit;
+        }
+        return true;
+    }
+
+    // Brings a saved result text up to the current version. A current text is returned as it is; a version 1 text is
+    // decoded and written again in the current format (same score, initials and looks). False for anything else.
+    public static bool TryUpgrade(string text, out string upgraded)
+    {
+        upgraded = null;
+        if (string.IsNullOrEmpty(text)) return false;
+        if (TryDecode(text, out _, out _, out _, out _))
+        {
+            upgraded = text;
+            return true;
+        }
+        if (TryDecodeV1(text, out int score, out string initials, out Outfit[] mistakes))
+        {
+            upgraded = Encode(score, initials, mistakes);
+            return true;
+        }
+        return false;
+    }
+
     // Minimal MSB-first bit packer.
     sealed class BitBuffer
     {

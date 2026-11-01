@@ -46,6 +46,7 @@ public class GameManager : MonoBehaviour
     float introStartTime;
     Text toast;
     Text comboText;
+    ComboAtmosphere atmosphere;
     Image comboBar;
     int shownStreak = -1;
     float comboTimeLeft;
@@ -106,6 +107,9 @@ public class GameManager : MonoBehaviour
         scoreText.rectTransform.anchoredPosition = new Vector2(UiKit.MarginX, -UiKit.MarginY);
         heartsDisplay.GetComponent<RectTransform>().anchoredPosition = new Vector2(-UiKit.MarginX, -UiKit.MarginY);
         var canvasRoot = scoreText.canvas.transform;
+        // The yard gets more Halloween the longer the combo runs.
+        atmosphere = new GameObject("ComboAtmosphere").AddComponent<ComboAtmosphere>();
+        atmosphere.Init(hand.Sparkle);
         // Time left to keep the combo: a solid bar along the bottom edge that shrinks to the left.
         var bottomLeft = new Vector2(0f, 0f);
         var bar = UiKit.Rect("ComboBar", canvasRoot, bottomLeft, bottomLeft, Vector2.zero, new Vector2(0f, 14f));
@@ -600,6 +604,7 @@ public class GameManager : MonoBehaviour
 
         scoreText.color = Color.Lerp(scoreText.color, UiKit.ComboColor(streak), 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
         comboText.color = scoreText.color;
+        atmosphere.Streak = state == GameState.Playing && !over ? streak : 0;
         if (shownStreak != streak)
         {
             shownStreak = streak;

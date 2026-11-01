@@ -44,6 +44,7 @@ public class HandController : MonoBehaviour
     public event Action Blasted;
 
     public bool Busy { get; private set; }
+    public CandySparkle Sparkle => sparkle;
 
     // Playback speed of the hand and candy animations (1 = normal); the game raises it as the combo grows.
     public float Speed { get => speed; set => speed = Mathf.Max(0.1f, value); }

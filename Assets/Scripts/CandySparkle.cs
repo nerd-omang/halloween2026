@@ -6,6 +6,7 @@ public class CandySparkle : MonoBehaviour
     [SerializeField] int poolSize = 64;
     [SerializeField] float size = 0.06f;
     [SerializeField] int sortingOrder = 3;
+    [SerializeField] float drag = 2.5f; // how fast a spark loses its speed (1/s); low values let it drift
     [SerializeField] Color[] palette =
     {
         new Color(1f, 1f, 1f),
@@ -30,6 +31,25 @@ public class CandySparkle : MonoBehaviour
 
     Spark[] sparks;
     int next;
+
+    public Material Material => material;
+
+    // Makes a pool of its own with a different look (the ambient motes), sharing the material of another one.
+    public static CandySparkle Create(Transform parent, Material material, Color[] palette, int poolSize, float size, int sortingOrder, float drag)
+    {
+        var go = new GameObject("Motes");
+        go.SetActive(false); // Awake runs when it is switched on, after the settings below
+        go.transform.SetParent(parent, false);
+        var made = go.AddComponent<CandySparkle>();
+        made.material = material;
+        made.palette = palette;
+        made.poolSize = poolSize;
+        made.size = size;
+        made.sortingOrder = sortingOrder;
+        made.drag = drag;
+        go.SetActive(true);
+        return made;
+    }
 
     void Awake()
     {
@@ -100,7 +120,7 @@ public class CandySparkle : MonoBehaviour
                 continue;
             }
 
-            s.velocity *= Mathf.Max(0f, 1f - 2.5f * dt);
+            s.velocity *= Mathf.Max(0f, 1f - drag * dt);
             s.angle += s.spin * dt;
 
             var tr = s.renderer.transform;

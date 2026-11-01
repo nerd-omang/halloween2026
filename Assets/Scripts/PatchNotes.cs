@@ -21,7 +21,7 @@ public static class PatchNotes
                 ("Your hand gets faster as your combo grows", "콤보가 쌓일수록 손이 빨라져요"),
                 ("A long combo makes the night spookier", "콤보가 길수록 밤이 으스스해져요"),
                 ("Tricky disguises now come much later", "어려운 위장은 훨씬 나중에 나와요"),
-                ("More varied visitors, some with no disguise at all", "더 다양한 손님, 아무것도 안 걸친 손님도 가끔 와요"),
+                ("Visitors wear more varied outfits, and a plain one comes by now and then", "복장이 더 다양해졌고, 기본 모습의 손님도 가끔 와요"),
                 ("New costumes: pirate hat, hook, bunny suit and more", "새 분장: 해적 모자, 갈고리, 토끼 슈트 등"),
                 ("Palm blast removes disguise props first; fallen visitors get up faster", "장풍은 위장 도구부터 날리고, 쓰러진 손님은 빨리 일어나요"),
                 ("Dress-up: choose by body part", "옷입히기: 부위별로 고르기"),

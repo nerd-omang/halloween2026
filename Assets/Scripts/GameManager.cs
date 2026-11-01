@@ -65,6 +65,7 @@ public class GameManager : MonoBehaviour
     const float ComboSecondsMin = 0.8f;     // the shortest it ever gets
     const float ComboLogDrop = 0.35f;       // seconds lost per e-fold of (1 + streaks past the cap / ComboLogSpan)
     const float ComboLogSpan = 100f;
+    const int BlastAssistStreak = 100;   // the combo at which the blast no longer favors the harder disguise props
     const float HandBaseSpeed = 1f;      // hand animation speed without a combo, relative to the animation as authored
     const float HandEarlyBoost = 2f;     // extra speed that comes in quickly over the first combos
     const float HandEarlyStreak = 15f;   // how quickly: about two thirds of it by this streak
@@ -332,7 +333,7 @@ public class GameManager : MonoBehaviour
         int props = disguise != null ? disguise.FakePropCount : 0;
         int loose = costume != null ? costume.LooseCount : 0;
         if (props + loose == 0) return;
-        if (props > 0) disguise.DropOneFakeProp(direction);
+        if (props > 0) disguise.DropOneFakeProp(direction, 1f - Mathf.Clamp01(streak / (float)BlastAssistStreak));
         else costume.DropOne(direction);
     }
 

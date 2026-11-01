@@ -162,17 +162,18 @@ public class VisitorDisguise : MonoBehaviour
     // Knocks one randomly chosen worn fake prop off, flying along `direction` (camera -> visitor) and
     // up, tumbling, bouncing once and vanishing. Returns false (and does nothing) when no fake prop is
     // worn, or while a ghost sheet covers the visitor.
-    public bool DropOneFakeProp(Vector3 direction)
+    public bool DropOneFakeProp(Vector3 direction, float assist = 1f)
     {
         if (TryGetComponent(out GhostSheet sheet) && sheet.Covered) return false;
         int worn = FakePropCount;
         if (worn == 0) return false;
 
-        // Weighted: the props that are harder to see through (see ItemDef.DropWeight) come off a little more often.
+        // Weighted: the props that are harder to see through (see ItemDef.DropWeight) come off more often, `assist`
+        // (1 = no combo, 0 = a long combo) says how much.
         float total = 0f;
         for (int i = 0; i < props.Length; i++)
         {
-            if (IsWorn(i)) total += DropWeight(i);
+            if (IsWorn(i)) total += DropWeight(i, assist);
         }
         float roll = Random.value * total;
         int index = -1;
@@ -180,7 +181,7 @@ public class VisitorDisguise : MonoBehaviour
         {
             if (!IsWorn(i)) continue;
             index = i;
-            roll -= DropWeight(i);
+            roll -= DropWeight(i, assist);
             if (roll <= 0f) break;
         }
         droppedMask |= 1 << index;
@@ -189,10 +190,11 @@ public class VisitorDisguise : MonoBehaviour
         return true;
     }
 
-    float DropWeight(int i)
+    // The weight fades from the item's own (assist 1, no combo) to the usual 1 (assist 0, a long combo).
+    float DropWeight(int i, float assist)
     {
         var def = ItemTable.FromNode(props[i].name);
-        return def != null ? def.DropWeight : 1f;
+        return def != null ? Mathf.Lerp(1f, def.DropWeight, Mathf.Clamp01(assist)) : 1f;
     }
 
     bool IsWorn(int i) => props[i].activeSelf && (droppedMask & (1 << i)) == 0;

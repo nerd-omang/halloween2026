@@ -25,6 +25,7 @@ public class ComboAtmosphere : MonoBehaviour
 
     const float WindowDim = 0.04f;   // window light without a combo (they look switched off), as a fraction of normal
     const float WindowFull = 1.15f;
+    const float WindowCurve = 0.5f;  // below 1: the windows light up steeply over the first combos, then slowly
     const float WindowFlickerFull = 2.5f;
 
     const float MoonRadiusFull = 1.45f;                         // the moon disc grows to this much of its size
@@ -178,7 +179,7 @@ public class ComboAtmosphere : MonoBehaviour
             if (glow.material.HasProperty("_FlickerAmount")) glow.material.SetFloat("_FlickerAmount", Mathf.Clamp01(glow.flicker * flickerScale));
         }
 
-        float windowScale = Mathf.Lerp(WindowDim, WindowFull, lightLevel);
+        float windowScale = Mathf.Lerp(WindowDim, WindowFull, Mathf.Pow(lightLevel, WindowCurve));
         float windowFlicker = Mathf.Lerp(1f, WindowFlickerFull, lightLevel);
         foreach (var window in windows)
         {

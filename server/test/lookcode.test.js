@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { decode, encode, protect, recover, crc16, MAX_SCORE } from '../src/lookcode.js';
-import { ITEMS, isPossible } from '../src/items.js';
+import { ITEMS, isPossible, isValid } from '../src/items.js';
 
 const vectors = JSON.parse(readFileSync(new URL('./vectors.json', import.meta.url), 'utf8'));
 
@@ -33,18 +33,56 @@ test('item table equals the C# ItemTable', () => {
   assert.deepEqual(ITEMS, vectors.itemTable);
 });
 
+// Brute-forcing all 2**26 item-bit combinations (x2 kinds x4 fur levels) is what makes this test slow,
+// and it gets 2x slower per new item bit forever. normalize() only lets bits interact within their own
+// category (Fur/Prop bits via headPriority/bringsFur/coversEyes, Costume bits via slot/headband/coversEyes,
+// Sheet bits via mutual exclusion) - categories never affect each other's bits. So instead of the full
+// cross product, enumerate each category's bits on its own (small: 2**7, 2**17, 2**2) and combine the
+// three independently-normalized pieces, re-checking isValid on each partial and final combination so the
+// result is exactly the same fixed-point set isPossible would have found, just without visiting every
+// losing combination along the way. This keeps the cost tied to each category's own bit count rather than
+// to their product.
+function bitsOfCategory(category) {
+  return ITEMS.filter((d) => d.category === category).map((d) => d.bit);
+}
+
+function decodeBits(counter, bitPositions) {
+  let v = 0;
+  for (let i = 0; i < bitPositions.length; i++) if (counter & (1 << i)) v |= 1 << bitPositions[i];
+  return v >>> 0;
+}
+
+function enumerateValid(kind, bitPositions, bases) {
+  const out = [];
+  for (let n = 0; n < 1 << bitPositions.length; n++) {
+    const bits = decodeBits(n, bitPositions);
+    for (const base of bases) {
+      const items = (base | bits) >>> 0;
+      if (isValid(kind, items)) out.push(items);
+    }
+  }
+  return out;
+}
+
 test('the set of producible looks equals the C# one (all kinds x fur levels x known item bits)', () => {
-  let count = 0;
-  let hash = 0;
+  const headPropBits = [...bitsOfCategory(0), ...bitsOfCategory(1)]; // fur + headPriority/bringsFur/coversEyes props
+  const costumeBits = bitsOfCategory(2); // slot-governed costume items
+  const sheetBits = bitsOfCategory(3); // mutually-exclusive covers (sheet, pumpkin helmet)
+
   const codes = [];
   for (let kind = 0; kind < 2; kind++) {
-    for (let fur = 0; fur < 4; fur++) {
-      for (let items = 0; items < 1 << 28; items++) {
+    const validHeadProp = enumerateValid(kind, headPropBits, [0]);
+    const validHeadPropCostume = enumerateValid(kind, costumeBits, validHeadProp);
+    const validItems = enumerateValid(kind, sheetBits, validHeadPropCostume);
+    for (const items of validItems) {
+      for (let fur = 0; fur < 4; fur++) {
         if (isPossible(kind, fur, items)) codes.push(((items << 3) | (fur << 1) | kind) >>> 0);
       }
     }
   }
   codes.sort((a, b) => a - b);
+  let count = 0;
+  let hash = 0;
   for (const c of codes) { count++; hash = (hash * 31 + c) % 1000000007; }
   assert.equal(count, vectors.validLookCount);
   assert.equal(hash, vectors.validLookChecksum);

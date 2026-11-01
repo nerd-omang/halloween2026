@@ -72,6 +72,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CostumeHookMetal
+    second: {fileID: 2100000, guid: d74ed8bd681169141bea50eb7a936c8e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CostumeLensAmber
     second: {fileID: 2100000, guid: c8d4323ad7fcf8a43ad8919f715ebb1a, type: 2}
   - first:

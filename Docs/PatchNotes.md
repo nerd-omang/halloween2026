@@ -1,10 +1,11 @@
 # Patch notes
 
 Detailed notes per build, newest first. The game itself only shows one-line highlights
-(`Assets/Scripts/PatchNotes.cs`); keep both in step when a build is released, and keep the
-version in Player Settings the same as the newest entry.
+(`Assets/Scripts/PatchNotes.cs`, written for players: plain words, what they notice); keep both in step
+when a build is released, set the release time there (24-hour clock) and keep the version in Player Settings the
+same as the newest entry.
 
-## 0.3.0 (2026-11-01)
+## 0.3.0 (2026-11-01 23:22)
 
 Combo
 - A counter under the score shows the current streak ("COMBO x5") from the second right answer in a row, in the same color as the score. Every step pops the text: 1.3x in 0.35 s, every 10th step 1.6x in 0.5 s, every 100th step 2.2x in 0.7 s (`ComboPop*` in `GameManager`).
@@ -37,7 +38,7 @@ Screens and settings
 Server
 - Two new item bits (26 pirate hat, 27 hook) in `server/src/items.js` and `ItemTable.cs`: the server has to be deployed together with this client, or the look codes of games with these costumes are rejected.
 
-## 0.2.0 (2026-11-01)
+## 0.2.0 (2026-11-01 09:48)
 
 Gameplay
 - Special guests Moku and Myeong7 sometimes join the line from score 20 and 40 on. Either answer (candy or away) is right for them.
@@ -60,6 +61,6 @@ Online
 Other
 - README with screenshots, licenses (Apache 2.0, characters under CC BY-NC-SA 4.0), credits including PrimeTween.
 
-## 0.1.0 (2026-10-31)
+## 0.1.0 (2026-10-31 23:50)
 
 First release.

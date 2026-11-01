@@ -135,19 +135,19 @@ public class MenuScreen
         var center = new Vector2(0.5f, 0.5f);
         var modal = UiKit.Fill("Updates", root);
         modal.gameObject.AddComponent<Image>().color = new Color(0.03f, 0.01f, 0.06f, 0.75f);
-        var card = UiKit.Card("Card", modal, new Vector2(760f, 600f));
-        card.gameObject.AddComponent<ScreenFit>().Init(modal, card, 600f, 24f);
+        var card = UiKit.Card("Card", modal, new Vector2(760f, 680f));
+        card.gameObject.AddComponent<ScreenFit>().Init(modal, card, 680f, 24f);
 
-        UiKit.Bind(UiKit.Label(card, "Title", "", 44, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 255f), new Vector2(680f, 56f), UiKit.Accent), "updates.title");
-        updatesHeader = UiKit.Label(card, "Header", "", 33, TextAnchor.MiddleLeft, center, center, new Vector2(0f, 192f), new Vector2(680f, 44f), Color.white);
-        updatesBody = UiKit.Label(card, "Body", "", 22, TextAnchor.UpperLeft, center, center, new Vector2(0f, -10f), new Vector2(680f, 340f), Color.white);
+        UiKit.Bind(UiKit.Label(card, "Title", "", 44, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 295f), new Vector2(680f, 56f), UiKit.Accent), "updates.title");
+        updatesHeader = UiKit.Label(card, "Header", "", 33, TextAnchor.MiddleLeft, center, center, new Vector2(0f, 232f), new Vector2(680f, 44f), Color.white);
+        updatesBody = UiKit.Label(card, "Body", "", 22, TextAnchor.UpperLeft, center, center, new Vector2(0f, -10f), new Vector2(680f, 420f), Color.white);
         updatesBody.lineSpacing = 1.15f;
 
-        updatesNewer = UiKit.Button(card, "Newer", "", 22, center, center, new Vector2(-250f, -250f), new Vector2(150f, 44f), () => ShowUpdatePage(updatePage - 1));
+        updatesNewer = UiKit.Button(card, "Newer", "", 22, center, center, new Vector2(-250f, -300f), new Vector2(150f, 44f), () => ShowUpdatePage(updatePage - 1));
         UiKit.Bind(updatesNewer.Label, "updates.newer");
-        updatesOlder = UiKit.Button(card, "Older", "", 22, center, center, new Vector2(-90f, -250f), new Vector2(150f, 44f), () => ShowUpdatePage(updatePage + 1));
+        updatesOlder = UiKit.Button(card, "Older", "", 22, center, center, new Vector2(-90f, -300f), new Vector2(150f, 44f), () => ShowUpdatePage(updatePage + 1));
         UiKit.Bind(updatesOlder.Label, "updates.older");
-        var close = UiKit.Button(card, "Close", "", 22, center, center, new Vector2(250f, -250f), new Vector2(200f, 44f), CloseUpdates);
+        var close = UiKit.Button(card, "Close", "", 22, center, center, new Vector2(250f, -300f), new Vector2(200f, 44f), CloseUpdates);
         UiKit.Bind(close.Label, "back");
         modal.gameObject.SetActive(false);
         return modal.gameObject;

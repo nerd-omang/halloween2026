@@ -18,7 +18,7 @@ public static class PatchNotes
             lines = new[]
             {
                 ("Combo counter and time limit, with a bar at the bottom", "콤보 표시와 제한 시간 게이지가 생겼어요"),
-                ("Your hand gets faster as your combo grows", "콤보가 쌓일수록 손이 빨라져요"),
+                ("The hand animation gets faster as your combo grows", "콤보가 쌓일수록 손 애니메이션이 빨라져요"),
                 ("A long combo makes the night spookier", "콤보가 길수록 밤이 으스스해져요"),
                 ("Tricky disguises now come much later", "어려운 위장은 훨씬 나중에 나와요"),
                 ("Visitors wear more varied outfits, and a plain one comes by now and then", "복장이 더 다양해졌고, 기본 모습의 손님도 가끔 와요"),

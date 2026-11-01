@@ -62,11 +62,11 @@ git-flow style: work happens on `feature/*` branches, `main` is for releases.
 
 ## License
 
-Non-commercial use only, to respect the original designer's rights.
+Free to reuse, with one protected part: the characters.
 
-- Code: [PolyForm Noncommercial 1.0.0](LICENSE).
-- Models, art and audio made for the game: [CC BY-NC-SA 4.0](LICENSE-ASSETS.md).
-- The characters themselves remain the designer's; commercial use needs their permission.
+- Code, shaders, environment, UI, audio and everything else made for the game: [Apache 2.0](LICENSE).
+- Character models, textures and their generator scripts: [CC BY-NC-SA 4.0](LICENSE-CHARACTERS.md), non-commercial only.
+- The character designs belong to 명칠; commercial use of the characters needs their permission.
 - Third-party assets keep their own licenses ([CREDITS.md](CREDITS.md)).
 
 ## Credits

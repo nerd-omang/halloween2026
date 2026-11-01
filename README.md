@@ -53,7 +53,7 @@ Moku and Myeong7 sometimes join the line later in a run. Either answer is right 
 3. `Fangame > Build Prototype Scene` generates `Assets/Scenes/Main.unity` (props, UI, audio wiring and queue).
 4. Press Play, or `Fangame > Build WebGL` for the web build (output in `Build/WebGL`, settings in `Assets/Editor/WebBuildSettings.cs`).
 
-The online ranking stays off until the server is deployed and its URL is put in `WorldBoard.BaseUrl`.
+The online ranking talks to the leaderboard server at `WorldBoard.BaseUrl`; if that is empty it stays off.
 Without it the online tab shows that no server is set and nothing is ever sent.
 
 ## Branches
@@ -62,11 +62,11 @@ git-flow style: work happens on `feature/*` branches, `main` is for releases.
 
 ## License
 
-Non-commercial use only, to respect the original designer's rights.
+Free to reuse, with one protected part: the characters.
 
-- Code: [PolyForm Noncommercial 1.0.0](LICENSE).
-- Models, art and audio made for the game: [CC BY-NC-SA 4.0](LICENSE-ASSETS.md).
-- The characters themselves remain the designer's; commercial use needs their permission.
+- Code, shaders, environment, UI, audio and everything else made for the game: [Apache 2.0](LICENSE).
+- Character models, textures and their generator scripts: [CC BY-NC-SA 4.0](LICENSE-CHARACTERS.md), non-commercial only.
+- The character designs belong to 명칠; commercial use of the characters needs their permission.
 - Third-party assets keep their own licenses ([CREDITS.md](CREDITS.md)).
 
 ## Credits

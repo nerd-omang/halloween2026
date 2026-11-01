@@ -1667,12 +1667,78 @@ def render_preview(out_dir, only=None):
         bpy.ops.render.render(write_still=True)
 
 
+# Full sets for the release introduction image: (file name, which visitor shows it best, costume parts worn).
+INTRO_SETS = [
+    ("bunny", "koon", ("Costume_BunnySuit", "Costume_BunnyHeadband")),
+    ("maid", "oma", ("Costume_MaidDress", "Costume_MaidHeadband")),
+    ("pirate", "oma", ("Costume_PirateHat", "Costume_PirateEyePatch", "Costume_Hook")),
+    ("gold", "oma", ("Costume_GoldBikini", "Costume_StarSunglasses")),
+]
+
+
+def render_intro(out_dir):
+    """One transparent 1000x1000 image per intro set: one visitor, big, in a three-quarter view. Backdrop and
+    labels are added afterwards by make_intro_image.py."""
+    scene = bpy.context.scene
+    parts = [o for o in scene.objects if o.type == "MESH"]
+    visitors = {"koon": (make_material("Fur_IntroKoon", (0.42, 0.42, 0.44), False), ("Body", "Koon_")),
+                "oma": (make_material("Fur_IntroOma", (0.62, 0.12, 0.12), True), ("Body", "Oma_"))}
+    for src in parts:
+        src.hide_render = True
+
+    scene.render.engine = "BLENDER_EEVEE_NEXT"
+    scene.render.resolution_x = scene.render.resolution_y = 1000
+    scene.render.film_transparent = True
+    scene.render.image_settings.color_mode = "RGBA"
+    scene.world = bpy.data.worlds.new("IntroWorld")
+    scene.world.color = (0.30, 0.24, 0.40)  # purple night ambient light
+    key = bpy.data.objects.new("Key", bpy.data.lights.new("Key", "SUN"))
+    key.data.energy = 2.6
+    key.data.color = (1.0, 0.82, 0.62)  # warm, like the pumpkin lanterns
+    key.rotation_euler = [math.radians(a) for a in (55, 0, -30)]
+    scene.collection.objects.link(key)
+    rim = bpy.data.objects.new("Rim", bpy.data.lights.new("Rim", "SUN"))
+    rim.data.energy = 1.4
+    rim.data.color = (0.62, 0.55, 1.0)  # cool moonlight from behind
+    rim.rotation_euler = [math.radians(a) for a in (115, 0, 150)]
+    scene.collection.objects.link(rim)
+    cam_data = bpy.data.cameras.new("IntroCam")
+    cam_data.type = "ORTHO"
+    cam_data.ortho_scale = 1.8
+    cam = bpy.data.objects.new("IntroCam", cam_data)
+    cam.location = (0, -5, 0.54)
+    cam.rotation_euler = [math.radians(a) for a in (90, 0, 0)]
+    scene.collection.objects.link(cam)
+    scene.camera = cam
+
+    for name, who, costumes in INTRO_SETS:
+        copies = []
+        fur, prefixes = visitors[who]
+        for src in parts:
+            if not src.name.startswith(prefixes + costumes):
+                continue
+            obj = src.copy()
+            obj.hide_render = False  # the sources are hidden
+            scene.collection.objects.link(obj)
+            obj.rotation_euler.z = math.radians(25)  # a three-quarter view
+            for slot in obj.material_slots:
+                if slot.material and slot.material.name == "Fur":
+                    slot.link = "OBJECT"
+                    slot.material = fur
+            copies.append(obj)
+        scene.render.filepath = os.path.join(out_dir, f"intro_{name}.png")
+        bpy.ops.render.render(write_still=True)
+        for obj in copies:
+            bpy.data.objects.remove(obj)
+
+
 def main():
     global ATLAS_PATH
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
     parser.add_argument("--preview")
+    parser.add_argument("--intro", help="folder for the release introduction renders (transparent PNG per set)")
     parser.add_argument("--only", help="comma separated preview set names (default: all)")
     args = parser.parse_args(argv)
     out = os.path.abspath(args.out)
@@ -1695,6 +1761,8 @@ def main():
     print(f"[visitors] exported {args.out}")
     if args.preview:
         render_preview(os.path.abspath(args.preview), args.only.split(",") if args.only else None)
+    if args.intro:
+        render_intro(os.path.abspath(args.intro))
 
 
 if __name__ == "__main__":

@@ -55,9 +55,19 @@ public static class VisitorModelBuilder
         ("CostumeWhite", new Color(0.95f, 0.95f, 0.93f), 0.2f, false, 0f),
         ("CostumeBunnyInner", new Color(0.60f, 0.58f, 0.60f), 0.1f, false, 0f),
         ("CostumeGold", new Color(0.95f, 0.75f, 0.15f), 0.6f, false, 0f),
+        ("CostumeGoldMetal", new Color(0.95f, 0.75f, 0.15f), 0.8f, false, 0f), // the bikini: real metal, set up below
         ("CostumeLensAmber", new Color(0.25f, 0.15f, 0.03f), 0.8f, false, 0f),
         ("CostumeAlienLens", new Color(0.12f, 0.14f, 0.13f), 0.85f, false, 0f),
         ("CostumeLime", new Color(0.45f, 0.90f, 0.12f), 0.5f, false, 0f),
+        ("CostumeStraw", new Color(0.86f, 0.68f, 0.28f), 0f, false, 0f),
+        ("CostumeGauze", new Color(0.96f, 0.94f, 0.88f), 0f, false, 0f),
+        ("CostumeFrill", new Color(0.95f, 0.95f, 0.93f), 0f, false, 0f),   // frills: the fold shader, set up below
+        ("CostumeHole", new Color(0.58f, 0.58f, 0.62f), 0f, false, 0f),
+        ("CostumePink", new Color(0.95f, 0.35f, 0.55f), 0.4f, false, 0f),
+        ("CostumeBone", new Color(0.93f, 0.91f, 0.82f), 0.2f, false, 0f),
+        ("PumpkinShell", new Color(0.95f, 0.45f, 0.05f), 0.3f, false, 0f),
+        ("PumpkinStem", new Color(0.25f, 0.45f, 0.15f), 0.1f, false, 0f),
+        ("PumpkinGlow", new Color(0.98f, 0.82f, 0.22f), 0.2f, false, 0f),
     };
 
     const string SheetMaterial = "Sheet";
@@ -109,10 +119,11 @@ public static class VisitorModelBuilder
         // Both can hide under a ghost sheet (hidden until GhostSheet.Wear()).
         // Parts that push the sheet up (props only show when worn). Surface clues (eyes, markings, dye,
         // glasses) are not listed, so the sheet hides them.
-        AddGhostSheet(koon, "Ghost_Sheet", "Koon_Nose", "Koon_Tail", "Fake_HornBand", "Fake_GoatEars", "Fake_PaintBucket",
-            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband");
-        AddGhostSheet(oma, "Ghost_Sheet", "Oma_Horns", "Oma_Ears", "Oma_Tail", "Fake_ConeNose", "Fake_RaccoonTail", "Fake_PaintBucket",
-            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband");
+        // The pumpkin helmet is the second cover (GhostSheet picks it for some of the sheeted visitors).
+        AddGhostSheet(koon, "Ghost_Sheet", "Pumpkin_Helmet", "Koon_Nose", "Koon_Tail", "Fake_HornBand", "Fake_GoatEars", "Fake_PaintBucket",
+            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband", "Costume_Broom", "Costume_Lollipop");
+        AddGhostSheet(oma, "Ghost_Sheet", "Pumpkin_Helmet", "Oma_Horns", "Oma_Ears", "Oma_Tail", "Fake_ConeNose", "Fake_RaccoonTail", "Fake_PaintBucket",
+            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband", "Costume_Broom", "Costume_Lollipop");
         // Fixed full-costume variants, for the preview scene.
         var koonCostume = SavePrefab(koon, "Koonmungchi_OmaCostume", "Paint_Red",
             "Body", "Koon_", "Fake_HornBand", "Fake_GoatEars");
@@ -193,6 +204,31 @@ public static class VisitorModelBuilder
             }
         }
 
+        // Golden bikini: metallic gold that reflects the environment, with a faint glow so it never goes dark.
+        var goldMetal = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/CostumeGoldMetal.mat");
+        goldMetal.SetFloat("_Metallic", 0.9f);
+        goldMetal.SetFloat("_EnvironmentReflections", 1f);
+        goldMetal.DisableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+        goldMetal.SetFloat("_SpecularHighlights", 1f);
+        goldMetal.DisableKeyword("_SPECULARHIGHLIGHTS_OFF");
+        goldMetal.EnableKeyword("_EMISSION");
+        goldMetal.SetColor("_EmissionColor", new Color(0.95f, 0.75f, 0.15f) * 0.18f);
+        goldMetal.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+        EditorUtility.SetDirty(goldMetal);
+
+        // Frills (maid dress): the ghost sheet's cloth shader with its drape folds as ridges and grooves, no flutter, no eyes.
+        var frillMat = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/CostumeFrill.mat");
+        frillMat.shader = Shader.Find("Fangame/VisitorSheet");
+        frillMat.SetColor("_BaseColor", new Color(0.95f, 0.95f, 0.93f));
+        frillMat.SetFloat("_FlutterAmount", 0f);
+        frillMat.SetFloat("_EyeSize", 0f);
+        frillMat.SetFloat("_FoldCount", 24f);
+        frillMat.SetFloat("_FoldDepth", 0.2f);
+        frillMat.SetFloat("_FoldShade", 0.22f);
+        frillMat.SetFloat("_FoldTop", 3f);   // the folds are at full depth over the whole band
+        frillMat.SetFloat("_FoldFull", 2.9f);
+        EditorUtility.SetDirty(frillMat);
+
         // Ghost sheet: its own fluttering cloth shader.
         var sheetPath = $"{MaterialDir}/{SheetMaterial}.mat";
         var sheetMat = AssetDatabase.LoadAssetAtPath<Material>(sheetPath);
@@ -216,6 +252,7 @@ public static class VisitorModelBuilder
         bumpMat.CopyPropertiesFromMaterial(sheetMat);
         bumpMat.SetFloat("_FlutterAmount", 0f);
         bumpMat.SetFloat("_EyeSize", 0f); // eyes belong on the sheet only, not on the bumps
+        bumpMat.SetFloat("_FoldDepth", 0f); // so do the drape folds
         EditorUtility.SetDirty(bumpMat);
         AssetDatabase.SaveAssets();
     }
@@ -293,22 +330,30 @@ public static class VisitorModelBuilder
     }
 
     // Combination rules for VisitorDisguise: props sharing the head (first one wins) and props that bring the fur change.
-    // VisitorCostume entries: (part, slot, stays on through a palm blast, is a headband). Order is the costume
-    // bit order; append only. The rules match ItemTable.
-    static readonly (string name, CostumeSlot slot, bool stays, bool headband)[] Costumes =
+    // VisitorCostume entries: (part, slot, stays on through a palm blast, is a headband, hides a clue). Order is the
+    // costume bit order; append only. The rules match ItemTable.
+    static readonly (string name, CostumeSlot slot, bool stays, bool headband, bool hard)[] Costumes =
     {
-        ("Costume_WitchHat", CostumeSlot.Head, false, false),
-        ("Costume_BowTie", CostumeSlot.Neck, false, false),
-        ("Costume_PumpkinBasket", CostumeSlot.Hand, false, false),
-        ("Costume_BatWings", CostumeSlot.Back, false, false),
-        ("Costume_Bandage", CostumeSlot.Body, true, false),
-        ("Costume_MaidHeadband", CostumeSlot.Head, false, true),
-        ("Costume_BunnyHeadband", CostumeSlot.Head, false, true),
-        ("Costume_StarSunglasses", CostumeSlot.Eyes, false, false),
-        ("Costume_AlienSunglasses", CostumeSlot.Eyes, false, false),
+        ("Costume_WitchHat", CostumeSlot.Head, false, false, false),
+        ("Costume_BowTie", CostumeSlot.Neck, false, false, false),
+        ("Costume_PumpkinBasket", CostumeSlot.Hand, false, false, false),
+        ("Costume_BatWings", CostumeSlot.Back, false, false, false),
+        ("Costume_Bandage", CostumeSlot.Body, true, false, false),
+        ("Costume_MaidHeadband", CostumeSlot.Head, false, true, false),
+        ("Costume_BunnyHeadband", CostumeSlot.Head, false, true, false),
+        ("Costume_StarSunglasses", CostumeSlot.Eyes, false, false, false),
+        ("Costume_AlienSunglasses", CostumeSlot.Eyes, false, false, false),
+        ("Costume_PirateEyePatch", CostumeSlot.LeftEye, false, false, true),
+        ("Costume_Broom", CostumeSlot.Hand, false, false, false),
+        ("Costume_Lollipop", CostumeSlot.Hand, false, false, false),
+        ("Costume_RibVest", CostumeSlot.Body, false, false, true),
+        ("Costume_MedicalEyePatch", CostumeSlot.RightEye, false, false, true),
+        ("Costume_GoldBikini", CostumeSlot.Body, false, false, false),
+        ("Costume_BunnySuit", CostumeSlot.Body, false, false, true),
+        ("Costume_MaidDress", CostumeSlot.Body, false, false, true),
     };
 
-    static void AddCostumes(GameObject prefab, (string name, CostumeSlot slot, bool stays, bool headband)[] entries)
+    static void AddCostumes(GameObject prefab, (string name, CostumeSlot slot, bool stays, bool headband, bool hard)[] entries)
     {
         var path = AssetDatabase.GetAssetPath(prefab);
         var root = PrefabUtility.LoadPrefabContents(path);
@@ -326,6 +371,7 @@ public static class VisitorModelBuilder
             entry.FindPropertyRelative("slot").enumValueIndex = (int)entries[i].slot;
             entry.FindPropertyRelative("stays").boolValue = entries[i].stays;
             entry.FindPropertyRelative("headband").boolValue = entries[i].headband;
+            entry.FindPropertyRelative("hard").boolValue = entries[i].hard;
         }
         so.ApplyModifiedPropertiesWithoutUndo();
 
@@ -369,7 +415,7 @@ public static class VisitorModelBuilder
         PrefabUtility.UnloadPrefabContents(root);
     }
 
-    static void AddGhostSheet(GameObject prefab, string sheetName, params string[] protrusionNames)
+    static void AddGhostSheet(GameObject prefab, string sheetName, string pumpkinName, params string[] protrusionNames)
     {
         var path = AssetDatabase.GetAssetPath(prefab);
         var root = PrefabUtility.LoadPrefabContents(path);
@@ -379,8 +425,13 @@ public static class VisitorModelBuilder
 
         var sheet = root.transform.Find(sheetName);
         sheet.gameObject.SetActive(false);
+        var pumpkin = root.transform.Find(pumpkinName);
+        pumpkin.gameObject.SetActive(false);
         var so = new SerializedObject(ghost);
         so.FindProperty("sheet").objectReferenceValue = sheet;
+        so.FindProperty("pumpkin").objectReferenceValue = pumpkin;
+        so.FindProperty("pumpkinBumpMaterial").objectReferenceValue =
+            AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/PumpkinShell.mat");
         so.FindProperty("bumpMaterial").objectReferenceValue =
             AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{SheetBumpMaterial}.mat");
         var protrusions = so.FindProperty("protrusions");

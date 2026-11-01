@@ -22,6 +22,11 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CostumeBone
+    second: {fileID: 2100000, guid: 418bf42bbe98e6f4898d0edfa873de62, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CostumeBow
     second: {fileID: 2100000, guid: 62ef41c4d4cd83e4d9a90514606cdf3a, type: 2}
   - first:
@@ -37,13 +42,33 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CostumeFrill
+    second: {fileID: 2100000, guid: 40123ad6c50c38b4da785f73236d8111, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeGauze
+    second: {fileID: 2100000, guid: 774affe70cd52354a9b2fe58b3ed211c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CostumeGold
     second: {fileID: 2100000, guid: 930b839ec2166cb4092ce20a6fecc6e5, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: CostumeGoldMetal
+    second: {fileID: 2100000, guid: 24206d92922dfc74ca75afa1c101b43c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: CostumeHat
     second: {fileID: 2100000, guid: 54b509bed5f8d2e4c9b4b9e690df019c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeHole
+    second: {fileID: 2100000, guid: b288e7c93fded6f4e896706ddf2fcc87, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
@@ -59,6 +84,16 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: CostumeOrange
     second: {fileID: 2100000, guid: e1c4ba1628703544faeb7dffe11affe7, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumePink
+    second: {fileID: 2100000, guid: a29aeeb1b0209de438ea226771967116, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: CostumeStraw
+    second: {fileID: 2100000, guid: 45996fdd42595d24196028acf0ef86c7, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
@@ -154,6 +189,21 @@ ModelImporter:
       assembly: UnityEngine.CoreModule
       name: PropTin
     second: {fileID: 2100000, guid: e85bc6f51714ee74a84855386d4424cd, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PumpkinGlow
+    second: {fileID: 2100000, guid: 6c1532b99e02656488b7ff27a7eb97a0, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PumpkinShell
+    second: {fileID: 2100000, guid: ef44d27671e90a94297466c8910480c4, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: PumpkinStem
+    second: {fileID: 2100000, guid: 4df62365142c0d24a81cc0994b0239c0, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule

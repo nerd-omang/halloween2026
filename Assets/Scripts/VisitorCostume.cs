@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum CostumeSlot { Head, Neck, Hand, Back, Body, Eyes }
+public enum CostumeSlot { Head, Neck, Hand, Back, Body, Eyes, LeftEye, RightEye }
 
 // Halloween costumes worn just for fun by either visitor (witch hat, pumpkin basket...). Unlike
 // VisitorDisguise they imitate nobody, so they never point to the answer; they are visual noise, and
@@ -21,6 +21,9 @@ public class VisitorCostume : MonoBehaviour
         public bool stays;
         // A headband (maid, bunny): left off while the disguise wears a headband prop.
         public bool headband;
+        // Hides a look clue (the rib vest covers Omangi's cross): only picked by Randomize for two or more costumes,
+        // which the game asks for later in a run.
+        public bool hard;
     }
 
     [SerializeField] Entry[] costumes;
@@ -76,15 +79,16 @@ public class VisitorCostume : MonoBehaviour
 
     int Normalize(int mask, bool headCovered, bool headbandWorn, bool eyesCovered)
     {
-        int taken = 0; // slots already used, one bit per CostumeSlot
+        int taken = 0; // slots already used, one bit per ItemSlot
         for (int i = 0; i < costumes.Length; i++)
         {
             int bit = 1 << i;
             if ((mask & bit) == 0) continue;
-            int slotBit = 1 << (int)costumes[i].slot;
+            var slot = (ItemSlot)((int)costumes[i].slot + 1); // CostumeSlot is ItemSlot without None
+            int slotBit = 1 << (int)slot;
             var entry = costumes[i];
-            if ((taken & slotBit) != 0 || (headCovered && entry.slot == CostumeSlot.Head)
-                || (headbandWorn && entry.headband) || (eyesCovered && entry.slot == CostumeSlot.Eyes))
+            if (ItemTable.SlotTaken(slot, (uint)taken) || (headCovered && entry.slot == CostumeSlot.Head)
+                || (headbandWorn && entry.headband) || (eyesCovered && ItemTable.IsEyeSlot(slot)))
             {
                 mask &= ~bit;
                 continue;
@@ -119,6 +123,7 @@ public class VisitorCostume : MonoBehaviour
             for (int i = 0; i < costumes.Length; i++)
             {
                 int next = mask | (1 << i);
+                if (costumes[i].hard && count < 2) continue;
                 if (next != mask && Normalize(next) == next) candidates.Add(1 << i);
             }
             if (candidates.Count == 0) break;

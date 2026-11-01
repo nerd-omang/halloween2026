@@ -78,9 +78,19 @@ MATERIALS = {
     "CostumeWhite": ((0.95, 0.95, 0.93), False),
     "CostumeBunnyInner": ((0.60, 0.58, 0.60), False),
     "CostumeGold": ((0.95, 0.75, 0.15), False),
+    "CostumeGoldMetal": ((0.95, 0.75, 0.15), False),
     "CostumeLensAmber": ((0.25, 0.15, 0.03), False),
     "CostumeAlienLens": ((0.12, 0.14, 0.13), False),
     "CostumeLime": ((0.45, 0.90, 0.12), False),
+    "CostumeStraw": ((0.86, 0.68, 0.28), False),
+    "CostumePink": ((0.95, 0.35, 0.55), False),
+    "CostumeBone": ((0.93, 0.91, 0.82), False),
+    "CostumeGauze": ((0.96, 0.94, 0.88), False),
+    "CostumeFrill": ((0.95, 0.95, 0.93), False),
+    "CostumeHole": ((0.58, 0.58, 0.62), False),
+    "PumpkinShell": ((0.95, 0.45, 0.05), False),
+    "PumpkinStem": ((0.25, 0.45, 0.15), False),
+    "PumpkinGlow": ((0.98, 0.82, 0.22), False),
     "Sheet": ((0.90, 0.90, 0.88), False),
 }
 
@@ -952,6 +962,455 @@ def build_costumes():
     add_temples(part, "CostumeLime", centers, half_len * 0.8)
     part.finish()
 
+    # Pirate eye patch (eyes): a black patch over the visitor's left eye (+X, their left) on a strap that
+    # slants over the head to the back. Hides one eye: Koonmungchi's X button or Omangi's oval.
+    part = Part("Costume_PirateEyePatch")
+    d1 = Vector((0.36, -1.0, EYE_Y)).normalized()
+    # Like the medical pad it hugs the face: just above the surface at the eye, leaning toward the body normal.
+    eye_loc, eye_n = surf(d1)
+    patch_c = eye_loc + eye_n * 0.022
+    patch_n = (FRONT * 0.35 + eye_n * 0.65).normalized()
+    patch_u = AXIS_Z.cross(patch_n).normalized()
+    if patch_u.dot(AXIS_X) < 0:
+        patch_u = -patch_u
+    patch_v = patch_n.cross(patch_u)
+    # The strap is a great circle through the eye (direction from the body center), slanting up over the
+    # forehead above the other eye; it rises off the body to the patch plane under the patch, so it runs
+    # through the patch's center line instead of ending beside it.
+    d2 = Vector((-0.45, -0.8, 0.95)).normalized()
+    plane = d1.cross(d2).normalized()
+    e2 = plane.cross(d1).normalized()
+    center_lift = max(0.012, (patch_c - eye_loc).dot(eye_n))
+    strap, strap_n = [], []
+    for k in range(41):
+        a = 2 * math.pi * k / 40
+        near = min(a, 2 * math.pi - a)
+        lift = 0.012 + (center_lift - 0.012) * math.exp(-(near / 0.3) ** 2)
+        loc, sn = surf(math.cos(a) * d1 + math.sin(a) * e2)
+        strap.append(loc + sn * lift)
+        strap_n.append(sn)
+    add_ribbon(part, "CostumeDark", strap, strap_n, 0.03)
+    # The patch faces the viewer in the plane in front of the face, tilted only slightly toward the strap.
+    tilt = math.atan2(e2.z, e2.x)
+    if abs(tilt) > math.pi / 2:
+        tilt -= math.copysign(math.pi, tilt)
+    tilt *= 0.3
+    outline = []
+    for t in (2 * math.pi * k / 12 for k in range(13)):
+        x, z = 0.075 * math.cos(t), 0.058 * math.sin(t)
+        outline.append((x * math.cos(tilt) - z * math.sin(tilt), x * math.sin(tilt) + z * math.cos(tilt)))
+    add_flat(part, "CostumeDark", outline, patch_c, patch_u, patch_v, 0.012)
+    part.finish()
+
+    # Medical eye patch (eyes): a white pad with rounded corners over the visitor's right eye (-X, their right),
+    # a 3x3 grid of small holes in it, held on by two thin white strings that circle the head at the pad's upper
+    # and lower edge (so they frame the other eye). Near the pad the strings rise off the body to meet it.
+    part = Part("Costume_MedicalEyePatch")
+    # The pad hugs the face: it sits just above the surface at the eye and leans toward the body normal
+    # (about two thirds of the way from facing front), so it reads as a patch rather than glasses.
+    eye_loc, eye_n = surf((-0.36, -1.0, EYE_Y))
+    pad_n = (FRONT * 0.35 + eye_n * 0.65).normalized()
+    pad_c = eye_loc + eye_n * 0.022
+    pad_u = AXIS_Z.cross(pad_n).normalized()
+    if pad_u.dot(AXIS_X) < 0:
+        pad_u = -pad_u
+    pad_v = pad_n.cross(pad_u)
+    hw, hh, rr = 0.085, 0.072, 0.03
+    outline = []
+    for ox, oz, a0 in ((hw - rr, hh - rr, 0), (-(hw - rr), hh - rr, 90), (-(hw - rr), -(hh - rr), 180),
+                       (hw - rr, -(hh - rr), 270)):
+        for k in range(4):
+            a = math.radians(a0 + 90 * k / 3)
+            outline.append((ox + rr * math.cos(a), oz + rr * math.sin(a)))
+    outline.append(outline[0])
+    add_flat(part, "CostumeGauze", outline, pad_c, pad_u, pad_v, 0.014)
+    bm = part.bm
+    hole_mat = part.mat_index("CostumeHole")
+    for i in (-1, 0, 1):
+        for j in (-1, 0, 1):
+            hc = pad_c + pad_u * (i * 0.036) + pad_v * (j * 0.03) + pad_n * 0.0075
+            rim = [bm.verts.new(hc + pad_u * 0.0075 * math.cos(t) + pad_v * 0.0075 * math.sin(t))
+                   for t in (2 * math.pi * k / 6 for k in range(6))]
+            hub = bm.verts.new(hc)
+            for v0, v1 in zip(rim, rim[1:] + rim[:1]):
+                f = bm.faces.new((v0, v1, hub))
+                orient(f, pad_n)
+                f.material_index = hole_mat
+                f.smooth = False
+                for loop in f.loops:
+                    loop[part.uv].uv = WHITE_UV
+    # The strings start at the pad's four rounded corners (x = +-0.076, z = +-0.063 from its center): across the
+    # pad's width they lie in its plane, then settle onto the body and circle the head.
+    corner_x, corner_z = hw - rr + rr * math.cos(math.pi / 4), hh - rr + rr * math.sin(math.pi / 4)
+    theta0 = math.atan2(pad_c.x, -pad_c.y)
+    for dz in (-corner_z, corner_z):
+        corner = pad_c + pad_v * dz
+        z_ring = corner.z
+        pts, normals = [], []
+        for k in range(29):
+            theta = 2 * math.pi * k / 28
+            origin = Vector((2.0 * math.sin(theta), -2.0 * math.cos(theta), z_ring))
+            loc, sn, _, _ = BVH.ray_cast(origin, Vector((-math.sin(theta), math.cos(theta), 0.0)))
+            gap = abs((theta - theta0 + math.pi) % (2 * math.pi) - math.pi)
+            dx = abs(loc.x - pad_c.x)
+            span = corner_x * abs(pad_u.x)
+            w = 0.0
+            if gap < 1.0:
+                w = 1.0 if dx <= span else math.exp(-((dx - span) / 0.07) ** 2)
+            on_body = loc + sn * 0.012
+            # the point of the pad's plane at this x and height
+            in_plane = Vector((loc.x, pad_c.y - (pad_n.x * (loc.x - pad_c.x) + pad_n.z * (z_ring - pad_c.z)) / pad_n.y, z_ring))
+            pts.append(on_body.lerp(in_plane, w))
+            normals.append(sn)
+        add_ribbon(part, "CostumeGauze", pts, normals, 0.014)
+    part.finish()
+
+    # Broom (hand): held upright at the right hand (-X), bristles on the ground, a binding band under the stick.
+    part = Part("Costume_Broom")
+    start, n = surf((-1.0, -0.3, -0.1))
+    d = Vector((-0.75, -0.45, -0.45)).normalized()
+    hand = start - n * 0.03 + d * 0.17
+
+    def broom_axis(z):
+        return Vector((hand.x - 0.08 * (z - hand.z), hand.y, z))
+
+    add_tube(part, "PropStrap", [broom_axis(0.18), broom_axis(0.58), broom_axis(1.0)], [0.013] * 3, AXIS_Y, segments=5)
+    add_cone(part, "CostumeStraw", trs(broom_axis(0.12), Matrix.Identity(4), (1, 1, 1)), 0.08, 0.03, 0.24,
+             segments=8, smooth=False)
+    binding = [broom_axis(0.235) + 0.036 * (math.cos(a) * AXIS_X + math.sin(a) * AXIS_Y)
+               for a in (2 * math.pi * k / 8 for k in range(9))]
+    add_tube(part, "CostumeDark", binding, [0.008] * len(binding), AXIS_Z, segments=4, cap_start=False, cap_end=False)
+    part.finish()
+
+    # Lollipop (hand): a pink and white swirl disc on a stick, in the right hand (-X).
+    part = Part("Costume_Lollipop")
+    pop = [hand - AXIS_Z * 0.03, hand + Vector((-0.01, 0.0, 0.14)), hand + Vector((-0.02, 0.0, 0.28))]
+    add_tube(part, "CostumeWhite", pop, [0.008] * 3, AXIS_Y, segments=4)
+    disc_c = pop[-1] + AXIS_Z * 0.07
+    for k in range(8):
+        arc = [(0.075 * math.cos(a), 0.075 * math.sin(a))
+               for a in (2 * math.pi * (k + t / 2) / 8 for t in range(3))]
+        add_flat(part, "CostumePink" if k % 2 == 0 else "CostumeWhite", arc, disc_c, AXIS_X, AXIS_Z, 0.014)
+    part.finish()
+
+    # Skeleton rib vest (body): a black bib over the belly with bone ribs and a breastbone. It covers
+    # Omangi's inverted cross.
+    part = Part("Costume_RibVest")
+    bm = part.bm
+    index = part.mat_index("CostumeDark")
+    rows = [-0.28, -0.45, -0.62, -0.79, -0.96, -1.12]
+    cols = [-0.5, -0.33, -0.17, 0.0, 0.17, 0.33, 0.5]
+    grid = []
+    for z in rows:
+        row = []
+        for x in cols:
+            loc, sn = surf((x, -1.0, z))
+            row.append((bm.verts.new(loc + sn * 0.012), sn))
+        grid.append(row)
+    for i in range(len(rows) - 1):
+        for j in range(len(cols) - 1):
+            f = bm.faces.new((grid[i][j][0], grid[i][j + 1][0], grid[i + 1][j + 1][0], grid[i + 1][j][0]))
+            orient(f, grid[i][j][1])
+            f.material_index = index
+            f.smooth = True
+            for loop in f.loops:
+                loop[part.uv].uv = WHITE_UV
+    for k, z in enumerate((-0.42, -0.58, -0.74, -0.9)):
+        half = 0.42 - 0.04 * k
+        pts, normals = [], []
+        for t in range(9):
+            x = -half + 2 * half * t / 8
+            loc, sn = surf((x, -1.0, z - 0.07 * (x / half) ** 2))
+            pts.append(loc + sn * 0.02)
+            normals.append(sn)
+        add_ribbon(part, "CostumeBone", pts, normals, 0.03)
+    pts, normals = [], []
+    for t in range(6):
+        loc, sn = surf((0.0, -1.0, -0.3 - 0.7 * t / 5))
+        pts.append(loc + sn * 0.02)
+        normals.append(sn)
+    add_ribbon(part, "CostumeBone", pts, normals, 0.028)
+    part.finish()
+
+    def body_grid(part, mat, rows, lift, closed=False):
+        """Quads over rows of body directions (each row a list of (x, y, z)), lying on the surface.
+        lift is a distance, or a function of the row index."""
+        bm = part.bm
+        index = part.mat_index(mat)
+        lift_of = lift if callable(lift) else (lambda r: lift)
+        grid = []
+        for ri, row in enumerate(rows):
+            hits = [surf(d) for d in row]
+            grid.append([(bm.verts.new(loc + sn * lift_of(ri)), sn) for loc, sn in hits])
+        for r0, r1 in zip(grid, grid[1:]):
+            count = len(r0)
+            for j in range(count if closed else count - 1):
+                k = (j + 1) % count
+                f = bm.faces.new((r0[j][0], r0[k][0], r1[k][0], r1[j][0]))
+                orient(f, r0[j][1])
+                f.material_index = index
+                f.smooth = True
+                for loop in f.loops:
+                    loop[part.uv].uv = WHITE_UV
+
+    def ring_ribbon(part, mat, z, lift, width, steps=36):
+        pts, normals = [], []
+        for k in range(steps + 1):
+            phi = 2 * math.pi * k / steps
+            loc, sn = surf((math.sin(phi), -math.cos(phi), z))
+            pts.append(loc + sn * lift)
+            normals.append(sn)
+        add_ribbon(part, mat, pts, normals, width)
+
+    # Golden bikini (body): a triangle top (two triangles on the chest, points up) whose bottom edges meet and
+    # continue as a band around the body, and whose tips run as halter strings up and around the sides, below the
+    # ears, until they meet at the back. A triangle below the belly, point down, hangs from a second band around
+    # the body. All gold, no ornaments.
+    part = Part("Costume_GoldBikini")
+    top_base_z, top_tip_z = -0.40, 0.04
+    # Everything is placed by (angle around the body, height) so the cups' bottom corners lie exactly on the band
+    # around the body and the strings start exactly at the tips.
+    def at(phi, z):
+        return (math.sin(phi), -math.cos(phi), z)
+
+    for sx in (-1, 1):
+        inner, outer, tip = sx * math.atan(0.38), sx * math.atan(0.82), sx * math.atan(0.60)
+        cup = []
+        for r in range(6):
+            t = 0.99 * r / 5
+            pl, pr = inner + (tip - inner) * t, outer + (tip - outer) * t
+            z = top_base_z + (top_tip_z - top_base_z) * t
+            cup.append([at(pl + (pr - pl) * c / 4.0, z) for c in range(5)])
+        body_grid(part, "CostumeGoldMetal", cup, 0.014)
+        # halter string: from the tip up and around the side, between the ear and the arm, to the back of the neck
+        phi0 = tip
+        phi1 = sx * math.pi
+        pts, normals = [], []
+        for k in range(21):
+            phi = phi0 + (phi1 - phi0) * k / 20
+            rise = (math.sin(min(abs(phi), math.pi / 2)) - math.sin(abs(phi0))) / (1.0 - math.sin(abs(phi0)))
+            loc, sn = surf(at(phi, top_tip_z + 0.2 * rise))  # starts exactly at the triangle's tip
+            pts.append(loc + sn * 0.014)
+            normals.append(sn)
+        add_ribbon(part, "CostumeGoldMetal", pts, normals, 0.0055)
+    ring_ribbon(part, "CostumeGoldMetal", top_base_z, 0.014, 0.0085)
+    belt_z, tip_bottom_z = -0.78, -1.14
+    ring_ribbon(part, "CostumeGoldMetal", belt_z, 0.014, 0.0085)
+    pants = []
+    for r in range(6):
+        t = 0.97 * r / 5
+        half = math.atan(0.40) * (1.0 - t)
+        pants.append([at(half * (c / 4.0 * 2.0 - 1.0), belt_z + (tip_bottom_z - belt_z) * t) for c in range(5)])
+    body_grid(part, "CostumeGoldMetal", pants, 0.014)
+    part.finish()
+
+    # Bunny-girl suit (body): a black strapless leotard around the body. The neckline rises at the front into two
+    # pointed peaks (an "M"), and the legs are cut high at the hips so the
+    # lower edge forms a "V" (front and back); a white trim follows both edges. A white cotton tail sits on the back.
+    part = Part("Costume_BunnySuit")
+    steps = 60
+    CROTCH_X = 0.2  # half width of the band between the legs, as sin(phi) at its ends
+
+    def suit_top(phi):
+        front = max(0.0, math.cos(phi))
+        peak = max(0.0, 1.0 - abs(abs(math.sin(phi)) - 0.31) / 0.23)  # wide, blunt peaks leave the snout free
+        return -0.30 + 0.2 * peak * front
+
+    def suit_bottom(phi):
+        away = min(abs(math.sin(phi)), 1.0)  # 0 at the front and back, 1 at the sides
+        return -1.1 + 0.52 * min(1.0, max(away, CROTCH_X) / 0.8)  # the crotch band takes over inside CROTCH_X
+
+    rows = []
+    for r in range(9):
+        row = []
+        for k in range(steps):
+            phi = 2 * math.pi * k / steps
+            row.append((math.sin(phi), -math.cos(phi), suit_top(phi) + (suit_bottom(phi) - suit_top(phi)) * r / 8))
+        rows.append(row)
+    body_grid(part, "CostumeDark", rows, 0.012, closed=True)
+
+    def edge_trim(z_of, width, runs=((0.0, 2 * math.pi),)):
+        for lo, hi in runs:
+            pts, normals = [], []
+            for k in range(steps + 1):
+                phi = lo + (hi - lo) * k / steps
+                loc, sn = surf((math.sin(phi), -math.cos(phi), z_of(phi)))
+                pts.append(loc + sn * 0.018)
+                normals.append(sn)
+            add_ribbon(part, "CostumeWhite", pts, normals, width)
+
+    edge_trim(suit_top, 0.028)
+    # The leg-opening trim runs from the front band down each hip and up to the back band, joining the crotch trim.
+    ends = math.asin(CROTCH_X)
+    edge_trim(suit_bottom, 0.028, ((ends, math.pi - ends), (math.pi + ends, 2 * math.pi - ends)))
+    # The crotch: a band under the body between the legs, from the front V's point to the back V's point.
+    edge_z = suit_bottom(0.0)
+    edge_y = math.cos(ends)
+    a_start = math.atan2(-edge_z, edge_y)
+    half = CROTCH_X / edge_y * math.cos(a_start)  # the band's sides start exactly where the leg trims end
+    crotch = []
+    for r in range(15):
+        a = a_start + (math.pi - 2 * a_start) * r / 14
+        crotch.append([(half * (c / 3.0 * 2.0 - 1.0), -math.cos(a), -math.sin(a)) for c in range(4)])
+    body_grid(part, "CostumeDark", crotch, 0.012)
+    for sx in (-1, 1):
+        pts, normals = [], []
+        for r in range(15):
+            a = a_start + (math.pi - 2 * a_start) * r / 14
+            loc, sn = surf((sx * half, -math.cos(a), -math.sin(a)))
+            pts.append(loc + sn * 0.018)
+            normals.append(sn)
+        add_ribbon(part, "CostumeWhite", pts, normals, 0.024)
+    loc, sn = surf((0.0, 1.0, -0.75))
+    add_sphere(part, "CostumeWhite", trs(loc + sn * 0.05, Matrix.Identity(4), (0.075, 0.075, 0.075)), 8, 6)
+    part.finish()
+
+
+    # Maid dress (body): a black Victorian maid dress that flares toward the hem, a white apron panel down the
+    # front with a frilled bottom edge, a waist tie with a bow at the back, a frill at the hem and a frilled
+    # collar. Covers most of the markings.
+    part = Part("Costume_MaidDress")
+    steps = 36
+    top_z, hem_z = -0.22, -1.0
+
+    def dress_lift(z):
+        return 0.012 + 0.04 * ((top_z - z) / (top_z - hem_z)) ** 2
+
+    zs = [top_z + (hem_z - top_z) * r / 4 for r in range(5)]
+    rows = [[(math.sin(2 * math.pi * k / steps), -math.cos(2 * math.pi * k / steps), z) for k in range(steps)]
+            for z in zs]
+    body_grid(part, "CostumeDark", rows, lambda r: dress_lift(zs[r]), closed=True)
+
+    # Frills are plain bands with a wavy lower edge; the ridges and grooves come from the fold shader that the
+    # CostumeFrill material uses in Unity (Fangame/VisitorSheet), like the ghost sheet, so they are not modeled.
+    def frill_ring(z, extra, width, waves, amp):
+        pts, normals = [], []
+        for k in range(steps * 2 + 1):
+            phi = 2 * math.pi * k / (steps * 2)
+            zz = z - amp * abs(math.cos(waves * phi / 2))
+            loc, sn = surf((math.sin(phi), -math.cos(phi), zz))
+            pts.append(loc + sn * (dress_lift(zz) + extra))
+            normals.append(sn)
+        add_ribbon(part, "CostumeFrill", pts, normals, width)
+
+    frill_ring(hem_z + 0.05, 0.016, 0.1, 24, 0.03)
+    frill_ring(top_z + 0.02, 0.014, 0.05, 24, 0.015)
+    waist_z = -0.5
+    pts, normals = [], []
+    for k in range(steps + 1):
+        phi = 2 * math.pi * k / steps
+        loc, sn = surf((math.sin(phi), -math.cos(phi), waist_z))
+        pts.append(loc + sn * (dress_lift(waist_z) + 0.03))
+        normals.append(sn)
+    add_ribbon(part, "CostumeWhite", pts, normals, 0.028)
+    # apron panel: narrow at the waist, wider at the hem
+    apron_zs = [waist_z + (-0.94 - waist_z) * r / 5 for r in range(6)]
+
+    def apron_half(z):
+        return 0.3 + 0.14 * (waist_z - z) / (waist_z + 0.94)
+
+    apron = [[(apron_half(z) * (c / 4.0 * 2.0 - 1.0), -1.0, z) for c in range(5)] for z in apron_zs]
+    body_grid(part, "CostumeWhite", apron, lambda r: dress_lift(apron_zs[r]) + 0.016)
+    pts, normals = [], []
+    for k in range(25):
+        u = -1.0 + 2.0 * k / 24
+        z = -0.93 - 0.02 * abs(math.cos(math.pi * 4 * (u + 1) / 2))
+        loc, sn = surf((apron_half(-0.93) * u, -1.0, z))
+        pts.append(loc + sn * (dress_lift(z) + 0.03))
+        normals.append(sn)
+    add_ribbon(part, "CostumeFrill", pts, normals, 0.06)
+    back_loc, back_n = surf((0.0, 1.0, waist_z))
+    bow_c = back_loc + back_n * (dress_lift(waist_z) + 0.05)
+    for sx in (-1, 1):
+        add_flat(part, "CostumeWhite", [(0.0, 0.0), (sx * 0.07, 0.04), (sx * 0.07, -0.04), (0.0, 0.0)],
+                 bow_c, AXIS_X, AXIS_Z, 0.012)
+    part.finish()
+
+
+def build_pumpkin():
+    """Pumpkin helmet: a second cover like the ghost sheet (Pumpkin_Helmet, hidden until GhostSheet.Wear picks it).
+    A lobed jack-o'-lantern shell around the whole body with a carved glowing face and a stem. It sits a bit
+    tight, so horns, ears, the snout and tails push through it (GhostSheet bumps)."""
+    part = Part("Pumpkin_Helmet")
+    center = Vector((0.0, 0.0, 0.38))
+    radii = Vector((0.45, 0.45, 0.38))
+    res = bmesh.ops.create_uvsphere(part.bm, u_segments=32, v_segments=12, radius=1.0,
+                                    matrix=Matrix.Translation(center) @ Matrix.Diagonal((*radii, 1.0)))
+    for v in res["verts"]:
+        d = v.co - center
+        # ribs meet at the poles, so the groove depth fades with height
+        lobe = 1.0 + 0.12 * math.sqrt(max(0.0, 1.0 - (d.z / radii.z) ** 2)) * math.cos(8 * math.atan2(d.x, -d.y))
+        top_dip = -0.05 * max(0.0, (d.z / radii.z - 0.85) / 0.15)
+        v.co = center + Vector((d.x * lobe, d.y * lobe, d.z + top_dip))
+    part.assign(res["verts"], "PumpkinShell")
+    shell = BVHTree.FromBMesh(part.bm)
+
+    def on_front(x, z):
+        loc, _, _, _ = shell.ray_cast(Vector((x, -2.0, z)), AXIS_Y)
+        return loc + FRONT * 0.004
+
+    bm = part.bm
+    glow = part.mat_index("PumpkinGlow")
+
+    def carve(points, sub=4, rings=3):
+        """Glowing polygon as rings of points that all sit on the shell (edges subdivided), so the ribs
+        do not fold it."""
+        cx = sum(p[0] for p in points) / len(points)
+        cz = sum(p[1] for p in points) / len(points)
+        edge = []
+        for p, q in zip(points, points[1:] + points[:1]):
+            for k in range(sub):
+                edge.append((p[0] + (q[0] - p[0]) * k / sub, p[1] + (q[1] - p[1]) * k / sub))
+        n = len(edge)
+        ring = [[bm.verts.new(on_front(cx + (x - cx) * (r + 1) / rings, cz + (z - cz) * (r + 1) / rings)
+                              + FRONT * 0.002) for x, z in edge] for r in range(rings)]
+        hub = bm.verts.new(on_front(cx, cz) + FRONT * 0.002)
+
+        def face(vs):
+            f = bm.faces.new(vs)
+            orient(f, FRONT)
+            f.material_index = glow
+            f.smooth = False
+            for loop in f.loops:
+                loop[part.uv].uv = WHITE_UV
+
+        for i in range(n):
+            face((ring[0][i], ring[0][(i + 1) % n], hub))
+            for r in range(rings - 1):
+                face((ring[r + 1][i], ring[r + 1][(i + 1) % n], ring[r][(i + 1) % n], ring[r][i]))
+
+    def carve_triangle(a, b, c, n=4):
+        """Glowing triangle (outline in the face plane) as a fine grid whose points all sit on the shell, so it
+        follows the lobes' curvature and keeps its shape instead of sinking into them."""
+        grid = {}
+        for i in range(n + 1):
+            for j in range(n + 1 - i):
+                x = a[0] + (b[0] - a[0]) * i / n + (c[0] - a[0]) * j / n
+                z = a[1] + (b[1] - a[1]) * i / n + (c[1] - a[1]) * j / n
+                grid[(i, j)] = bm.verts.new(on_front(x, z) + FRONT * 0.002)
+        for i in range(n):
+            for j in range(n - i):
+                tris = [((i, j), (i + 1, j), (i, j + 1))]
+                if i + j < n - 1:
+                    tris.append(((i + 1, j), (i + 1, j + 1), (i, j + 1)))
+                for tri in tris:
+                    f = bm.faces.new([grid[k] for k in tri])
+                    orient(f, FRONT)
+                    f.material_index = glow
+                    f.smooth = False
+                    for loop in f.loops:
+                        loop[part.uv].uv = WHITE_UV
+
+    side = 0.11  # equilateral triangle, point up
+    for sx in (-1, 1):
+        carve_triangle((sx * 0.17 - side / 2, 0.49), (sx * 0.17 + side / 2, 0.49),
+                       (sx * 0.17, 0.49 + side * math.sqrt(3) / 2))
+    carve([(-0.22, 0.25), (-0.13, 0.19), (-0.07, 0.25), (0.0, 0.18), (0.07, 0.25), (0.13, 0.19), (0.22, 0.25),
+           (0.12, 0.12), (0.0, 0.15), (-0.12, 0.12)])
+    stem = [Vector((0.0, 0.0, 0.7)), Vector((0.0, 0.0, 0.78)), Vector((0.02, 0.0, 0.84))]
+    add_tube(part, "PumpkinStem", stem, [0.045, 0.035, 0.025], AXIS_Y, segments=5, cap_start=False)
+    part.finish()
+
 
 def add_strip(part, mat, lower, upper):
     """Two-sided strip between two rows of points (frills)."""
@@ -1036,20 +1495,45 @@ PREVIEW_SETS = [
     ("Oma_Maid", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_MaidHeadband", "Costume_AlienSunglasses")),
     ("Koon_Bunny", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_BunnyHeadband", "Costume_AlienSunglasses")),
     ("Oma_Bunny", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_BunnyHeadband", "Costume_StarSunglasses")),
+    ("Koon_Pirate", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_PirateEyePatch", "Costume_Lollipop")),
+    ("Oma_Pirate", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_PirateEyePatch", "Costume_Broom")),
+    ("Koon_Star", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_StarSunglasses")),
+    ("Oma_Star", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_StarSunglasses")),
+    ("Koon_Alien", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_AlienSunglasses")),
+    ("Oma_Alien", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_AlienSunglasses")),
+    ("Koon_Broom", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_Broom")),
+    ("Oma_Broom", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_Broom")),
+    ("Koon_Lollipop", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_Lollipop")),
+    ("Oma_Lollipop", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_Lollipop")),
+    ("Koon_BothPatches", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_PirateEyePatch", "Costume_MedicalEyePatch")),
+    ("Oma_BothPatches", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_PirateEyePatch", "Costume_MedicalEyePatch")),
+    ("Koon_Medical", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_MedicalEyePatch")),
+    ("Oma_Medical", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_MedicalEyePatch")),
+    ("Koon_Ribs", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_RibVest")),
+    ("Oma_Ribs", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_RibVest")),
+    ("Koon_Bikini", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_GoldBikini")),
+    ("Oma_Bikini", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_GoldBikini")),
+    ("Koon_BunnySuit", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_BunnySuit", "Costume_BunnyHeadband")),
+    ("Oma_BunnySuit", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_BunnySuit", "Costume_BunnyHeadband")),
+    ("Koon_MaidDress", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_MaidDress", "Costume_MaidHeadband")),
+    ("Oma_MaidDress", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_MaidDress", "Costume_MaidHeadband")),
+    ("Koon_Pumpkin", (0.42, 0.42, 0.44), False, ("Koon_Nose", "Koon_Tail", "Pumpkin_Helmet")),
+    ("Oma_Pumpkin", (0.62, 0.12, 0.12), True, ("Oma_Horns", "Oma_Ears", "Oma_Tail", "Pumpkin_Helmet")),
 ]
 
 
-def render_preview(out_dir):
+def render_preview(out_dir, only=None):
     scene = bpy.context.scene
     parts = [o for o in scene.objects if o.type == "MESH"]
-    for i, (name, fur_color, textured, prefixes) in enumerate(PREVIEW_SETS):
+    sets = [s for s in PREVIEW_SETS if not only or s[0] in only]
+    for i, (name, fur_color, textured, prefixes) in enumerate(sets):
         fur = make_material("Fur_" + name, fur_color, textured)
         for src in parts:
             if not src.name.startswith(prefixes):
                 continue
             obj = src.copy()
             scene.collection.objects.link(obj)
-            obj.location.x = (i - (len(PREVIEW_SETS) - 1) / 2) * 1.1
+            obj.location.x = (i - (len(sets) - 1) / 2) * 1.1
             for slot in obj.material_slots:
                 if slot.material and slot.material.name == "Fur":
                     slot.link = "OBJECT"
@@ -1058,7 +1542,7 @@ def render_preview(out_dir):
         src.hide_render = True
 
     scene.render.engine = "BLENDER_EEVEE_NEXT"
-    scene.render.resolution_x, scene.render.resolution_y = 420 * len(PREVIEW_SETS), 640
+    scene.render.resolution_x, scene.render.resolution_y = 420 * len(sets), 640
     scene.world = bpy.data.worlds.new("PreviewWorld")
     scene.world.color = (0.25, 0.25, 0.27)
     sun = bpy.data.objects.new("Sun", bpy.data.lights.new("Sun", "SUN"))
@@ -1067,7 +1551,7 @@ def render_preview(out_dir):
     scene.collection.objects.link(sun)
     cam_data = bpy.data.cameras.new("PreviewCam")
     cam_data.type = "ORTHO"
-    cam_data.ortho_scale = 1.1 * len(PREVIEW_SETS) + 0.4
+    cam_data.ortho_scale = 1.1 * len(sets) + 0.4
     cam = bpy.data.objects.new("PreviewCam", cam_data)
     scene.collection.objects.link(cam)
     scene.camera = cam
@@ -1086,6 +1570,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
     parser.add_argument("--preview")
+    parser.add_argument("--only", help="comma separated preview set names (default: all)")
     args = parser.parse_args(argv)
     out = os.path.abspath(args.out)
     ATLAS_PATH = os.path.join(os.path.dirname(out), "Textures", "VisitorAtlas.png")
@@ -1098,6 +1583,7 @@ def main():
     build_fakes()
     build_costumes()
     build_ghost()
+    build_pumpkin()
 
     for obj in bpy.context.scene.objects:
         tris = sum(len(p.vertices) - 2 for p in obj.data.polygons)
@@ -1105,7 +1591,7 @@ def main():
     export_fbx(out)
     print(f"[visitors] exported {args.out}")
     if args.preview:
-        render_preview(os.path.abspath(args.preview))
+        render_preview(os.path.abspath(args.preview), args.only.split(",") if args.only else None)
 
 
 if __name__ == "__main__":

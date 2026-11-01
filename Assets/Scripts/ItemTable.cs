@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 public enum ItemCategory { Fur, Prop, Costume, Sheet }
 
-public enum ItemSlot { None, Head, Neck, Hand, Back, Body, Eyes }
+public enum ItemSlot { None, Head, Neck, Hand, Back, Body, Eyes, LeftEye, RightEye }
 
 // One wearable thing a visitor can have on. Bit is its permanent place in an Outfit and in the look code
 // sent to the server: never renumber or reuse a bit, only add new items at the next free one.
@@ -10,7 +10,7 @@ public sealed class ItemDef
 {
     public int Bit;
     public string Id;
-    // Name of the model node (prefab child) that shows it; null for the fur change and the sheet.
+    // Name of the model node (prefab child) that shows it; null for the fur change and the covers (sheet, pumpkin helmet).
     public string Node;
     public ItemCategory Category;
     public ItemSlot Slot;
@@ -44,6 +44,7 @@ public static class ItemTable
     public const int Capacity = 29;
     public const int FurBit = 0;
     public const int SheetBit = 12;
+    public const int PumpkinBit = 21;
 
     const uint Kun = 1u << (int)VisitorKind.Kunmungchi;
     const uint Oma = 1u << (int)VisitorKind.Omangi;
@@ -69,6 +70,15 @@ public static class ItemTable
         new ItemDef { Bit = 14, Id = "bunny_headband", Node = "Costume_BunnyHeadband", Category = ItemCategory.Costume, Slot = ItemSlot.Head, Kinds = Both, Headband = true },
         new ItemDef { Bit = 15, Id = "star_sunglasses", Node = "Costume_StarSunglasses", Category = ItemCategory.Costume, Slot = ItemSlot.Eyes, Kinds = Both },
         new ItemDef { Bit = 16, Id = "alien_sunglasses", Node = "Costume_AlienSunglasses", Category = ItemCategory.Costume, Slot = ItemSlot.Eyes, Kinds = Both },
+        new ItemDef { Bit = 17, Id = "pirate_eye_patch", Node = "Costume_PirateEyePatch", Category = ItemCategory.Costume, Slot = ItemSlot.LeftEye, Kinds = Both },
+        new ItemDef { Bit = 18, Id = "broom", Node = "Costume_Broom", Category = ItemCategory.Costume, Slot = ItemSlot.Hand, Kinds = Both },
+        new ItemDef { Bit = 19, Id = "lollipop", Node = "Costume_Lollipop", Category = ItemCategory.Costume, Slot = ItemSlot.Hand, Kinds = Both },
+        new ItemDef { Bit = 20, Id = "rib_vest", Node = "Costume_RibVest", Category = ItemCategory.Costume, Slot = ItemSlot.Body, Kinds = Both },
+        new ItemDef { Bit = 21, Id = "pumpkin_helmet", Category = ItemCategory.Sheet, Kinds = Both },
+        new ItemDef { Bit = 22, Id = "medical_eye_patch", Node = "Costume_MedicalEyePatch", Category = ItemCategory.Costume, Slot = ItemSlot.RightEye, Kinds = Both },
+        new ItemDef { Bit = 23, Id = "gold_bikini", Node = "Costume_GoldBikini", Category = ItemCategory.Costume, Slot = ItemSlot.Body, Kinds = Both },
+        new ItemDef { Bit = 24, Id = "bunny_suit", Node = "Costume_BunnySuit", Category = ItemCategory.Costume, Slot = ItemSlot.Body, Kinds = Both },
+        new ItemDef { Bit = 25, Id = "maid_dress", Node = "Costume_MaidDress", Category = ItemCategory.Costume, Slot = ItemSlot.Body, Kinds = Both },
     };
 
     static readonly Dictionary<string, ItemDef> ByNodeName = BuildNodeMap();
@@ -113,9 +123,10 @@ public static class ItemTable
     // Applies the combination rules: only items this kind can wear, one head prop (lowest priority number
     // wins), a prop that brings the fur change turns it on, no head costume under a head-covering prop,
     // no headband costume with a headband prop, no eyes costume with glasses props, one costume per slot
-    // (the first in the table wins). The sheet and everything else is left alone.
+    // (the first in the table wins), and one cover at a time (the pumpkin helmet gives way to the ghost sheet).
     public static uint Normalize(VisitorKind kind, uint items)
     {
+        if ((items & Mask(SheetBit)) != 0) items &= ~Mask(PumpkinBit);
         bool coversHead = false;
         bool coversEyes = false;
         ItemDef headProp = null;
@@ -149,8 +160,8 @@ public static class ItemTable
         {
             if (def.Category != ItemCategory.Costume || (items & Mask(def.Bit)) == 0) continue;
             uint slot = 1u << (int)def.Slot;
-            if ((usedSlots & slot) != 0 || (coversHead && def.Slot == ItemSlot.Head) || (headbandProp && def.Headband)
-                || (coversEyes && def.Slot == ItemSlot.Eyes))
+            if (SlotTaken(def.Slot, usedSlots) || (coversHead && def.Slot == ItemSlot.Head) || (headbandProp && def.Headband)
+                || (coversEyes && IsEyeSlot(def.Slot)))
             {
                 items &= ~Mask(def.Bit);
                 continue;
@@ -158,6 +169,22 @@ public static class ItemTable
             usedSlots |= slot;
         }
         return items;
+    }
+
+    public static bool IsEyeSlot(ItemSlot slot) => slot == ItemSlot.Eyes || slot == ItemSlot.LeftEye || slot == ItemSlot.RightEye;
+
+    // A slot is taken by an item in it. Sunglasses (Eyes) need both eyes free, while the left-eye and
+    // right-eye patches fit together but not with sunglasses.
+    public static bool SlotTaken(ItemSlot slot, uint used)
+    {
+        uint eyes = 1u << (int)ItemSlot.Eyes, left = 1u << (int)ItemSlot.LeftEye, right = 1u << (int)ItemSlot.RightEye;
+        switch (slot)
+        {
+            case ItemSlot.Eyes: return (used & (eyes | left | right)) != 0;
+            case ItemSlot.LeftEye: return (used & (left | eyes)) != 0;
+            case ItemSlot.RightEye: return (used & (right | eyes)) != 0;
+            default: return (used & (1u << (int)slot)) != 0;
+        }
     }
 
     // False for combinations that can never occur in the game (the server uses this to reject forged codes).

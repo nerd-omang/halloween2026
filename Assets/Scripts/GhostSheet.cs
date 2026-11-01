@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Ghost-sheet disguise: a white sheet over the whole visitor that hides the look clues.
+// Ghost-sheet disguise: a white sheet over the whole visitor that hides the look clues. The same component can
+// wear a pumpkin helmet instead (a lobed jack-o'-lantern shell, a second cover): everything below applies to
+// whichever cover is on, except that the pumpkin does not trail behind while walking.
 // Wear() shows the sheet and switches off the renderers under it (fur, dye, markings, glasses...),
 // except the parts listed in `protrusions` (horns, ears, snout, tails, sticking-out props): those stay
 // visible in the plain sheet-cloth material, slightly inflated around the body center, so they read as
@@ -13,6 +15,9 @@ using UnityEngine;
 public class GhostSheet : MonoBehaviour
 {
     [SerializeField] Transform sheet;
+    // Optional second cover. Wear() picks it with pumpkinChance, Wear(true) forces it.
+    [SerializeField] Transform pumpkin;
+    [SerializeField, Range(0f, 1f)] float pumpkinChance = 0.35f;
     [SerializeField] float blowOffDuration = 0.5f;
     [SerializeField] float flyDistance = 2.5f;
     [SerializeField] float flyRise = 1.2f;
@@ -27,11 +32,14 @@ public class GhostSheet : MonoBehaviour
     [SerializeField] Transform[] protrusions;
     // Shared sheet-cloth material asset (same shader and color as the sheet, without hem flutter).
     [SerializeField] Material bumpMaterial;
+    // Same for the parts pushing through the pumpkin helmet.
+    [SerializeField] Material pumpkinBumpMaterial;
     [SerializeField] float bumpScale = 1.12f;
     // Bumps inflate away from this point (the body ball's center), in the visitor's local space.
     [SerializeField] Vector3 bumpCenter = new Vector3(0f, 0.42f, 0f);
 
     public bool Covered { get; private set; }
+    public bool IsPumpkin => pumpkin != null && cover == pumpkin;
     public float BlowOffDuration => blowOffDuration;
     public event Action Removed;
 
@@ -39,6 +47,7 @@ public class GhostSheet : MonoBehaviour
     readonly List<(Renderer renderer, Material[] materials)> bumpRenderers = new List<(Renderer, Material[])>();
     readonly List<(Transform part, Vector3 position, Vector3 scale)> bumpParts = new List<(Transform, Vector3, Vector3)>();
     Visitor visitor;
+    Transform cover; // the cover being worn (sheet or pumpkin)
     bool used;
     Vector3 lastPosition;
     Vector3 leanAxis = Vector3.right;
@@ -57,21 +66,24 @@ public class GhostSheet : MonoBehaviour
         visitor = GetComponent<Visitor>();
     }
 
-    public void Wear()
+    public void Wear() => Wear(pumpkin != null && UnityEngine.Random.value < pumpkinChance);
+
+    public void Wear(bool usePumpkin)
     {
         if (Covered || used) return;
         Covered = true;
         used = true;
+        cover = usePumpkin && pumpkin != null ? pumpkin : sheet;
         hidden.Clear();
         foreach (var r in GetComponentsInChildren<Renderer>(true))
         {
-            if (!r.enabled || r.transform.IsChildOf(sheet) || IsProtrusion(r.transform)) continue;
+            if (!r.enabled || IsCover(r.transform) || IsProtrusion(r.transform)) continue;
             r.enabled = false;
             hidden.Add(r);
         }
-        sheet.localRotation = Quaternion.identity;
+        cover.localRotation = Quaternion.identity;
         ShowBumps();
-        sheet.gameObject.SetActive(true);
+        cover.gameObject.SetActive(true);
         lastPosition = transform.position;
         lean = 0f;
     }
@@ -94,10 +106,12 @@ public class GhostSheet : MonoBehaviour
         Vector3 flat = Vector3.ProjectOnPlane(blowDirection, Vector3.up);
         spinAxis = flat.sqrMagnitude > 1e-6f ? Vector3.Cross(flat, Vector3.up).normalized : transform.right;
         startPivot = transform.TransformPoint(flyPivot);
-        pivotInSheet = sheet.InverseTransformPoint(startPivot);
-        sheet.SetParent(null, true); // fly free of the visitor's bobbing
-        startRotation = sheet.rotation;
+        pivotInSheet = cover.InverseTransformPoint(startPivot);
+        cover.SetParent(null, true); // fly free of the visitor's bobbing
+        startRotation = cover.rotation;
     }
+
+    bool IsCover(Transform t) => t.IsChildOf(sheet) || (pumpkin != null && t.IsChildOf(pumpkin));
 
     bool IsProtrusion(Transform t)
     {
@@ -114,20 +128,21 @@ public class GhostSheet : MonoBehaviour
     {
         bumpRenderers.Clear();
         bumpParts.Clear();
-        if (protrusions == null || bumpMaterial == null) return;
+        var clothMaterial = IsPumpkin && pumpkinBumpMaterial != null ? pumpkinBumpMaterial : bumpMaterial;
+        if (protrusions == null || clothMaterial == null) return;
         foreach (var part in protrusions)
         {
             if (part == null) continue;
             bumpParts.Add((part, part.localPosition, part.localScale));
-            // Ride on the sheet (its rest pose is the visitor's origin) so bumps lean with the cloth.
-            part.SetParent(sheet, false);
+            // Ride on the cover (its rest pose is the visitor's origin) so bumps lean with the cloth.
+            part.SetParent(cover, false);
             part.localPosition = bumpCenter + (part.localPosition - bumpCenter) * bumpScale;
             part.localScale *= bumpScale;
             foreach (var r in part.GetComponentsInChildren<Renderer>(true))
             {
                 var original = r.sharedMaterials;
                 var cloth = new Material[original.Length];
-                for (int i = 0; i < cloth.Length; i++) cloth[i] = bumpMaterial;
+                for (int i = 0; i < cloth.Length; i++) cloth[i] = clothMaterial;
                 bumpRenderers.Add((r, original));
                 r.sharedMaterials = cloth;
             }
@@ -171,23 +186,24 @@ public class GhostSheet : MonoBehaviour
         Quaternion spin = Quaternion.AngleAxis(spinDegrees * ease, spinAxis);
         Vector3 pivot = startPivot + blowDirection * flyDistance * ease + Vector3.up * flyRise * ease;
         float scale = 1f - 0.7f * t * t;
-        sheet.rotation = spin * startRotation;
-        sheet.localScale = Vector3.one * scale;
-        sheet.position = pivot - sheet.rotation * (pivotInSheet * scale);
+        cover.rotation = spin * startRotation;
+        cover.localScale = Vector3.one * scale;
+        cover.position = pivot - cover.rotation * (pivotInSheet * scale);
         if (t < 1f) return;
 
         blowing = false;
-        sheet.gameObject.SetActive(false);
-        sheet.SetParent(transform, false);
-        sheet.localPosition = Vector3.zero;
-        sheet.localRotation = Quaternion.identity;
-        sheet.localScale = Vector3.one;
+        cover.gameObject.SetActive(false);
+        cover.SetParent(transform, false);
+        cover.localPosition = Vector3.zero;
+        cover.localRotation = Quaternion.identity;
+        cover.localScale = Vector3.one;
         Removed?.Invoke();
     }
 
     // The sheet's top trails behind while walking: tilt it against the direction of travel.
     void UpdateLean()
     {
+        if (IsPumpkin) return; // a hard shell does not trail
         Vector3 velocity = Vector3.ProjectOnPlane(transform.position - lastPosition, Vector3.up);
         lastPosition = transform.position;
         if (velocity.sqrMagnitude > 1e-8f)
@@ -196,12 +212,15 @@ public class GhostSheet : MonoBehaviour
         }
         bool moving = visitor != null ? visitor.IsMoving : velocity.sqrMagnitude > 1e-8f;
         lean = Mathf.MoveTowards(lean, moving ? walkLean : 0f, walkLean * leanSpeed * Time.deltaTime);
-        sheet.localRotation = Quaternion.AngleAxis(lean, leanAxis);
+        cover.localRotation = Quaternion.AngleAxis(lean, leanAxis);
     }
 
     // Play-mode testing from the component's context menu (e.g. in the VisitorPreview scene).
     [ContextMenu("Wear")]
     void WearPreview() => Wear();
+
+    [ContextMenu("Wear Pumpkin")]
+    void WearPumpkinPreview() => Wear(true);
 
     [ContextMenu("Blow Off")]
     void BlowOffPreview() => BlowOff(Camera.main != null ? transform.position - Camera.main.transform.position : -transform.forward);
@@ -209,6 +228,6 @@ public class GhostSheet : MonoBehaviour
     void OnDestroy()
     {
         // While flying the sheet is not our child, so it would outlive a destroyed visitor.
-        if (sheet != null && sheet.parent != transform) Destroy(sheet.gameObject);
+        if (cover != null && cover.parent != transform) Destroy(cover.gameObject);
     }
 }

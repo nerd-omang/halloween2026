@@ -217,7 +217,7 @@ public class SettingsScreen
         UiKit.Bind(shareLabel, "settings.share");
         shareButtons[0] = Option(shareRow.transform, "ShareOn", -558f, 0, () => Settings.ShareOnline = true, "settings.on");
         shareButtons[1] = Option(shareRow.transform, "ShareOff", -558f, 1, () => Settings.ShareOnline = false, "settings.off");
-        UiKit.Bind(UiKit.Label(shareRow.transform, "ShareHint", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -604f), new Vector2(BoxWidth - 2f * LabelX - 240f, 56f), UiKit.Dim),
+        UiKit.Bind(UiKit.Label(shareRow.transform, "ShareHint", "", 11, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -604f), new Vector2(BoxWidth - 2f * LabelX - 240f, 56f), UiKit.Dim),
             "settings.shareHint");
 
         // Apart from the other settings, at the very bottom.

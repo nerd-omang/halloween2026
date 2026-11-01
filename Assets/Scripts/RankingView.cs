@@ -70,7 +70,9 @@ public class RankingView
 
     int page;
     int selected; // 1-based rank, 0 = none
-    bool online;  // showing the world ranking (initials and score only, no looks)
+    bool online;  // showing the world ranking
+    int onlineSelected; // 1-based rank picked in the world ranking, 0 = none (separate from the local pick)
+    readonly Text noLooksText;
 
     // headerKey: the Loc key of the panel title.
     // canClear: offer "clear ranking" (not on the game-over screen, where it could wipe the game just recorded).
@@ -111,6 +113,9 @@ public class RankingView
         onlineTab = UiKit.Button(content, "TabOnline", "", 22, topLeft, topLeft, new Vector2(192f, -72f), new Vector2(160f, 34f), () => SetOnline(true));
         UiKit.Bind(onlineTab.Label, "ranking.tabOnline");
         statusText = UiKit.Label(content, "Status", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(24f, -RowTop), new Vector2(PanelWidth - 48f, 120f), UiKit.Dim);
+        noLooksText = UiKit.Label(root, "NoLooks", "", 33, TextAnchor.MiddleCenter, new Vector2(StageViewportX, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(420f, 60f), UiKit.Dim);
+        UiKit.Bind(noLooksText, "ranking.noLooks");
+        noLooksText.gameObject.SetActive(false);
         retryButton = UiKit.Button(content, "Retry", "", 22, topLeft, topLeft, new Vector2(24f, -RowTop - LocalRanking.PageSize * RowStep - 10f), new Vector2(200f, 38f), () => WorldBoard.Refresh(true));
         UiKit.Bind(retryButton.Label, "ranking.retry");
 
@@ -151,6 +156,7 @@ public class RankingView
     public void Hide()
     {
         WorldBoard.Changed -= OnWorldChanged;
+        noLooksText.gameObject.SetActive(false);
         CloseConfirm();
         root.gameObject.SetActive(false);
         LookCaptions.Clear(captions);
@@ -202,8 +208,6 @@ public class RankingView
         onlineTab.Highlighted = online;
         if (online)
         {
-            LookCaptions.Clear(captions);
-            stage.Show(new List<Outfit>(), StageViewportX);
             WorldBoard.Refresh();
             LayoutOnline();
             return;
@@ -237,7 +241,7 @@ public class RankingView
             initialsTexts[i].text = entries[i].initials;
             scoreTexts[i].text = entries[i].score.ToString();
             dateTexts[i].gameObject.SetActive(false);
-            rows[i].Highlighted = false;
+            rows[i].Highlighted = i + 1 == onlineSelected;
         }
 
         var status = WorldBoard.Status;
@@ -248,6 +252,14 @@ public class RankingView
         else if (status == WorldBoard.LoadStatus.Loading) key = "online.loading";
         else if (status == WorldBoard.LoadStatus.Failed) key = "online.failed";
         statusText.text = Loc.T(key);
+
+        if (onlineSelected > entries.Count) onlineSelected = 0;
+        if (onlineSelected == 0 && entries.Count > 0)
+        {
+            onlineSelected = 1;
+            rows[0].Highlighted = true;
+        }
+        ShowSelected();
     }
 
     void Layout()
@@ -294,25 +306,43 @@ public class RankingView
 
     void Select(int rank)
     {
-        if (online) return;
+        if (online)
+        {
+            onlineSelected = rank;
+            LayoutOnline();
+            return;
+        }
         selected = rank;
         Layout();
         ShowSelected();
     }
 
+    // The three looks of the picked game, local or world alike; a game without recorded looks says so.
     void ShowSelected()
     {
         LookCaptions.Clear(captions);
-        var entries = LocalRanking.Entries;
-        if (selected < 1 || selected > entries.Count)
+        noLooksText.gameObject.SetActive(false);
+
+        Outfit[] looks = null;
+        bool picked;
+        bool found = false;
+        if (online)
         {
-            stage.Show(new List<Outfit>(), StageViewportX);
-            return;
+            var entries = WorldBoard.Entries;
+            picked = onlineSelected >= 1 && onlineSelected <= entries.Count;
+            if (picked) found = entries[onlineSelected - 1].TryGetLooks(out looks);
+        }
+        else
+        {
+            var entries = LocalRanking.Entries;
+            picked = selected >= 1 && selected <= entries.Count;
+            if (picked) found = entries[selected - 1].TryGetLooks(out looks);
         }
 
-        if (!entries[selected - 1].TryGetLooks(out var looks) || looks.Length == 0)
+        if (!picked || !found || looks == null || looks.Length == 0)
         {
             stage.Show(new List<Outfit>(), StageViewportX);
+            noLooksText.gameObject.SetActive(picked);
             return;
         }
 

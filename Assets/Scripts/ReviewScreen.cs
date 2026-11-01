@@ -55,6 +55,9 @@ public class ReviewScreen
     int recordedRank;
 
     // The score and initials steps use keys of their own; the game must not treat them as shortcuts.
+    // Whether this game's result is to be uploaded online: only the setting decides (never when no server is configured).
+    public bool Upload => WorldBoard.Configured && Settings.ShareOnline;
+
     public bool Busy => mode == Mode.Score || mode == Mode.Initials;
 
     public ReviewScreen(Transform parent, OutfitCatalog catalog, ModelStage stage)
@@ -75,23 +78,23 @@ public class ReviewScreen
 
         // Score step: a card over the three models.
         var center = new Vector2(0.5f, 0.5f);
-        var card = UiKit.Card("ScoreCard", root, new Vector2(700f, 460f));
-        card.gameObject.AddComponent<ScreenFit>().Init(root, card, 460f, 24f);
+        var card = UiKit.Card("ScoreCard", root, new Vector2(700f, 520f));
+        card.gameObject.AddComponent<ScreenFit>().Init(root, card, 520f, 24f);
         scoreCard = card.gameObject;
         UiKit.Bind(UiKit.Label(card, "Header", "", 66, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 180f), new Vector2(640f, 76f), UiKit.Danger, true), "review.header", true);
         bigScore = UiKit.Label(card, "BigScore", "", 140, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 80f), new Vector2(640f, 150f), UiKit.Accent, true);
-        newBestText = UiKit.Label(card, "NewBest", "", 55, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -10f), new Vector2(640f, 62f), UiKit.ComboColor(12), true);
+        newBestText = UiKit.Label(card, "NewBest", "", 55, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -10f), new Vector2(640f, 62f), UiKit.ComboColor(UiKit.ComboColorMaxStreak), true);
         UiKit.Bind(newBestText, "score.newBest", true);
         bestText = UiKit.Label(card, "Best", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -56f), new Vector2(640f, 40f), UiKit.Dim);
         rankText = UiKit.Label(card, "Rank", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -100f), new Vector2(640f, 40f), Color.white);
         questionText = UiKit.Label(card, "Question", "", 22, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -140f), new Vector2(640f, 32f), UiKit.Dim);
         UiKit.Bind(questionText, "score.question");
 
-        recordButton = UiKit.Button(card, "Record", "", 33, center, center, new Vector2(-120f, -190f), new Vector2(210f, 52f), OpenInitials);
+        recordButton = UiKit.Button(card, "Record", "", 33, center, center, new Vector2(-120f, -226f), new Vector2(210f, 52f), OpenInitials);
         UiKit.Bind(recordButton.Label, "score.record");
-        skipButton = UiKit.Button(card, "Skip", "", 33, center, center, new Vector2(120f, -190f), new Vector2(210f, 52f), () => SetMode(Mode.Looks));
+        skipButton = UiKit.Button(card, "Skip", "", 33, center, center, new Vector2(120f, -226f), new Vector2(210f, 52f), () => SetMode(Mode.Looks));
         UiKit.Bind(skipButton.Label, "score.skip");
-        nextButton = UiKit.Button(card, "Next", "", 33, center, center, new Vector2(0f, -190f), new Vector2(210f, 52f), () => SetMode(Mode.Looks));
+        nextButton = UiKit.Button(card, "Next", "", 33, center, center, new Vector2(0f, -226f), new Vector2(210f, 52f), () => SetMode(Mode.Looks));
         UiKit.Bind(nextButton.Label, "score.next");
 
         initialsEntry = new InitialsEntry(root);

@@ -14,7 +14,7 @@ public class OutfitCatalog : MonoBehaviour
 
     const string SaveKey = "gallery_v3";
     const int NaturalBit = 31;
-    static readonly int[] DefaultDyePercent = { 30, 60, 90, 100 };
+    static readonly int[] DefaultDyePercent = { 15, 30, 60, 90 };
 
     VisitorDisguise[] disguises;
     // Per kind: entry -> item (null = natural look).
@@ -27,6 +27,9 @@ public class OutfitCatalog : MonoBehaviour
     public int DyeLevelCount => disguises[0].DyeLevelCount;
     public int MaxPropCount { get; private set; }
     public int MaxCostumeCount { get; private set; }
+
+    void OnEnable() => Progress.Cleared += ForgetAll;
+    void OnDisable() => Progress.Cleared -= ForgetAll;
 
     void Awake()
     {
@@ -106,16 +109,16 @@ public class OutfitCatalog : MonoBehaviour
         return outfit;
     }
 
-    // Entries of the items an outfit shows. A sheet hides everything under it, so a sheeted outfit
-    // counts as the sheet only.
+    // Entries of the items an outfit shows. A cover (sheet or pumpkin helmet) hides everything under it,
+    // so a covered outfit counts as that cover only.
     void CollectEntries(Outfit outfit, List<int> result)
     {
         var list = entries[(int)outfit.kind];
         for (int e = 1; e < list.Count; e++)
         {
             var def = list[e];
-            bool isSheet = def.Category == ItemCategory.Sheet;
-            if (outfit.sheet ? isSheet : (!isSheet && outfit.Has(def.Bit))) result.Add(e);
+            bool isCover = def.Category == ItemCategory.Sheet;
+            if (outfit.sheet ? (isCover && outfit.Has(def.Bit)) : (!isCover && outfit.Has(def.Bit))) result.Add(e);
         }
         if (result.Count == 0) result.Add(0);
     }
@@ -136,6 +139,17 @@ public class OutfitCatalog : MonoBehaviour
             newEntries?.Add(entry);
         }
         if (changed) Save();
+    }
+
+    // Opens every gallery entry of both species (and every special guest), as if all had been met.
+    public void UnlockAll()
+    {
+        for (int k = 0; k < 2; k++)
+        {
+            foreach (var def in entries[k]) unlocked[k] |= 1u << BitOf(def);
+        }
+        SpecialGuest.UnlockAll();
+        Save();
     }
 
     // Gallery numbers of the items in an outfit ("07" or "02+05").
@@ -165,7 +179,7 @@ public class OutfitCatalog : MonoBehaviour
         switch (def.Category)
         {
             case ItemCategory.Fur: return Loc.T("dress.furdye");
-            case ItemCategory.Sheet: return Loc.T("outfit.sheet");
+            case ItemCategory.Sheet: return Loc.T(def.Bit == ItemTable.PumpkinBit ? "outfit.pumpkin" : "outfit.sheet");
             case ItemCategory.Costume: return NodeLabel(def.Node, "Costume_", "costume.");
             default: return NodeLabel(def.Node, "Fake_", "prop.");
         }
@@ -173,7 +187,7 @@ public class OutfitCatalog : MonoBehaviour
 
     public string Describe(Outfit outfit)
     {
-        if (outfit.sheet) return Loc.T("outfit.sheet");
+        if (outfit.sheet) return Loc.T(outfit.pumpkin ? "outfit.pumpkin" : "outfit.sheet");
         var parts = new List<string>();
         if (outfit.fur) parts.Add(Loc.T("outfit.dye", DyeLabel(outfit.dyeLevel)));
         foreach (var def in props[(int)outfit.kind])

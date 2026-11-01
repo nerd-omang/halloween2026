@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-// Records from the title menu: the local ranking with each game's looks, the player's statistics, and a
-// placeholder for the world ranking.
+// Records from the title menu: the rankings (local with each game's looks, online) and the player's statistics.
 public class RecordsScreen
 {
     const int TopFooledCount = 5;
-    const float BarMaxWidth = 280f;
+    const float BarMaxWidth = 240f;
     const float ResetConfirmSeconds = 3f;
 
     public event Action Back;
@@ -19,16 +18,20 @@ public class RecordsScreen
     readonly GameObject panel;
     readonly RankingView ranking;
     readonly GameObject statsPage;
-    readonly GameObject worldPage;
     readonly GameObject header;
-    readonly SimpleButton[] tabs = new SimpleButton[3];
+    readonly SimpleButton[] tabs = new SimpleButton[2];
     readonly Text[] statLines = new Text[5];
     readonly Text noFooledText;
     readonly Text[] fooledLabels = new Text[TopFooledCount];
     readonly Image[] fooledBars = new Image[TopFooledCount];
     readonly Text[] fooledCounts = new Text[TopFooledCount];
     readonly SimpleButton resetButton;
+    readonly SimpleButton statsLocalTab;
+    readonly SimpleButton statsWorldTab;
+    readonly SimpleButton worldRetry;
+    Text fooledHeader;
 
+    bool statsWorld; // the statistics page shows the world statistics
     float resetArmedUntil;
 
     public RecordsScreen(Transform parent, OutfitCatalog catalog, ModelStage stage)
@@ -42,12 +45,12 @@ public class RecordsScreen
 
         // Tabs at the top right.
         var topRight = new Vector2(1f, 1f);
-        string[] tabKeys = { "records.tabMine", "records.tabStats", "records.tabWorld" };
-        for (int i = 0; i < 3; i++)
+        string[] tabKeys = { "records.tabMine", "records.tabStats" };
+        for (int i = 0; i < tabs.Length; i++)
         {
             int index = i;
             tabs[i] = UiKit.Button(root, "Tab" + i, "", 22, topRight, topRight,
-                new Vector2(-UiKit.MarginX - (2 - i) * 158f, -UiKit.MarginY), new Vector2(150f, 44f), () => SetTab(index));
+                new Vector2(-UiKit.MarginX - (1 - i) * 158f, -UiKit.MarginY), new Vector2(150f, 44f), () => SetTab(index));
             UiKit.Bind(tabs[i].Label, tabKeys[i]);
         }
 
@@ -55,10 +58,15 @@ public class RecordsScreen
         header = UiKit.Bind(UiKit.Label(root, "Header", "", 55, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(24f, -12f), new Vector2(500f, 60f), UiKit.Accent, true),
             "records.header", true).gameObject;
 
-        ranking = new RankingView(root, catalog, stage, "records.header");
+        ranking = new RankingView(root, catalog, stage, "records.header", true);
 
-        statsPage = BuildStats(out statLines, out noFooledText, out fooledLabels, out fooledBars, out fooledCounts, out resetButton);
-        worldPage = BuildWorld();
+        statsPage = BuildStats(out statLines, out noFooledText, out fooledLabels, out fooledBars, out fooledCounts, out resetButton, out worldRetry);
+
+        // LOCAL / WORLD switch for the statistics, stacked at the left so it stays clear of the centered card.
+        statsLocalTab = UiKit.Button(root, "StatsLocal", "", 22, topLeft, topLeft, new Vector2(24f, -84f), new Vector2(200f, 38f), () => SetStatsMode(false));
+        UiKit.Bind(statsLocalTab.Label, "stats.tabLocal");
+        statsWorldTab = UiKit.Button(root, "StatsWorld", "", 22, topLeft, topLeft, new Vector2(24f, -130f), new Vector2(200f, 38f), () => SetStatsMode(true));
+        UiKit.Bind(statsWorldTab.Label, "stats.tabWorld");
 
         var bottomRight = new Vector2(1f, 0f);
         var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
@@ -67,7 +75,7 @@ public class RecordsScreen
         panel.SetActive(false);
     }
 
-    GameObject BuildStats(out Text[] lines, out Text none, out Text[] labels, out Image[] bars, out Text[] counts, out SimpleButton reset)
+    GameObject BuildStats(out Text[] lines, out Text none, out Text[] labels, out Image[] bars, out Text[] counts, out SimpleButton reset, out SimpleButton retry)
     {
         var center = new Vector2(0.5f, 0.5f);
         var card = UiKit.Card("StatsCard", root, new Vector2(760f, 540f));
@@ -79,7 +87,8 @@ public class RecordsScreen
             lines[i] = UiKit.Label(card, "Line" + i, "", 33, TextAnchor.MiddleLeft, center, center, new Vector2(0f, 215f - i * 40f), new Vector2(680f, 40f), Color.white);
         }
 
-        UiKit.Bind(UiKit.Label(card, "FooledHeader", "", 22, TextAnchor.MiddleLeft, center, center, new Vector2(0f, 8f), new Vector2(680f, 30f), UiKit.Accent), "stats.fooled");
+        fooledHeader = UiKit.Label(card, "FooledHeader", "", 22, TextAnchor.MiddleLeft, center, center, new Vector2(0f, 8f), new Vector2(680f, 30f), UiKit.Accent);
+        UiKit.Bind(fooledHeader, "stats.fooled");
         none = UiKit.Label(card, "None", "", 22, TextAnchor.MiddleLeft, center, center, new Vector2(0f, -36f), new Vector2(680f, 30f), UiKit.Dim);
         UiKit.Bind(none, "stats.none");
 
@@ -95,39 +104,53 @@ public class RecordsScreen
             bars[i] = bar.gameObject.AddComponent<Image>();
             bars[i].color = UiKit.Accent;
             bars[i].raycastTarget = false;
-            counts[i] = UiKit.Label(card, "FooledCount" + i, "", 22, TextAnchor.MiddleLeft, center, left, new Vector2(220f, y), new Vector2(120f, 28f), UiKit.Dim);
+            counts[i] = UiKit.Label(card, "FooledCount" + i, "", 22, TextAnchor.MiddleLeft, center, left, new Vector2(170f, y), new Vector2(200f, 28f), UiKit.Dim);
         }
 
         reset = UiKit.Button(card, "Reset", "", 22, center, center, new Vector2(0f, -232f), new Vector2(420f, 44f), OnResetClicked);
         UiKit.Bind(reset.Label, () => Loc.T(Time.unscaledTime < resetArmedUntil ? "stats.resetConfirm" : "stats.reset"));
-        return card.gameObject;
-    }
-
-    GameObject BuildWorld()
-    {
-        var center = new Vector2(0.5f, 0.5f);
-        var card = UiKit.Card("WorldCard", root, new Vector2(760f, 260f));
-        UiKit.Bind(UiKit.Label(card, "Text", "", 33, TextAnchor.MiddleCenter, center, center, Vector2.zero, new Vector2(680f, 120f), UiKit.Dim), "records.world");
+        // World statistics: a retry button in the reset button's place.
+        retry = UiKit.Button(card, "Retry", "", 22, center, center, new Vector2(0f, -232f), new Vector2(420f, 44f), () => WorldBoard.RefreshStats(true));
+        UiKit.Bind(retry.Label, "ranking.retry");
+        retry.gameObject.SetActive(false);
         return card.gameObject;
     }
 
     public void Show()
     {
         panel.SetActive(true);
+        WorldBoard.Changed -= OnWorldChanged;
+        WorldBoard.Changed += OnWorldChanged;
         SetTab(0);
     }
 
     public void Hide()
     {
+        WorldBoard.Changed -= OnWorldChanged;
         ranking.Hide();
         panel.SetActive(false);
+    }
+
+    void OnWorldChanged()
+    {
+        if (statsPage.activeSelf && statsWorld) RefreshStats();
+    }
+
+    void SetStatsMode(bool world)
+    {
+        statsWorld = world;
+        statsLocalTab.Highlighted = !world;
+        statsWorldTab.Highlighted = world;
+        if (world) WorldBoard.RefreshStats();
+        RefreshStats();
     }
 
     void SetTab(int index)
     {
         for (int i = 0; i < tabs.Length; i++) tabs[i].Highlighted = i == index;
         statsPage.SetActive(index == 1);
-        worldPage.SetActive(index == 2);
+        statsLocalTab.gameObject.SetActive(index == 1);
+        statsWorldTab.gameObject.SetActive(index == 1);
         header.SetActive(index != 0);
         if (index == 0)
         {
@@ -136,12 +159,62 @@ public class RecordsScreen
         }
         ranking.Hide();
         stage.Show(new List<Outfit>());
-        if (index == 1) RefreshStats();
+        if (index == 1) SetStatsMode(false);
+    }
+
+    void RefreshWorldStats()
+    {
+        var status = WorldBoard.StatsStatus;
+        bool hasData = WorldBoard.StatsGames > 0;
+        var top = WorldBoard.TopFooled(TopFooledCount);
+
+        for (int i = 0; i < statLines.Length; i++) statLines[i].gameObject.SetActive(i == 0 && hasData);
+        statLines[0].text = Loc.T("stats.worldGames", WorldBoard.StatsGames);
+        worldRetry.gameObject.SetActive(status == WorldBoard.LoadStatus.Failed);
+        resetButton.gameObject.SetActive(false);
+        fooledHeader.gameObject.SetActive(hasData);
+
+        noFooledText.gameObject.SetActive(!hasData || top.Count == 0);
+        string key = "stats.none";
+        if (!hasData)
+        {
+            key = "online.empty";
+            if (status == WorldBoard.LoadStatus.NotConfigured) key = "online.notConfigured";
+            else if (status == WorldBoard.LoadStatus.Loading) key = "online.loading";
+            else if (status == WorldBoard.LoadStatus.Failed) key = "online.failed";
+        }
+        noFooledText.text = Loc.T(key);
+
+        int most = top.Count > 0 ? top[0].Value : 1;
+        for (int i = 0; i < TopFooledCount; i++)
+        {
+            bool shown = hasData && i < top.Count;
+            fooledLabels[i].gameObject.SetActive(shown);
+            fooledBars[i].gameObject.SetActive(shown);
+            fooledCounts[i].gameObject.SetActive(shown);
+            if (!shown) continue;
+
+            int itemKey = top[i].Key;
+            fooledLabels[i].text = itemKey == LocalStats.NaturalKey ? Loc.T("outfit.none") : catalog.ItemLabel(ItemTable.FromBit(itemKey));
+            fooledBars[i].rectTransform.sizeDelta = new Vector2(Mathf.Max(8f, BarMaxWidth * top[i].Value / most), 18f);
+            fooledCounts[i].text = Loc.T("stats.worldTimes", top[i].Value, WorldBoard.StatsGames);
+        }
     }
 
     void RefreshStats()
     {
         resetArmedUntil = 0f;
+        if (statsWorld)
+        {
+            RefreshWorldStats();
+            return;
+        }
+
+        worldRetry.gameObject.SetActive(false);
+        resetButton.gameObject.SetActive(true);
+        fooledHeader.gameObject.SetActive(true);
+        for (int i = 0; i < statLines.Length; i++) statLines[i].gameObject.SetActive(true);
+        noFooledText.text = Loc.T("stats.none");
         statLines[0].text = Loc.T("stats.games", LocalStats.Games);
         statLines[1].text = Loc.T("stats.total", LocalStats.TotalScore);
         statLines[2].text = Loc.T("stats.average", LocalStats.AverageScore.ToString("0.0"));
@@ -171,8 +244,7 @@ public class RecordsScreen
     {
         if (Time.unscaledTime < resetArmedUntil)
         {
-            LocalRanking.Clear();
-            LocalStats.Reset();
+            LocalStats.Reset(); // the ranking has its own clear button
             RefreshStats();
             return;
         }

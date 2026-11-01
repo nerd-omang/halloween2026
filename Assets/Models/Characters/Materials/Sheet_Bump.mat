@@ -32,6 +32,11 @@ Material:
     - _FlutterAmount: 0
     - _FlutterSpeed: 1.6
     - _FlutterTop: 0.6
+    - _FoldCount: 9
+    - _FoldDepth: 0
+    - _FoldFull: 0.3
+    - _FoldShade: 0.14
+    - _FoldTop: 0.75
     - _Wrap: 0.6
     m_Colors:
     - _BaseColor: {r: 0.9, g: 0.9, b: 0.88, a: 1}

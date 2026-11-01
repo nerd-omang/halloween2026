@@ -8,13 +8,14 @@ using UnityEngine.UI;
 public class SettingsScreen
 {
     const float BoxWidth = 860f;
-    const float BoxHeight = 580f;
+    const float BoxHeight = 760f;
     const float LabelX = 36f;
     const float ControlX = 270f;
     const float OptionWidth = 130f;
     const float OptionStep = 138f;
 
     public event Action Closed;
+    public event Action GiveUpClicked;
 
     readonly GameObject panel;
     readonly GameObject gear;
@@ -27,6 +28,13 @@ public class SettingsScreen
     readonly SimpleButton[] presetButtons = new SimpleButton[Settings.PresetCount];
     Text presetHint;
     readonly SimpleButton[] languageButtons = new SimpleButton[2];
+    readonly SimpleButton[] shareButtons = new SimpleButton[2];
+    readonly SimpleButton[] skipIntroButtons = new SimpleButton[2];
+    GameObject shareRow;
+    GameObject confirmReset;
+    GameObject confirmGiveUp;
+    GameObject giveUpButton;
+    Text resetDone;
 
     // Advanced look tab
     readonly SimpleButton[] ditherButtons = new SimpleButton[2];
@@ -84,8 +92,87 @@ public class SettingsScreen
         gear = gearButton.gameObject;
         gear.SetActive(false);
 
+        // In-game only: leave the run and go back to the title. Top right, in the danger color.
+        var topRightCorner = new Vector2(1f, 1f);
+        var giveUp = UiKit.Button(box, "GiveUp", "", 22, topRightCorner, topRightCorner, new Vector2(-LabelX, -20f), new Vector2(280f, 40f), OpenGiveUpConfirm);
+        UiKit.Bind(giveUp.Label, "settings.giveUp");
+        giveUp.Label.color = UiKit.Danger;
+        giveUpButton = giveUp.gameObject;
+
+        confirmReset = BuildResetConfirm(root);
+        confirmGiveUp = BuildGiveUpConfirm(root);
+
         Loc.Changed += Refresh;
         panel.SetActive(false);
+    }
+
+    GameObject BuildResetConfirm(RectTransform root)
+    {
+        var center = new Vector2(0.5f, 0.5f);
+        var modal = UiKit.Fill("ConfirmReset", root);
+        modal.gameObject.AddComponent<Image>().color = new Color(0.03f, 0.01f, 0.06f, 0.6f);
+        var card = UiKit.Card("Card", modal, new Vector2(660f, 280f));
+        card.gameObject.AddComponent<ScreenFit>().Init(modal, card, 280f, 24f);
+        UiKit.Bind(UiKit.Label(card, "Text", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 45f), new Vector2(600f, 130f), Color.white), "settings.resetAsk");
+        var yes = UiKit.Button(card, "Yes", "", 33, center, center, new Vector2(-140f, -90f), new Vector2(250f, 52f), () =>
+        {
+            CloseResetConfirm();
+            Progress.ResetAll(); // settings are kept; a running game keeps its own score
+            resetDone.gameObject.SetActive(true);
+        });
+        UiKit.Bind(yes.Label, "settings.resetYes");
+        yes.Label.color = UiKit.Danger;
+        var no = UiKit.Button(card, "No", "", 33, center, center, new Vector2(140f, -90f), new Vector2(250f, 52f), CloseResetConfirm);
+        UiKit.Bind(no.Label, "settings.resetNo");
+        modal.gameObject.SetActive(false);
+        return modal.gameObject;
+    }
+
+    GameObject BuildGiveUpConfirm(RectTransform root)
+    {
+        var center = new Vector2(0.5f, 0.5f);
+        var modal = UiKit.Fill("ConfirmGiveUp", root);
+        modal.gameObject.AddComponent<Image>().color = new Color(0.03f, 0.01f, 0.06f, 0.6f);
+        var card = UiKit.Card("Card", modal, new Vector2(700f, 280f));
+        card.gameObject.AddComponent<ScreenFit>().Init(modal, card, 280f, 24f);
+        UiKit.Bind(UiKit.Label(card, "Text", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 45f), new Vector2(640f, 130f), Color.white), "settings.giveUpAsk");
+        var yes = UiKit.Button(card, "Yes", "", 33, center, center, new Vector2(-140f, -90f), new Vector2(250f, 52f), () =>
+        {
+            CloseGiveUpConfirm();
+            GiveUpClicked?.Invoke();
+        });
+        UiKit.Bind(yes.Label, "settings.giveUpYes");
+        yes.Label.color = UiKit.Danger;
+        var no = UiKit.Button(card, "No", "", 33, center, center, new Vector2(140f, -90f), new Vector2(250f, 52f), CloseGiveUpConfirm);
+        UiKit.Bind(no.Label, "settings.resetNo");
+        modal.gameObject.SetActive(false);
+        return modal.gameObject;
+    }
+
+    void OpenGiveUpConfirm()
+    {
+        confirmGiveUp.SetActive(true);
+        confirmGiveUp.transform.SetAsLastSibling();
+        UiKit.ModalRoot = confirmGiveUp.transform;
+    }
+
+    void CloseGiveUpConfirm()
+    {
+        confirmGiveUp.SetActive(false);
+        if (UiKit.ModalRoot == confirmGiveUp.transform) UiKit.ModalRoot = panel.transform;
+    }
+
+    void OpenResetConfirm()
+    {
+        confirmReset.SetActive(true);
+        confirmReset.transform.SetAsLastSibling();
+        UiKit.ModalRoot = confirmReset.transform;
+    }
+
+    void CloseResetConfirm()
+    {
+        confirmReset.SetActive(false);
+        if (UiKit.ModalRoot == confirmReset.transform) UiKit.ModalRoot = panel.transform;
     }
 
     void BuildGeneral(Transform page)
@@ -119,6 +206,27 @@ public class SettingsScreen
         languageButtons[0].Text = "한국어";
         languageButtons[1] = Option(page, "LangEn", -466f, 1, () => Loc.Current = Lang.En, null);
         languageButtons[1].Text = "English";
+
+        RowLabel(page, "SkipIntroLabel", "settings.skipIntro", -512f);
+        skipIntroButtons[0] = Option(page, "SkipIntroOn", -512f, 0, () => Settings.SkipIntro = true, "settings.on");
+        skipIntroButtons[1] = Option(page, "SkipIntroOff", -512f, 1, () => Settings.SkipIntro = false, "settings.off");
+
+        // Only offered when a ranking server is configured.
+        shareRow = UiKit.Fill("ShareRow", page).gameObject;
+        var shareLabel = UiKit.Label(shareRow.transform, "ShareLabel", "", 22, TextAnchor.MiddleLeft, topLeft, topLeft, new Vector2(LabelX, -558f), new Vector2(ControlX - LabelX - 8f, 40f), UiKit.Dim);
+        UiKit.Bind(shareLabel, "settings.share");
+        shareButtons[0] = Option(shareRow.transform, "ShareOn", -558f, 0, () => Settings.ShareOnline = true, "settings.on");
+        shareButtons[1] = Option(shareRow.transform, "ShareOff", -558f, 1, () => Settings.ShareOnline = false, "settings.off");
+        UiKit.Bind(UiKit.Label(shareRow.transform, "ShareHint", "", 11, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -604f), new Vector2(BoxWidth - 2f * LabelX - 240f, 56f), UiKit.Dim),
+            "settings.shareHint");
+
+        // Apart from the other settings, at the very bottom.
+        var reset = UiKit.Button(page, "ResetAll", "", 22, topLeft, topLeft, new Vector2(LabelX, -696f), new Vector2(300f, 40f), OpenResetConfirm);
+        UiKit.Bind(reset.Label, "settings.resetAll");
+        reset.Label.color = UiKit.Danger;
+        resetDone = UiKit.Label(page, "ResetDone", "", 22, TextAnchor.MiddleLeft, topLeft, topLeft, new Vector2(LabelX + 312f, -696f), new Vector2(240f, 40f), UiKit.Accent);
+        UiKit.Bind(resetDone, "settings.resetDone");
+        resetDone.gameObject.SetActive(false);
     }
 
     void BuildAdvanced(Transform page)
@@ -234,6 +342,11 @@ public class SettingsScreen
         RefreshPresets();
         languageButtons[0].Highlighted = Loc.Current == Lang.Ko;
         languageButtons[1].Highlighted = Loc.Current == Lang.En;
+        skipIntroButtons[0].Highlighted = Settings.SkipIntro;
+        skipIntroButtons[1].Highlighted = !Settings.SkipIntro;
+        shareRow.SetActive(WorldBoard.Configured);
+        shareButtons[0].Highlighted = Settings.ShareOnline;
+        shareButtons[1].Highlighted = !Settings.ShareOnline;
 
         bool dither = Settings.DitherOn;
         ditherButtons[0].Highlighted = dither;
@@ -263,19 +376,23 @@ public class SettingsScreen
     {
         if (IsOpen) return;
         paused = pause;
+        giveUpButton.SetActive(pause);
         if (paused) GamePause.Hold(this);
         panel.SetActive(true);
         panel.transform.SetAsLastSibling();
         UiKit.ModalRoot = panel.transform;
         SetTab(0);
+        resetDone.gameObject.SetActive(false);
         Refresh();
     }
 
     public void Close()
     {
         if (!IsOpen) return;
+        confirmReset.SetActive(false);
+        confirmGiveUp.SetActive(false);
         panel.SetActive(false);
-        if (UiKit.ModalRoot == panel.transform) UiKit.ModalRoot = null;
+        if (UiKit.ModalRoot == panel.transform || UiKit.ModalRoot == confirmReset.transform || UiKit.ModalRoot == confirmGiveUp.transform) UiKit.ModalRoot = null;
         if (paused) GamePause.Release(this);
         paused = false;
         Settings.Save();

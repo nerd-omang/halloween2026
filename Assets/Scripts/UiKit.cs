@@ -167,17 +167,20 @@ public static class UiKit
     static readonly Color[] ComboSteps =
     {
         new Color(0.85f, 0.85f, 0.88f), // 0-1: plain gray-white
-        new Color(1f, 0.88f, 0.4f),     // 3: candy yellow
-        new Color(1f, 0.55f, 0.1f),     // 6: pumpkin
-        new Color(1f, 0.2f, 0.15f),     // 9: blood red
-        new Color(0.78f, 0.35f, 1f),    // 12+: ghostly purple
+        new Color(1f, 0.88f, 0.4f),     // candy yellow
+        new Color(1f, 0.55f, 0.1f),     // pumpkin
+        new Color(1f, 0.2f, 0.15f),     // blood red
+        new Color(0.78f, 0.35f, 1f),    // ghostly purple, at the top of the combo
     };
+
+    // The streak at which the score color is fully purple (own scale: the hand speed and the time limit use 200).
+    public const int ComboColorMaxStreak = 100;
 
     // Score color for a streak: gray-white at the start, warming up to a Halloween purple as the combo grows.
     public static Color ComboColor(int streak)
     {
         if (streak < 2) return ComboSteps[0];
-        float t = Mathf.Clamp01(streak / 12f) * (ComboSteps.Length - 1);
+        float t = Mathf.Clamp01(streak / (float)ComboColorMaxStreak) * (ComboSteps.Length - 1);
         int i = Mathf.Min((int)t, ComboSteps.Length - 2);
         return Color.Lerp(ComboSteps[i], ComboSteps[i + 1], t - i);
     }
@@ -608,11 +611,17 @@ public class SimpleToggle : MonoBehaviour
 
     void Update()
     {
-        bool over = Interactable && Pointer.current != null && UiKit.Usable(transform) && UiKit.Hits(rt, GameInput.PointerPosition);
+        Vector2 point = GameInput.PointerPosition;
+        bool over = Interactable && Pointer.current != null && UiKit.Usable(transform) && UiKit.Hits(rt, point);
         label.color = !Interactable ? UiKit.Dim * 0.6f : UiKit.Hovering(over) || Value ? Color.white : UiKit.Dim * 1.15f;
 
-        if (!over || !GameInput.PointerPressedThisFrame || !UiKit.PressHits(rt, GameInput.PointerPosition)) return;
+        if (!over || !GameInput.PointerPressedThisFrame || !UiKit.PressHits(rt, point)) return;
         if (UiKit.ClickFrame == Time.frameCount || enabledFrame == Time.frameCount) return;
+        Fire();
+    }
+
+    void Fire()
+    {
         UiKit.ClickFrame = Time.frameCount;
         AudioManager.Play(Sfx.CandyAppear);
         if (radio && Value) return;

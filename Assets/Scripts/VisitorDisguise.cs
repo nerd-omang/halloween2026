@@ -9,7 +9,7 @@ using UnityEngine;
 public class VisitorDisguise : MonoBehaviour
 {
     [SerializeField] Material naturalFur;
-    // Fur change levels from sloppiest (patchy, partial dye) to a full dye job.
+    // Fur change levels from sloppiest (patchy, partial dye) to a heavy dye job (never a full 100%).
     [SerializeField] Material[] dyeLevels;
     // All of these are fake (look-alike) props; real parts are never listed here.
     [SerializeField] GameObject[] props;
@@ -162,26 +162,39 @@ public class VisitorDisguise : MonoBehaviour
     // Knocks one randomly chosen worn fake prop off, flying along `direction` (camera -> visitor) and
     // up, tumbling, bouncing once and vanishing. Returns false (and does nothing) when no fake prop is
     // worn, or while a ghost sheet covers the visitor.
-    public bool DropOneFakeProp(Vector3 direction)
+    public bool DropOneFakeProp(Vector3 direction, float assist = 1f)
     {
         if (TryGetComponent(out GhostSheet sheet) && sheet.Covered) return false;
         int worn = FakePropCount;
         if (worn == 0) return false;
 
-        int pick = Random.Range(0, worn);
+        // Weighted: the props that are harder to see through (see ItemDef.DropWeight) come off more often, `assist`
+        // (1 = no combo, 0 = a long combo) says how much.
+        float total = 0f;
+        for (int i = 0; i < props.Length; i++)
+        {
+            if (IsWorn(i)) total += DropWeight(i, assist);
+        }
+        float roll = Random.value * total;
         int index = -1;
         for (int i = 0; i < props.Length; i++)
         {
-            if (IsWorn(i) && pick-- == 0)
-            {
-                index = i;
-                break;
-            }
+            if (!IsWorn(i)) continue;
+            index = i;
+            roll -= DropWeight(i, assist);
+            if (roll <= 0f) break;
         }
         droppedMask |= 1 << index;
 
         flight.Launch(transform, props[index].transform, direction);
         return true;
+    }
+
+    // The weight fades from the item's own (assist 1, no combo) to the usual 1 (assist 0, a long combo).
+    float DropWeight(int i, float assist)
+    {
+        var def = ItemTable.FromNode(props[i].name);
+        return def != null ? Mathf.Lerp(1f, def.DropWeight, Mathf.Clamp01(assist)) : 1f;
     }
 
     bool IsWorn(int i) => props[i].activeSelf && (droppedMask & (1 << i)) == 0;

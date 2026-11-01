@@ -24,10 +24,27 @@ public struct Outfit
         set => Set(ItemTable.FurBit, value);
     }
 
+    // True while the visitor is covered: by the ghost sheet or by the pumpkin helmet (never both).
+    // Setting it puts the ghost sheet on, or takes any cover off.
     public bool sheet
     {
-        get => Has(ItemTable.SheetBit);
-        set => Set(ItemTable.SheetBit, value);
+        get => Has(ItemTable.SheetBit) || Has(ItemTable.PumpkinBit);
+        set
+        {
+            Set(ItemTable.PumpkinBit, false);
+            Set(ItemTable.SheetBit, value);
+        }
+    }
+
+    // The cover is the pumpkin helmet, not the ghost sheet.
+    public bool pumpkin
+    {
+        get => Has(ItemTable.PumpkinBit);
+        set
+        {
+            Set(ItemTable.SheetBit, false);
+            Set(ItemTable.PumpkinBit, value);
+        }
     }
 }
 

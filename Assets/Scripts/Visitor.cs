@@ -31,10 +31,14 @@ public class Visitor : MonoBehaviour
     [SerializeField] float knockFallTime = 0.5f;
     [SerializeField] float knockLieTime = 0.35f;
     [SerializeField] float knockGetUpTime = 0.45f;
+    [SerializeField] float knockRecoverSpeed = 1.6f; // lying and getting up run this much faster than the times above (the fall is unchanged)
     [SerializeField] float knockAngle = 110f;
     [SerializeField] float knockHop = 0.06f;
     [SerializeField] float knockPivotHeight = 0.38f;
     [SerializeField] float knockRollRadius = 0.3f;
+
+    float LieTime => knockLieTime / knockRecoverSpeed;
+    float GetUpTime => knockGetUpTime / knockRecoverSpeed;
 
     Vector3 basePos;
     Vector3 target;
@@ -50,6 +54,7 @@ public class Visitor : MonoBehaviour
     public bool IsMoving { get; private set; }
     public bool IsCoveredBySheet => ghostSheet != null && ghostSheet.Covered;
     public bool IsDown { get; private set; }
+    public SpecialGuest Special => GetComponent<SpecialGuest>(); // null for ordinary visitors
 
     GhostSheet ghostSheet;
 
@@ -172,7 +177,7 @@ public class Visitor : MonoBehaviour
             knockPitch = EvaluateKnockPitch(knockTime, out float knockLift);
             hop += knockLift;
             idleBob = 0f;
-            if (knockTime >= knockFallTime + knockLieTime + knockGetUpTime) IsDown = false;
+            if (knockTime >= knockFallTime + LieTime + GetUpTime) IsDown = false;
         }
 
         // Roll about the round body's center and travel as far as a ball of that radius would roll.
@@ -217,13 +222,13 @@ public class Visitor : MonoBehaviour
         }
 
         t -= knockFallTime;
-        if (t < knockLieTime)
+        if (t < LieTime)
         {
-            return knockAngle + Mathf.Sin(t * 30f) * 2f * (1f - t / knockLieTime);
+            return knockAngle + Mathf.Sin(t * 30f) * 2f * (1f - t / LieTime);
         }
 
-        t -= knockLieTime;
-        float g = Mathf.Clamp01(t / knockGetUpTime);
+        t -= LieTime;
+        float g = Mathf.Clamp01(t / GetUpTime);
         float smooth = g * g * (3f - 2f * g);
         float wobble = Mathf.Sin(g * Mathf.PI * 3f) * (1f - g) * 6f;
         return knockAngle * (1f - smooth) - wobble;

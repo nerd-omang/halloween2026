@@ -31,7 +31,7 @@ public static class OutfitApplier
             costume.Apply(mask);
         }
 
-        if (outfit.sheet && visitor.TryGetComponent(out GhostSheet sheet)) sheet.Wear();
+        if (outfit.sheet && visitor.TryGetComponent(out GhostSheet sheet)) sheet.Wear(outfit.pumpkin);
     }
 
     // The look the player sees right now (props already knocked off are not counted). With a sheet on,
@@ -62,7 +62,11 @@ public static class OutfitApplier
             }
         }
 
-        outfit.sheet = visitor.IsCoveredBySheet;
+        if (visitor.IsCoveredBySheet)
+        {
+            if (visitor.TryGetComponent(out GhostSheet cover) && cover.IsPumpkin) outfit.pumpkin = true;
+            else outfit.sheet = true;
+        }
         return outfit;
     }
 }

@@ -39,7 +39,7 @@ test('the set of producible looks equals the C# one (all kinds x fur levels x kn
   const codes = [];
   for (let kind = 0; kind < 2; kind++) {
     for (let fur = 0; fur < 4; fur++) {
-      for (let items = 0; items < 1 << 17; items++) {
+      for (let items = 0; items < 1 << 28; items++) {
         if (isPossible(kind, fur, items)) codes.push(((items << 3) | (fur << 1) | kind) >>> 0);
       }
     }
@@ -113,7 +113,15 @@ test('reject looks the game can never produce', () => {
     'two head props': ((1 << 1) | (1 << 2) | 1) << 3,
     'bucket without fur': (1 << 6) << 3,
     'witch hat under the bucket': ((1 << 6) | 1 | (1 << 7)) << 3,
-    'unknown item bit 20': (1 << 20) << 3,
+    'pirate hat with the witch hat': ((1 << 26) | (1 << 7)) << 3,
+    'hook with the broom': ((1 << 27) | (1 << 18)) << 3 | 1,
+    'maid dress with the bunny suit': ((1 << 25) | (1 << 24)) << 3,
+    'bikini with the bunny suit': ((1 << 23) | (1 << 24)) << 3,
+    'bikini with the rib vest': ((1 << 23) | (1 << 20)) << 3,
+    'sunglasses with the medical eye patch': ((1 << 15) | (1 << 22)) << 3,
+    'sheet and pumpkin helmet together': ((1 << 12) | (1 << 21)) << 3,
+    'broom and lollipop together': ((1 << 18) | (1 << 19)) << 3,
+    'eye patch with the X glasses': ((1 << 5) | (1 << 17)) << 3 | 1,
     'maid headband with the horn band': ((1 << 1) | (1 << 13)) << 3,
     'witch hat and bunny headband': ((1 << 7) | (1 << 14)) << 3 | 1,
     'star sunglasses with the X glasses': ((1 << 5) | (1 << 15)) << 3 | 1,
@@ -123,6 +131,7 @@ test('reject looks the game can never produce', () => {
     assert.equal(decode(encode(1, 'AAA', [code >>> 0])).error, 'look 0 impossible', name);
   }
   assert.ok(decode(encode(1, 'AAA', [((1 << 12) << 3) | 1])).ok, 'a sheet alone is fine');
+  assert.ok(decode(encode(1, 'AAA', [((1 << 17) | (1 << 22)) << 3])).ok, 'pirate and medical eye patches go together');
 });
 
 test('malformed text', () => {

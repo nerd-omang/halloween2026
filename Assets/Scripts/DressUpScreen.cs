@@ -21,9 +21,56 @@ public class DressUpScreen
     readonly SimpleToggle[] speciesToggles = new SimpleToggle[2];
     readonly SimpleToggle furToggle;
     readonly SimpleToggle[] dyeToggles;
-    readonly SimpleToggle[] propToggles;
-    readonly SimpleToggle[] costumeToggles;
+    readonly SimpleToggle[] partToggles; // rows of the shown part; spare rows are hidden
+    readonly Text partLabel;
+    readonly SimpleButton partPrev;
+    readonly SimpleButton partNext;
     readonly SimpleToggle sheetToggle;
+    readonly SimpleToggle pumpkinToggle;
+
+    // The items a visitor can wear, grouped by the part of the body they go on. The right panel shows one
+    // part at a time, with arrows to flip through them.
+    enum Part
+    {
+        Head,
+        Eyes,
+        Face,
+        Neck,
+        Hand,
+        Back,
+        Body,
+    }
+
+    static readonly string[] PartKeys = { "part.head", "part.eyes", "part.face", "part.neck", "part.hand", "part.back", "part.body" };
+
+    static Part PartOf(ItemDef def)
+    {
+        if (def.Category == ItemCategory.Costume)
+        {
+            switch (def.Slot)
+            {
+                case ItemSlot.Head: return Part.Head;
+                case ItemSlot.Eyes:
+                case ItemSlot.LeftEye:
+                case ItemSlot.RightEye: return Part.Eyes;
+                case ItemSlot.Neck: return Part.Neck;
+                case ItemSlot.Hand: return Part.Hand;
+                case ItemSlot.Back: return Part.Back;
+                default: return Part.Body;
+            }
+        }
+        // Props have no slot: head pieces, glasses, the nose, the tail.
+        if (def.HeadPriority >= 0) return Part.Head;
+        if (def.CoversEyes) return Part.Eyes;
+        if (def.Id == "cone_nose") return Part.Face;
+        return Part.Back;
+    }
+
+    // The parts the kind has items for (in body order) and their items.
+    readonly List<Part> shownParts = new List<Part>();
+    readonly List<List<ItemDef>> shownItems = new List<List<ItemDef>>();
+    int partIndex;
+    Part currentPart;
 
     Outfit current;
 
@@ -65,27 +112,29 @@ public class DressUpScreen
             dyeToggles[d] = toggle;
         }
 
-        UiKit.Bind(UiKit.Label(root, "PropsLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(RightColumn, -76f), new Vector2(360f, 26f), UiKit.Dim), "dress.props");
-        propToggles = new SimpleToggle[catalog.MaxPropCount];
-        for (int p = 0; p < propToggles.Length; p++)
+        // Right panel: one part of the body at a time (head, eyes, ...), flipped with the arrows like the
+        // gallery pages. The rows are a pool as big as the biggest part of either kind.
+        int rows = 1;
+        for (int k = 0; k < 2; k++)
         {
-            int slot = p;
-            var toggle = UiKit.Toggle(root, "Prop" + p, "", false, 22, topLeft, topLeft,
-                new Vector2(RightColumn, -104f - p * 34f), new Vector2(352f, 32f));
-            toggle.Changed += on => SetListed(catalog.Props(current.kind), slot, on);
-            propToggles[p] = toggle;
+            var counts = new int[PartKeys.Length];
+            foreach (var def in catalog.Props((VisitorKind)k)) counts[(int)PartOf(def)]++;
+            foreach (var def in catalog.Costumes((VisitorKind)k)) counts[(int)PartOf(def)]++;
+            foreach (int count in counts) rows = Mathf.Max(rows, count);
         }
 
-        float costumeLabelY = -104f - propToggles.Length * 34f - 14f;
-        UiKit.Bind(UiKit.Label(root, "CostumesLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(RightColumn, costumeLabelY), new Vector2(360f, 26f), UiKit.Dim), "dress.costumes");
-        costumeToggles = new SimpleToggle[catalog.MaxCostumeCount];
-        for (int c = 0; c < costumeToggles.Length; c++)
+        partPrev = UiKit.Button(root, "PartPrev", "←", 22, topLeft, topLeft, new Vector2(RightColumn, -76f), new Vector2(72f, 38f), () => ChangePart(-1));
+        partLabel = UiKit.Label(root, "PartName", "", 22, TextAnchor.MiddleCenter, topLeft, topLeft, new Vector2(RightColumn + 80f, -76f), new Vector2(192f, 38f), UiKit.Accent);
+        partNext = UiKit.Button(root, "PartNext", "→", 22, topLeft, topLeft, new Vector2(RightColumn + 280f, -76f), new Vector2(72f, 38f), () => ChangePart(1));
+
+        partToggles = new SimpleToggle[rows];
+        for (int p = 0; p < partToggles.Length; p++)
         {
-            int slot = c;
-            var toggle = UiKit.Toggle(root, "Costume" + c, "", false, 22, topLeft, topLeft,
-                new Vector2(RightColumn, costumeLabelY - 28f - c * 34f), new Vector2(352f, 32f));
-            toggle.Changed += on => SetListed(catalog.Costumes(current.kind), slot, on);
-            costumeToggles[c] = toggle;
+            int slot = p;
+            var toggle = UiKit.Toggle(root, "Item" + p, "", false, 22, topLeft, topLeft,
+                new Vector2(RightColumn, -128f - p * 34f), new Vector2(352f, 32f));
+            toggle.Changed += on => SetPartItem(slot, on);
+            partToggles[p] = toggle;
         }
 
         float sheetY = -296f;
@@ -97,17 +146,30 @@ public class DressUpScreen
             Apply();
         };
 
-        float buttonY = sheetY - 58f;
+        pumpkinToggle = UiKit.Toggle(root, "Pumpkin", "", false, 22, topLeft, topLeft, new Vector2(24f, sheetY - 34f), new Vector2(352f, 32f));
+        UiKit.Bind(pumpkinToggle.Label, "dress.pumpkin");
+        pumpkinToggle.Changed += on =>
+        {
+            current.pumpkin = on;
+            Apply();
+        };
+
+        float buttonY = sheetY - 92f;
         var random = UiKit.Button(root, "Random", "", 22, topLeft, topLeft, new Vector2(24f, buttonY), new Vector2(170f, 46f), Randomize);
         UiKit.Bind(random.Label, "dress.random");
         var reset = UiKit.Button(root, "Reset", "", 22, topLeft, topLeft, new Vector2(206f, buttonY), new Vector2(170f, 46f), Reset);
         UiKit.Bind(reset.Label, "dress.reset");
 
-        var bottomRight = new Vector2(1f, 0f);
-        var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
+        // Bottom of the left panel, away from the item rows on the right.
+        var bottomLeft = new Vector2(0f, 0f);
+        var back = UiKit.Button(root, "Back", "", 33, bottomLeft, bottomLeft, new Vector2(24f, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
         UiKit.Bind(back.Label, "back");
+        // Top left of the middle area, away from the model in its center.
+        var viewReset = UiKit.Button(root, "ViewReset", "", 22, topLeft, topLeft, new Vector2(424f, -UiKit.MarginY), new Vector2(190f, 44f), stage.ResetView);
+        UiKit.Bind(viewReset.Label, "view.reset");
+        // A low strip at the bottom edge, between the two side panels.
         descriptionText = UiKit.Label(root, "Description", "", 33, TextAnchor.LowerCenter, new Vector2(0f, 0f), new Vector2(0.5f, 0f),
-            new Vector2(640f, 104f), new Vector2(440f, 90f), Color.white);
+            new Vector2(640f, 14f), new Vector2(440f, 84f), Color.white);
 
         panel.SetActive(false);
     }
@@ -134,6 +196,7 @@ public class DressUpScreen
         foreach (var def in catalog.Costumes(current.kind)) current.Set(def.Bit, UnityEngine.Random.value < 0.3f);
         current.dyeLevel = UnityEngine.Random.Range(0, catalog.DyeLevelCount);
         current.sheet = UnityEngine.Random.value < 0.25f;
+        if (current.sheet && UnityEngine.Random.value < 0.35f) current.pumpkin = true;
         Apply();
     }
 
@@ -149,9 +212,16 @@ public class DressUpScreen
         Apply();
     }
 
-    void SetListed(IReadOnlyList<ItemDef> list, int slot, bool on)
+    void SetPartItem(int slot, bool on)
     {
-        if (slot < list.Count) SetItem(list[slot].Bit, on);
+        if (partIndex < shownItems.Count && slot < shownItems[partIndex].Count) SetItem(shownItems[partIndex][slot].Bit, on);
+    }
+
+    void ChangePart(int delta)
+    {
+        partIndex = Mathf.Clamp(partIndex + delta, 0, shownParts.Count - 1);
+        currentPart = shownParts[partIndex];
+        SyncParts();
     }
 
     void SetDye(int level)
@@ -171,7 +241,7 @@ public class DressUpScreen
         else stage.SetOutfit(0, current);
 
         descriptionText.text = OutfitCatalog.KindName(current.kind) + "\n<size=22>" + catalog.Describe(current)
-            + "</size>\n<size=22><color=#c8b8d9>" + Loc.T("drag.rotate") + "</color></size>";
+            + "</size>\n<size=22><color=#c8b8d9>" + Loc.T(GameInput.UsingTouch ? "drag.rotateTouch" : "drag.rotate") + "</color></size>";
     }
 
     void SyncControls()
@@ -180,22 +250,45 @@ public class DressUpScreen
         furToggle.Set(current.fur);
         for (int d = 0; d < dyeToggles.Length; d++) dyeToggles[d].Set(current.fur && d == current.dyeLevel);
 
-        SyncList(propToggles, catalog.Props(current.kind));
-        SyncList(costumeToggles, catalog.Costumes(current.kind));
-        sheetToggle.Set(current.sheet);
+        RebuildParts();
+        SyncParts();
+        sheetToggle.Set(current.Has(ItemTable.SheetBit));
+        pumpkinToggle.Set(current.pumpkin);
         for (int k = 0; k < 2; k++) speciesToggles[k].Text = OutfitCatalog.KindName((VisitorKind)k);
     }
 
-    // One toggle per item of the list; spare toggles (the other kind has fewer items) are hidden.
-    void SyncList(SimpleToggle[] toggles, IReadOnlyList<ItemDef> items)
+    // Groups the kind's items by part; keeps the shown part when the new kind has it too.
+    void RebuildParts()
     {
-        for (int i = 0; i < toggles.Length; i++)
+        shownParts.Clear();
+        shownItems.Clear();
+        for (int p = 0; p < PartKeys.Length; p++)
         {
-            bool exists = i < items.Count;
-            toggles[i].gameObject.SetActive(exists);
+            var items = new List<ItemDef>();
+            foreach (var def in catalog.Props(current.kind)) if ((int)PartOf(def) == p) items.Add(def);
+            foreach (var def in catalog.Costumes(current.kind)) if ((int)PartOf(def) == p) items.Add(def);
+            if (items.Count == 0) continue;
+            shownParts.Add((Part)p);
+            shownItems.Add(items);
+        }
+        partIndex = Mathf.Max(0, shownParts.IndexOf(currentPart));
+        currentPart = shownParts.Count > 0 ? shownParts[partIndex] : Part.Head;
+    }
+
+    // Shows the rows and the title of the current part.
+    void SyncParts()
+    {
+        var items = partIndex < shownItems.Count ? shownItems[partIndex] : null;
+        partLabel.text = Loc.T(PartKeys[(int)currentPart]) + "  " + (partIndex + 1) + "/" + shownParts.Count;
+        partPrev.Interactable = partIndex > 0;
+        partNext.Interactable = partIndex < shownParts.Count - 1;
+        for (int i = 0; i < partToggles.Length; i++)
+        {
+            bool exists = items != null && i < items.Count;
+            partToggles[i].gameObject.SetActive(exists);
             if (!exists) continue;
-            toggles[i].Text = catalog.ItemLabel(items[i]);
-            toggles[i].Set(current.Has(items[i].Bit));
+            partToggles[i].Text = catalog.ItemLabel(items[i]);
+            partToggles[i].Set(current.Has(items[i].Bit));
         }
     }
 }

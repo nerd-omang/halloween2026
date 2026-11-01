@@ -50,6 +50,16 @@ public class AudioManager : MonoBehaviour
 
     public static AudioManager Instance { get; private set; }
 
+    // Playback speed of the music (1 = as recorded); the combo raises it a little.
+    public static float MusicPitch
+    {
+        get => Instance != null && Instance.musicSource != null ? Instance.musicSource.pitch : 1f;
+        set
+        {
+            if (Instance != null && Instance.musicSource != null) Instance.musicSource.pitch = value;
+        }
+    }
+
     // 0..1. Setting clamps the value and applies it to the sounds that are playing now.
     public static float MasterVolume
     {

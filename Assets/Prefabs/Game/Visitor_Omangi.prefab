@@ -101,6 +101,7 @@ MonoBehaviour:
   knockFallTime: 0.5
   knockLieTime: 0.35
   knockGetUpTime: 0.45
+  knockRecoverSpeed: 1.6
   knockAngle: 110
   knockHop: 0.06
   knockPivotHeight: 0.38

@@ -19,6 +19,8 @@ public static class Settings
     const string DarkKey = "set_darkcount";
     const string FlatKey = "set_flat";
     const string InitKey = "set_init";
+    const string ShareKey = "set_share";
+    const string SkipIntroKey = "set_skipintro";
     const string QualityKey = "set_quality";
 
     // _MatrixSize values: blue noise, then Bayer-style fine to coarse.
@@ -59,6 +61,21 @@ public static class Settings
     public static float Master { get => master; set { master = Mathf.Clamp01(value); AudioManager.MasterVolume = master; PlayerPrefs.SetFloat(MasterKey, master); } }
     public static float Sfx { get => sfx; set { sfx = Mathf.Clamp01(value); AudioManager.SfxVolume = sfx; PlayerPrefs.SetFloat(SfxKey, sfx); } }
     public static float Music { get => music; set { music = Mathf.Clamp01(value); AudioManager.MusicVolume = music; PlayerPrefs.SetFloat(MusicKey, music); } }
+
+    // Send finished games to the online leaderboard (anonymous result code; initials only if the player typed them).
+    // Off keeps everything on this device: the local ranking and statistics still work.
+    public static bool ShareOnline
+    {
+        get => PlayerPrefs.GetInt(ShareKey, 1) != 0;
+        set => PlayerPrefs.SetInt(ShareKey, value ? 1 : 0);
+    }
+
+    // Start a game right away, without the Kunmungchi introduction.
+    public static bool SkipIntro
+    {
+        get => PlayerPrefs.GetInt(SkipIntroKey, 0) != 0;
+        set => PlayerPrefs.SetInt(SkipIntroKey, value ? 1 : 0);
+    }
 
     public static bool DitherOn { get => ditherOn; set { ditherOn = value; PlayerPrefs.SetInt(DitherKey, value ? 1 : 0); ApplyGraphics(); } }
     public static int Pattern { get => pattern < 0 ? defaultPattern : pattern; set { pattern = Mathf.Clamp(value, 0, OptionCount - 1); PlayerPrefs.SetInt(PatternKey, pattern); ApplyGraphics(); } }

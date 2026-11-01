@@ -22,7 +22,7 @@ public static class MokuModelBuilder
         ("MokuJacket", Color.white, true),
         ("MokuWarmer", Color.white, true),
         ("MokuHair", Color.white, true),         // black above, blue below, split in the atlas
-        ("MokuHairBlue", new Color(0.20f, 0.44f, 0.56f), false),
+        ("MokuHairBlue", Color.white, true),
         ("MokuHorn", new Color(0.85f, 0.06f, 0.08f), false),
         ("MokuEar", new Color(0.07f, 0.07f, 0.08f), false),
         ("MokuLine", new Color(0.02f, 0.02f, 0.02f), false),

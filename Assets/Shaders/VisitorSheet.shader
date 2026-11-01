@@ -2,6 +2,9 @@
 // which is CPU-only and too slow on single-threaded WebGL): the bottom moves most, the crown not at
 // all. The wave phase follows the object's world position, so the flutter quickens naturally while
 // the visitor walks and every visitor in line waves out of step.
+// Drape folds: ridges and grooves running down the cloth, done in the fragment shader (the mesh is a smooth
+// 16-sided bell): the normal is bent by a cosine around the body and the grooves are shaded a little darker.
+// They fade out toward the crown and deepen toward the hem. _FoldDepth 0 turns them off (bump material).
 // Ghost eyes: two dark ovals drawn procedurally on the front (+Z) of the sheet in its own object space,
 // so they stick to the cloth when it leans or tumbles. The same eyes on every sheet (decoration, not a
 // clue); _EyeSize 0 turns them off (used by the bump material over protruding parts).
@@ -19,6 +22,11 @@ Shader "Fangame/VisitorSheet"
         _EyeSpacing ("Eye Spacing (m, center to center)", Float) = 0.22
         _EyeSize ("Eye Radius (m, 0 = none)", Float) = 0.045
         _EyeAspect ("Eye Height / Width", Float) = 1.3
+        _FoldCount ("Drape Folds (whole number)", Float) = 9
+        _FoldDepth ("Fold Depth (0 = none)", Range(0, 1)) = 0.35
+        _FoldShade ("Fold Groove Shade", Range(0, 0.5)) = 0.14
+        _FoldTop ("Folds Fade In Below (m)", Float) = 0.75
+        _FoldFull ("Folds Full Below (m)", Float) = 0.3
     }
     SubShader
     {
@@ -39,6 +47,11 @@ Shader "Fangame/VisitorSheet"
             float _EyeSpacing;
             float _EyeSize;
             float _EyeAspect;
+            float _FoldCount;
+            float _FoldDepth;
+            half _FoldShade;
+            float _FoldTop;
+            float _FoldFull;
         CBUFFER_END
 
         // Object-space displacement: outward/inward ripples plus a little swirl around the hem.
@@ -84,6 +97,7 @@ Shader "Fangame/VisitorSheet"
                 float3 normalWS : TEXCOORD1;
                 half fogFactor : TEXCOORD2;
                 float3 positionOS : TEXCOORD3;
+                float3 tangentWS : TEXCOORD4;
             };
 
             Varyings Vert(Attributes input)
@@ -94,6 +108,8 @@ Shader "Fangame/VisitorSheet"
                 output.positionCS = pos.positionCS;
                 output.positionWS = pos.positionWS;
                 output.normalWS = TransformObjectToWorldNormal(input.normalOS);
+                // Direction around the body (anticlockwise seen from above) at this vertex.
+                output.tangentWS = TransformObjectToWorldDir(float3(-input.positionOS.z, 0.0, input.positionOS.x));
                 output.fogFactor = ComputeFogFactor(pos.positionCS.z);
                 return output;
             }
@@ -101,10 +117,19 @@ Shader "Fangame/VisitorSheet"
             half4 Frag(Varyings input) : SV_Target
             {
                 float3 normalWS = normalize(input.normalWS);
+                half groove = 0.0;
+                if (_FoldDepth > 0.0)
+                {
+                    float amount = _FoldDepth * saturate((_FoldTop - input.positionOS.y) / max(_FoldTop - _FoldFull, 1e-3));
+                    float angle = atan2(input.positionOS.x, input.positionOS.z) * _FoldCount;
+                    // The fold height is cos(angle); bend the normal against its slope along the tangent.
+                    normalWS = normalize(normalWS + normalize(input.tangentWS) * sin(angle) * _FoldCount * 0.12 * amount);
+                    groove = (0.5 - 0.5 * cos(angle)) * saturate(amount / max(_FoldDepth, 1e-3));
+                }
                 Light mainLight = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
                 half ndl = saturate((dot(normalWS, mainLight.direction) + _Wrap) / (1.0 + _Wrap));
                 half3 lighting = mainLight.color * ndl * mainLight.shadowAttenuation + SampleSH(normalWS);
-                half3 albedo = _BaseColor.rgb;
+                half3 albedo = _BaseColor.rgb * (1.0 - _FoldShade * groove);
                 if (_EyeSize > 0.0 && input.positionOS.z > 0.1)
                 {
                     // Front view (object XY): distance to the nearer eye, in eye radii.

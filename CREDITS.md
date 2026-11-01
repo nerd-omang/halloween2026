@@ -1,5 +1,17 @@
 # Credits
 
+## Characters
+
+This is an unofficial fan game. The original illustrations and character designs of 오망이 (Omangi), 쿤뭉치 (Kunmungchi),
+모쿠 (Moku) and 명칠 (Myeong7) are the copyright of 명칠 (Myeong7): https://x.com/_7M_3
+
+The 3D models in this project are fan-made interpretations of those designs, made for this game only.
+
+## Libraries
+
+- PrimeTween by Kyrylo Kuzyk (https://github.com/KyryloKuzyk/PrimeTween), used for UI animation. Installed as a Unity package from OpenUPM, 
+  not redistributed in this repository. Its own license applies: see the LICENSE.md inside the package.
+
 ## Candy images (Assets/Art/Hand/Candy)
 
 Cut out from the source photos below. Backgrounds were removed and the candies were cropped and resized.

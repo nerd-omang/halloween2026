@@ -103,8 +103,10 @@ public class DressUpScreen
         var reset = UiKit.Button(root, "Reset", "", 22, topLeft, topLeft, new Vector2(206f, buttonY), new Vector2(170f, 46f), Reset);
         UiKit.Bind(reset.Label, "dress.reset");
 
-        var bottomRight = new Vector2(1f, 0f);
-        var back = UiKit.Button(root, "Back", "", 33, bottomRight, bottomRight, new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
+        // Bottom of the left panel: the right panel's prop and costume list runs down to the bottom on short
+        // screens and phones, and a button there overlapped its rows.
+        var bottomLeft = new Vector2(0f, 0f);
+        var back = UiKit.Button(root, "Back", "", 33, bottomLeft, bottomLeft, new Vector2(24f, UiKit.MarginY), new Vector2(200f, 56f), () => Back?.Invoke());
         UiKit.Bind(back.Label, "back");
         // Top left of the middle area, away from the model in its center.
         var viewReset = UiKit.Button(root, "ViewReset", "", 22, topLeft, topLeft, new Vector2(424f, -UiKit.MarginY), new Vector2(190f, 44f), stage.ResetView);

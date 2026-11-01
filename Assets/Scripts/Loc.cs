@@ -162,6 +162,7 @@ public static class Loc
 
         // Common
         ["back"] = ("BACK", "뒤로"),
+        ["hud.combo"] = ("COMBO x{0}", "콤보 x{0}"),
         ["updates.title"] = ("WHAT'S NEW", "업데이트 내역"),
         ["updates.newer"] = ("NEWER", "최신"),
         ["updates.older"] = ("OLDER", "이전"),

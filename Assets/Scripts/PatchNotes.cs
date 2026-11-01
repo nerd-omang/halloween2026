@@ -16,6 +16,7 @@ public static class PatchNotes
             version = "0.3", date = "2026-11-01",
             lines = new[]
             {
+                ("The current combo is shown under the score", "점수 아래에 현재 콤보 표시"),
                 ("Update history on the title screen", "타이틀 화면에 업데이트 내역 추가"),
                 ("World ranking sharing is set in the settings only", "월드랭킹 공유는 설정에서만 변경"),
                 ("Fixed the model row being cut off on the Records tab", "기록 탭에서 모델이 잘리던 문제 수정"),

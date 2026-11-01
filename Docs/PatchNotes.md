@@ -6,6 +6,7 @@ version in Player Settings the same as the newest entry.
 
 ## 0.3 (2026-11-01)
 
+- Combo: the current streak of right answers is shown under the score ("COMBO x5") from the second one in a row, in the same color as the score.
 - Title screen: an info button next to the version stamp opens the update history (one-line highlights per build, paged by version; works on touch).
 - Score screen: removed the per-game "Share to world ranking" checkbox. Whether a finished game is sent to the online board is decided only by the "Share to world ranking by default" setting.
 - Records tab: the model row is fitted with a wider margin beside the left panel, so the rightmost model is no longer cut off. The porch frame is hidden while the model stage is shown.

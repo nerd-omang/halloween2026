@@ -45,6 +45,8 @@ public class GameManager : MonoBehaviour
     bool guideOn;
     float introStartTime;
     Text toast;
+    Text comboText;
+    int shownStreak = -1;
 
     int hearts;
     int score;
@@ -80,6 +82,10 @@ public class GameManager : MonoBehaviour
         scoreText.rectTransform.anchoredPosition = new Vector2(UiKit.MarginX, -UiKit.MarginY);
         heartsDisplay.GetComponent<RectTransform>().anchoredPosition = new Vector2(-UiKit.MarginX, -UiKit.MarginY);
         var canvasRoot = scoreText.canvas.transform;
+        // The running streak under the score, shown from the second right answer in a row.
+        var topLeft = new Vector2(0f, 1f);
+        comboText = UiKit.Label(canvasRoot, "Combo", "", 33, TextAnchor.UpperLeft, topLeft, topLeft,
+            new Vector2(UiKit.MarginX, -UiKit.MarginY - 76f), new Vector2(400f, 44f), UiKit.ComboColor(0));
         toast = UiKit.Label(canvasRoot, "Toast", "", 33, TextAnchor.UpperCenter, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
             new Vector2(0f, -135f), new Vector2(1000f, 44f), UiKit.Accent);
 
@@ -142,6 +148,7 @@ public class GameManager : MonoBehaviour
     void SetHud(bool visible)
     {
         scoreText.gameObject.SetActive(visible);
+        comboText.gameObject.SetActive(visible);
         if (!visible && guide != null) guide.gameObject.SetActive(false);
         heartsDisplay.gameObject.SetActive(visible);
         messageText.gameObject.SetActive(visible);
@@ -502,6 +509,12 @@ public class GameManager : MonoBehaviour
         Settings.Tick();
 
         scoreText.color = Color.Lerp(scoreText.color, UiKit.ComboColor(streak), 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
+        comboText.color = scoreText.color;
+        if (shownStreak != streak)
+        {
+            shownStreak = streak;
+            comboText.text = streak >= 2 ? Loc.T("hud.combo", streak) : "";
+        }
         if (messageTimer > 0f)
         {
             messageTimer -= Time.deltaTime;

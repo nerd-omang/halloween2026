@@ -6,6 +6,9 @@ version in Player Settings the same as the newest entry.
 
 ## 0.3 (2026-11-01)
 
+- New Halloween costumes: pirate eye patch, broom, lollipop, rib vest, medical eye patch, gold bikini (metallic), bunny suit and maid dress. Costumes that belong together (sets) are now worn together more often: from the second costume on, 40% of the picks come from the ones that make a set with what is already worn.
+- Dress-up screen: the props and costumes are listed per body part (head, eyes, face, neck, hand, back, body) and paged with arrows instead of one long list; the back button moved to the lower left so it does not overlap the list on low screens.
+- Palm blast cooldown after a ghost sheet is blown off: 0.3 s to 0.2 s.
 - Difficulty ramp stretched: every disguise element is fully open only at a score of 200. Below 40 a disguise has one fake prop, from 20 now and then two, and no paint, paint bucket or cone nose. From 40: more elements and the light paint (15%, 30%); paint bucket from 60; cone nose from 80; heavy paint (60%, 90%) from 100; ghost sheets from 60. Halloween costumes (visual noise, never the answer) come earlier and freer: from 4, up to four at once, full ramp at 30. Values are the serialized fields of `VisitorQueue` (rebuild the scene to apply new defaults) and `ItemDef.StartScore`.
 - Palm blast: a visitor who was knocked down lies and gets up 1.6x faster (about 1.0 s down in total instead of 1.3 s; `knockRecoverSpeed` on `Visitor`).
 - Palm blast: the harder disguise props come off first more often: cone nose (3x), X glasses (2x), horn band (1.5x) against the other props. The help fades with the combo and is gone at a 100 combo (`ItemDef.DropWeight`, `BlastAssistStreak` in `GameManager`).

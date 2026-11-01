@@ -124,7 +124,7 @@ public static class Loc
         ["settings.giveUpYes"] = ("GIVE UP", "포기"),
         ["score.upload"] = ("Share to world ranking", "월드랭킹에 공유"),
         ["settings.share"] = ("Share to world", "월드랭킹 공유"),
-        ["settings.shareHint"] = ("Default per game, changeable on the score screen. Only an anonymous result code is sent; initials only on RECORD.", "판마다 점수 화면에서 바꿀 수 있는 기본값이에요. 익명 결과 코드만 전송되고, 이니셜은 기록할 때만 보내요."),
+        ["settings.shareHint"] = ("Applies to every finished game. Only an anonymous result code is sent; initials only on RECORD.", "끝난 모든 게임에 적용돼요. 익명 결과 코드만 전송되고, 이니셜은 기록할 때만 보내요."),
         ["records.page"] = ("{0} / {1}", "{0} / {1}"),
         ["stats.games"] = ("Games played: {0}", "플레이 횟수: {0}판"),
         ["stats.total"] = ("Total score: {0}", "총점: {0}"),

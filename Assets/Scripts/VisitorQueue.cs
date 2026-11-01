@@ -158,6 +158,7 @@ public class VisitorQueue : MonoBehaviour
         foreach (var def in ItemTable.For(kind, ItemCategory.Prop))
         {
             if (def.BringsFur && futureScore < paintBucketStartScore) continue;
+            if (futureScore < def.StartScore) continue;
             candidates.Add(def);
         }
         if (futureScore >= furChangeStartScore) candidates.AddRange(ItemTable.For(kind, ItemCategory.Fur));

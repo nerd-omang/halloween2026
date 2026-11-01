@@ -28,6 +28,8 @@ public sealed class ItemDef
     public bool Stays;
     // Head props exclude each other; the lowest priority number wins. -1 = not a head prop.
     public int HeadPriority = -1;
+    // A prop that is hard to see through only shows up in disguises from this score on.
+    public int StartScore;
 
     public bool For(VisitorKind kind) => (Kinds & (1u << (int)kind)) != 0;
 }
@@ -49,7 +51,7 @@ public static class ItemTable
         new ItemDef { Bit = 0, Id = "fur", Category = ItemCategory.Fur, Kinds = Both },
         new ItemDef { Bit = 1, Id = "horn_band", Node = "Fake_HornBand", Category = ItemCategory.Prop, Kinds = Kun, HeadPriority = 1 },
         new ItemDef { Bit = 2, Id = "goat_ears", Node = "Fake_GoatEars", Category = ItemCategory.Prop, Kinds = Kun, HeadPriority = 2 },
-        new ItemDef { Bit = 3, Id = "cone_nose", Node = "Fake_ConeNose", Category = ItemCategory.Prop, Kinds = Oma },
+        new ItemDef { Bit = 3, Id = "cone_nose", Node = "Fake_ConeNose", Category = ItemCategory.Prop, Kinds = Oma, StartScore = 30 },
         new ItemDef { Bit = 4, Id = "raccoon_tail", Node = "Fake_RaccoonTail", Category = ItemCategory.Prop, Kinds = Oma },
         new ItemDef { Bit = 5, Id = "x_glasses", Node = "Fake_XGlasses", Category = ItemCategory.Prop, Kinds = Both, CoversEyes = true },
         new ItemDef { Bit = 6, Id = "paint_bucket", Node = "Fake_PaintBucket", Category = ItemCategory.Prop, Kinds = Both,

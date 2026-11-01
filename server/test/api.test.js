@@ -57,6 +57,27 @@ test('the same result twice is taken once: no count, no second board entry', asy
   assert.equal((await s.call('/api/top')).json.length, 2);
 });
 
+test('batch: several results in one request, answered in order, one rate-limit hit', async (t) => {
+  const s = await boot({ BOARD_SIZE: '5', RATE_WRITE_MAX: '1', RATE_BATCH_MAX: '3' });
+  t.after(s.close);
+  const post = (body, headers = {}) => s.call('/api/results', { method: 'POST', body, headers: { 'Content-Type': 'text/plain', ...headers } });
+
+  const a = game(50, 'AAA');
+  const b = game(70, 'BBB');
+  const res = await post([a, 'garbage', b, a, ''].join('\n'));
+  assert.equal(res.status, 200);
+  const r = res.json.results;
+  assert.equal(r.length, 4);
+  assert.deepEqual(r[0], { rank: 1, top: true });
+  assert.equal(r[1].error, 'invalid_result');
+  assert.deepEqual(r[2], { rank: 1, top: true });
+  assert.deepEqual(r[3], { rank: null, top: false, duplicate: true });
+  assert.equal((await s.call('/api/top')).json.length, 2);
+
+  assert.equal((await post('')).status, 400);
+  assert.equal((await post(Array.from({ length: 21 }, () => a).join('\n'))).status, 400);
+});
+
 test('board: ranks, ties, trim to N, no-initials entries only count for stats', async (t) => {
   const s = await boot({ BOARD_SIZE: '3' });
   t.after(s.close);

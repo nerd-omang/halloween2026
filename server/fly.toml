@@ -10,7 +10,6 @@ primary_region = "nrt"   # Tokyo. Pick the region closest to the players and to 
   PORT = "8080"
   ALLOWED_ORIGINS = "https://nerd-omang.github.io"   # add "http://localhost:8000" etc. for local development
   BOARD_SIZE = "20"
-  RATE_WRITE_MAX = "20"   # the game can share all 20 saved local records at once
 
 [http_service]
   internal_port = 8080

@@ -256,8 +256,21 @@ public static class WorldBoard
         };
     }
 
-    // Sends several finished games at once (the local records). A game counts as sent when the server answered
-    // 200, a repeat of an earlier one included; `sent` gets each such text, `done` the number sent and failed.
+    [Serializable]
+    class BatchRow
+    {
+        public string error; // set when the server did not take that result
+    }
+
+    [Serializable]
+    class BatchAnswer
+    {
+        public BatchRow[] results;
+    }
+
+    // Sends several finished games in one request (POST /api/results, at most 20; the saved local records). `sent`
+    // gets each text the server answered for, a repeat of an earlier game and a result it can never take included
+    // (sending those again would not help); `done` gets the number the server stored or knew and the number that failed.
     public static void SubmitMany(IList<string> texts, Action<string> sent, Action<int, int> done)
     {
         if (!Configured || texts == null || texts.Count == 0)
@@ -266,35 +279,43 @@ public static class WorldBoard
             return;
         }
 
-        int remaining = texts.Count;
-        int ok = 0;
-        foreach (string text in texts)
+        var request = new UnityWebRequest(BaseUrl + "/api/results", "POST")
         {
-            string current = text;
-            var request = new UnityWebRequest(BaseUrl + "/api/result", "POST")
-            {
-                uploadHandler = new UploadHandlerRaw(Encoding.ASCII.GetBytes(current)),
-                downloadHandler = new DownloadHandlerBuffer(),
-                timeout = TimeoutSeconds,
-            };
-            request.SetRequestHeader("Content-Type", "text/plain");
-            request.SendWebRequest().completed += _ =>
+            uploadHandler = new UploadHandlerRaw(Encoding.ASCII.GetBytes(string.Join("\n", texts))),
+            downloadHandler = new DownloadHandlerBuffer(),
+            timeout = TimeoutSeconds,
+        };
+        request.SetRequestHeader("Content-Type", "text/plain");
+        request.SendWebRequest().completed += _ =>
+        {
+            int ok = 0;
+            try
             {
                 if (request.result == UnityWebRequest.Result.Success)
                 {
-                    ok++;
-                    sent?.Invoke(current);
+                    var answer = JsonUtility.FromJson<BatchAnswer>(request.downloadHandler.text);
+                    for (int i = 0; answer?.results != null && i < answer.results.Length && i < texts.Count; i++)
+                    {
+                        sent?.Invoke(texts[i]);
+                        if (string.IsNullOrEmpty(answer.results[i].error)) ok++;
+                    }
                 }
                 else
                 {
-                    Debug.LogWarning("WorldBoard: record not sent (" + request.error + ")");
+                    Debug.LogWarning("WorldBoard: records not sent (" + request.error + ")");
                 }
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("WorldBoard: bad answer to the records (" + e.Message + ")");
+            }
+            finally
+            {
                 request.Dispose();
-                if (--remaining > 0) return;
-                lastRefreshTime = -999f; // the board may have changed
-                done?.Invoke(ok, texts.Count - ok);
-                Changed?.Invoke();
-            };
-        }
+            }
+            lastRefreshTime = -999f; // the board may have changed
+            done?.Invoke(ok, texts.Count - ok);
+            Changed?.Invoke();
+        };
     }
 }

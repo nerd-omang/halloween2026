@@ -79,6 +79,7 @@ MATERIALS = {
     "CostumeBunnyInner": ((0.60, 0.58, 0.60), False),
     "CostumeGold": ((0.95, 0.75, 0.15), False),
     "CostumeGoldMetal": ((0.95, 0.75, 0.15), False),
+    "CostumeHookMetal": ((0.7, 0.7, 0.72), False),
     "CostumeLensAmber": ((0.25, 0.15, 0.03), False),
     "CostumeAlienLens": ((0.12, 0.14, 0.13), False),
     "CostumeLime": ((0.45, 0.90, 0.12), False),
@@ -1111,7 +1112,7 @@ def build_costumes():
         tip0 + d * (0.03 + hook_r * math.sin(t)) + up * (hook_r * (1 - math.cos(t)))
         for t in (math.pi * 1.25 * k / 14 for k in range(15))]
     taper = [0.026, 0.026] + [0.026 - 0.018 * (k / 14) ** 1.3 for k in range(15)]
-    add_tube(part, "PropTin", curve, taper, AXIS_Y, segments=8)
+    add_tube(part, "CostumeHookMetal", curve, taper, AXIS_Y, segments=8)
     part.finish()
 
     # Pirate hat (head): a black bicorne (two-cornered) hat. Seen from the front it is a wide crescent, thin from

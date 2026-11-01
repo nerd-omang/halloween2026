@@ -56,6 +56,7 @@ public static class VisitorModelBuilder
         ("CostumeBunnyInner", new Color(0.60f, 0.58f, 0.60f), 0.1f, false, 0f),
         ("CostumeGold", new Color(0.95f, 0.75f, 0.15f), 0.6f, false, 0f),
         ("CostumeGoldMetal", new Color(0.95f, 0.75f, 0.15f), 0.8f, false, 0f), // the bikini: real metal, set up below
+        ("CostumeHookMetal", new Color(0.7f, 0.7f, 0.72f), 0.85f, false, 0f), // the hook: silver metal, set up below
         ("CostumeLensAmber", new Color(0.25f, 0.15f, 0.03f), 0.8f, false, 0f),
         ("CostumeAlienLens", new Color(0.12f, 0.14f, 0.13f), 0.85f, false, 0f),
         ("CostumeLime", new Color(0.45f, 0.90f, 0.12f), 0.5f, false, 0f),
@@ -218,6 +219,12 @@ public static class VisitorModelBuilder
         goldMetal.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
         EditorUtility.SetDirty(goldMetal);
 
+        // The hook's metal and the sunglasses' lenses reflect the night yard (EnvironmentReflection) too. Lenses keep
+        // their color and are mirror-smooth; the hook is silver with a faint glow.
+        SetReflective("CostumeHookMetal", 0.8f, 0.85f, 0.1f);
+        SetReflective("CostumeLensAmber", 0.6f, 0.9f, 0f);
+        SetReflective("CostumeAlienLens", 0.6f, 0.9f, 0f);
+
         // Frills (maid dress): the ghost sheet's cloth shader with its drape folds as ridges and grooves, no flutter, no eyes.
         var frillMat = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/CostumeFrill.mat");
         frillMat.shader = Shader.Find("Fangame/VisitorSheet");
@@ -329,6 +336,26 @@ public static class VisitorModelBuilder
 
         PrefabUtility.SaveAsPrefabAsset(root, path);
         PrefabUtility.UnloadPrefabContents(root);
+    }
+
+    // Turns on environment reflections and specular highlights for a material and sets how metallic and smooth it is;
+    // glow is a fraction of its own color added as emission (0 = none).
+    static void SetReflective(string name, float metallic, float smoothness, float glow)
+    {
+        var mat = AssetDatabase.LoadAssetAtPath<Material>($"{MaterialDir}/{name}.mat");
+        mat.SetFloat("_Metallic", metallic);
+        mat.SetFloat("_Smoothness", smoothness);
+        mat.SetFloat("_EnvironmentReflections", 1f);
+        mat.DisableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+        mat.SetFloat("_SpecularHighlights", 1f);
+        mat.DisableKeyword("_SPECULARHIGHLIGHTS_OFF");
+        if (glow > 0f)
+        {
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", mat.GetColor("_BaseColor") * glow);
+            mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+        }
+        EditorUtility.SetDirty(mat);
     }
 
     // Combination rules for VisitorDisguise: props sharing the head (first one wins) and props that bring the fur change.

@@ -172,6 +172,13 @@ public static class Loc
         ["menu.carouselHintTouch"] = ("Swipe sideways to choose    Tap to confirm", "옆으로 밀어서 고르기    탭해서 확인"),
         ["intro.skip"] = ("Click to skip", "클릭하면 건너뛰기"),
         ["intro.skipTouch"] = ("Tap to skip", "탭하면 건너뛰기"),
+        ["part.head"] = ("Head", "머리"),
+        ["part.eyes"] = ("Eyes", "눈"),
+        ["part.face"] = ("Face", "얼굴"),
+        ["part.neck"] = ("Neck", "목"),
+        ["part.hand"] = ("Hand", "손"),
+        ["part.back"] = ("Back", "등"),
+        ["part.body"] = ("Body", "몸"),
         ["gallery.special"] = ("SPECIAL", "특별"),
         ["gallery.unlockAll"] = ("UNLOCK ALL", "전부 해금"),
         ["gallery.unlockAsk"] = ("Unlock everything?\nThis cannot be undone.", "모든 항목을 해금할까요?\n되돌릴 수 없어요."),
@@ -192,6 +199,7 @@ public static class Loc
         ["dress.props"] = ("Props", "소품"),
         ["dress.costumes"] = ("Costumes", "코스튬"),
         ["dress.sheet"] = ("Ghost sheet", "유령 시트"),
+        ["dress.pumpkin"] = ("Pumpkin helmet", "호박 헬멧"),
         ["dress.random"] = ("RANDOM", "무작위"),
         ["dress.reset"] = ("RESET", "초기화"),
 
@@ -207,6 +215,7 @@ public static class Loc
         ["review.wasOma"] = ("It was an Omangi!", "오망이였어요!"),
         ["review.look"] = ("Look #{0}", "모습 #{0}"),
         ["review.sheet"] = (" (under a ghost sheet)", " (유령 시트 안)"),
+        ["review.pumpkin"] = (" (under a pumpkin helmet)", " (호박 헬멧 안)"),
 
         // HUD
         ["hud.correct"] = ("Correct!", "정답!"),
@@ -218,6 +227,7 @@ public static class Loc
         ["kind.kun"] = ("Kunmungchi", "쿤뭉치"),
         ["kind.oma"] = ("Omangi", "오망이"),
         ["outfit.sheet"] = ("Ghost sheet", "유령 시트"),
+        ["outfit.pumpkin"] = ("Pumpkin helmet", "호박 헬멧"),
         ["guide.give"] = ("Left click: give candy", "좌클릭: 사탕 주기"),
         ["guide.away"] = ("Right click: send away", "우클릭: 쫓아내기"),
         ["guide.giveTouch"] = ("Swipe right: give candy", "오른쪽으로 밀기: 사탕 주기"),
@@ -245,6 +255,14 @@ public static class Loc
         ["costume.BunnyHeadband"] = ("Bunny ears", "토끼귀 머리띠"),
         ["costume.StarSunglasses"] = ("Star sunglasses", "별 선글라스"),
         ["costume.AlienSunglasses"] = ("Alien sunglasses", "외계인 선글라스"),
+        ["costume.PirateEyePatch"] = ("Pirate eye patch", "해적 안대"),
+        ["costume.MedicalEyePatch"] = ("Medical eye patch", "의료용 안대"),
+        ["costume.Broom"] = ("Broom", "빗자루"),
+        ["costume.Lollipop"] = ("Lollipop", "막대사탕"),
+        ["costume.RibVest"] = ("Rib vest", "갈비뼈 조끼"),
+        ["costume.GoldBikini"] = ("Golden bikini", "골든 비키니"),
+        ["costume.BunnySuit"] = ("Bunny suit", "바니걸 복장"),
+        ["costume.MaidDress"] = ("Maid dress", "메이드복"),
     };
 
     public static bool Has(string key) => Table.ContainsKey(key);

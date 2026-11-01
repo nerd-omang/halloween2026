@@ -17,7 +17,7 @@ public static class LookCaptions
         {
             string was = Loc.T(looks[i].kind == VisitorKind.Kunmungchi ? "review.wasKun" : "review.wasOma");
             string look = Loc.T("review.look", catalog.EntryNumber(looks[i]));
-            if (looks[i].sheet) look += Loc.T("review.sheet");
+            if (looks[i].sheet) look += Loc.T(looks[i].pumpkin ? "review.pumpkin" : "review.sheet");
             string text = (actions != null ? "<color=#ffb52e>" + actions[i] + "</color>\n" : "")
                 + was + "\n<size=22><color=#c8b8d9>" + look + "</color></size>";
 

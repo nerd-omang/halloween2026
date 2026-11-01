@@ -611,11 +611,17 @@ public class SimpleToggle : MonoBehaviour
 
     void Update()
     {
-        bool over = Interactable && Pointer.current != null && UiKit.Usable(transform) && UiKit.Hits(rt, GameInput.PointerPosition);
+        Vector2 point = GameInput.PointerPosition;
+        bool over = Interactable && Pointer.current != null && UiKit.Usable(transform) && UiKit.Hits(rt, point);
         label.color = !Interactable ? UiKit.Dim * 0.6f : UiKit.Hovering(over) || Value ? Color.white : UiKit.Dim * 1.15f;
 
-        if (!over || !GameInput.PointerPressedThisFrame || !UiKit.PressHits(rt, GameInput.PointerPosition)) return;
+        if (!over || !GameInput.PointerPressedThisFrame || !UiKit.PressHits(rt, point)) return;
         if (UiKit.ClickFrame == Time.frameCount || enabledFrame == Time.frameCount) return;
+        Fire();
+    }
+
+    void Fire()
+    {
         UiKit.ClickFrame = Time.frameCount;
         AudioManager.Play(Sfx.CandyAppear);
         if (radio && Value) return;

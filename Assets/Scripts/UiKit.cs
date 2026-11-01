@@ -173,8 +173,8 @@ public static class UiKit
         new Color(0.78f, 0.35f, 1f),    // ghostly purple, at the top of the combo
     };
 
-    // The streak at which the score color is fully purple (the same scale as the hand speed and the time limit).
-    public const int ComboColorMaxStreak = 200;
+    // The streak at which the score color is fully purple (own scale: the hand speed and the time limit use 200).
+    public const int ComboColorMaxStreak = 100;
 
     // Score color for a streak: gray-white at the start, warming up to a Halloween purple as the combo grows.
     public static Color ComboColor(int streak)

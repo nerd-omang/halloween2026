@@ -41,6 +41,8 @@ export const ITEMS = [
   def(23, 'gold_bikini', 2, 5, BOTH),
   def(24, 'bunny_suit', 2, 5, BOTH),
   def(25, 'maid_dress', 2, 5, BOTH),
+  def(26, 'pirate_hat', 2, 1, BOTH),
+  def(27, 'hook', 2, 3, BOTH),
 ];
 
 export const KNOWN_MASK = ITEMS.reduce((m, d) => (m | (1 << d.bit)) >>> 0, 0);

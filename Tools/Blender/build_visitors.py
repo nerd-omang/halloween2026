@@ -1093,6 +1093,102 @@ def build_costumes():
         add_flat(part, "CostumePink" if k % 2 == 0 else "CostumeWhite", arc, disc_c, AXIS_X, AXIS_Z, 0.014)
     part.finish()
 
+    # Captain's hook (hand): a leather grip with a gold cup and a curved silver hook, in the right hand (-X).
+    # The hook curls over towards the body (+X) and points down.
+    part = Part("Costume_Hook")
+    # The cup is a thimble over the hand: its axis runs along the arm (d), the open end towards the body, the
+    # hook leaves the closed end and curls up.
+    start, n = surf((-1.0, -0.3, -0.1))
+    d = Vector((-0.75, -0.45, -0.45)).normalized()
+    cup0 = start - n * 0.03
+    cup_s = (0.03, 0.1, 0.16, 0.2, 0.225)
+    cup_r = (0.088, 0.088, 0.08, 0.056, 0.026)
+    add_tube(part, "CostumeDark", [cup0 + d * s for s in cup_s], cup_r, AXIS_Y, segments=10, cap_start=False)
+    up = (AXIS_Z - d * AXIS_Z.dot(d)).normalized()
+    tip0 = cup0 + d * 0.22
+    hook_r = 0.09
+    curve = [tip0 - d * 0.01, tip0 + d * 0.03] + [
+        tip0 + d * (0.03 + hook_r * math.sin(t)) + up * (hook_r * (1 - math.cos(t)))
+        for t in (math.pi * 1.25 * k / 14 for k in range(15))]
+    taper = [0.026, 0.026] + [0.026 - 0.018 * (k / 14) ** 1.3 for k in range(15)]
+    add_tube(part, "PropTin", curve, taper, AXIS_Y, segments=8)
+    part.finish()
+
+    # Pirate hat (head): a black bicorne (two-cornered) hat. Seen from the front it is a wide crescent, thin from
+    # front to back: two panels meet at a rounded top ridge and pinch together into the two tips. Gold piping runs
+    # along the ridge and the wing edges, a red band sits inside the front edge, and a skull and crossbones is on
+    # the front panel.
+    part = Part("Costume_PirateHat")
+    bm = part.bm
+    dark = part.mat_index("CostumeDark")
+    base = surf(AXIS_Z)[0] - AXIS_Z * 0.04
+    half_w = 0.44
+    cols = 24
+    rows = 8
+
+    def edge_bottom(u):
+        return -0.01 - 0.12 * abs(u) ** 2.2
+
+    def edge_top(u):
+        return 0.20 * (1 - u * u) ** 0.5 - 0.12 * abs(u) ** 2.2 + 0.0
+
+    def depth(u):
+        return 0.27 * (1 - u * u) ** 0.4 + 0.012
+
+    def panel_point(u, v, side):
+        z = edge_bottom(u) + v * (edge_top(u) - edge_bottom(u))
+        y = side * depth(u) * math.sqrt(max(1 - v * v, 0.0))
+        return base + Vector((half_w * u, y, z))
+
+    for side in (-1, 1):  # -1 front (-Y), +1 back
+        grid = [[bm.verts.new(panel_point(-1 + 2 * i / cols, j / rows, side)) for j in range(rows + 1)]
+                for i in range(cols + 1)]
+        for i in range(cols):
+            for j in range(rows):
+                f = bm.faces.new((grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]))
+                orient(f, Vector((0.0, side, 0.4 * (j + 0.5) / rows)))
+                f.material_index = dark
+                f.smooth = True
+                for loop in f.loops:
+                    loop[part.uv].uv = WHITE_UV
+
+    def line(u0, u1, v, side, count, lift=0.0):
+        pts = []
+        for k in range(count + 1):
+            u = u0 + (u1 - u0) * k / count
+            p = panel_point(u, v, side)
+            pts.append(p + Vector((0.0, side * lift, 0.0)))
+        return pts
+
+    ridge = line(-1.0, 1.0, 1.0, 1, 24, 0.0)
+    add_tube(part, "CostumeGold", ridge, [0.011] * len(ridge), AXIS_Y, segments=4)
+    for side in (-1, 1):
+        for u0, u1 in ((-1.0, -0.55), (0.55, 1.0)):
+            wing = line(u0, u1, 0.0, side, 8, 0.0)
+            add_tube(part, "CostumeGold", wing, [0.011] * len(wing), AXIS_Z, segments=4)
+    # red band inside the front lower edge
+    band = line(-0.62, 0.62, 0.0, -1, 14, 0.0)
+    add_tube(part, "PropBucket_Red", band, [0.016] * len(band), AXIS_Z, segments=5)
+    emblem = panel_point(0.0, 0.45, -1) + Vector((0.0, -0.012, 0.0))
+
+    def rect(length, width, angle):
+        c, s = math.cos(angle), math.sin(angle)
+        return [(c * x - s * y, s * x + c * y) for x, y in
+                ((-length, -width), (length, -width), (length, width), (-length, width), (-length, -width))]
+
+    for angle in (math.radians(35), math.radians(-35)):
+        add_flat(part, "CostumeWhite", rect(0.075, 0.012, angle), emblem + Vector((0.0, 0.0, -0.035)), AXIS_X, AXIS_Z, 0.008)
+    circle = [(math.cos(a), math.sin(a)) for a in (2 * math.pi * k / 12 for k in range(13))]
+    add_flat(part, "CostumeWhite", [(0.055 * x, 0.05 * y) for x, y in circle], emblem + Vector((0.0, -0.006, 0.03)),
+             AXIS_X, AXIS_Z, 0.008)
+    add_flat(part, "CostumeWhite", rect(0.025, 0.018, 0.0), emblem + Vector((0.0, -0.006, -0.012)), AXIS_X, AXIS_Z, 0.008)
+    for sx in (-1, 1):
+        add_flat(part, "CostumeDark", [(0.015 * x + sx * 0.025, 0.017 * y) for x, y in circle],
+                 emblem + Vector((0.0, -0.012, 0.038)), AXIS_X, AXIS_Z, 0.006)
+    add_flat(part, "CostumeDark", [(0.007 * x, 0.01 * y) for x, y in circle], emblem + Vector((0.0, -0.012, 0.01)),
+             AXIS_X, AXIS_Z, 0.006)
+    part.finish()
+
     # Skeleton rib vest (body): a black bib over the belly with bone ribs and a breastbone. It covers
     # Omangi's inverted cross.
     part = Part("Costume_RibVest")
@@ -1501,6 +1597,12 @@ PREVIEW_SETS = [
     ("Oma_Star", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_StarSunglasses")),
     ("Koon_Alien", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_AlienSunglasses")),
     ("Oma_Alien", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_AlienSunglasses")),
+    ("Koon_PirateSet", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_PirateHat", "Costume_PirateEyePatch", "Costume_Hook")),
+    ("Oma_PirateSet", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_PirateHat", "Costume_PirateEyePatch", "Costume_Hook")),
+    ("Koon_PirateHat", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_PirateHat")),
+    ("Oma_PirateHat", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_PirateHat")),
+    ("Koon_Hook", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_Hook")),
+    ("Oma_Hook", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_Hook")),
     ("Koon_Broom", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_Broom")),
     ("Oma_Broom", (0.62, 0.12, 0.12), True, ("Body", "Oma_", "Costume_Broom")),
     ("Koon_Lollipop", (0.42, 0.42, 0.44), False, ("Body", "Koon_", "Costume_Lollipop")),

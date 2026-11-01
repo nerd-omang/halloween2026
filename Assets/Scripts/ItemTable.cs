@@ -79,6 +79,8 @@ public static class ItemTable
         new ItemDef { Bit = 23, Id = "gold_bikini", Node = "Costume_GoldBikini", Category = ItemCategory.Costume, Slot = ItemSlot.Body, Kinds = Both },
         new ItemDef { Bit = 24, Id = "bunny_suit", Node = "Costume_BunnySuit", Category = ItemCategory.Costume, Slot = ItemSlot.Body, Kinds = Both },
         new ItemDef { Bit = 25, Id = "maid_dress", Node = "Costume_MaidDress", Category = ItemCategory.Costume, Slot = ItemSlot.Body, Kinds = Both },
+        new ItemDef { Bit = 26, Id = "pirate_hat", Node = "Costume_PirateHat", Category = ItemCategory.Costume, Slot = ItemSlot.Head, Kinds = Both },
+        new ItemDef { Bit = 27, Id = "hook", Node = "Costume_Hook", Category = ItemCategory.Costume, Slot = ItemSlot.Hand, Kinds = Both },
     };
 
     static readonly Dictionary<string, ItemDef> ByNodeName = BuildNodeMap();

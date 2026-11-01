@@ -263,6 +263,8 @@ public static class Loc
         ["costume.GoldBikini"] = ("Golden bikini", "골든 비키니"),
         ["costume.BunnySuit"] = ("Bunny suit", "바니걸 복장"),
         ["costume.MaidDress"] = ("Maid dress", "메이드복"),
+        ["costume.PirateHat"] = ("Pirate hat", "해적 모자"),
+        ["costume.Hook"] = ("Captain's hook", "후크 선장 갈고리"),
     };
 
     public static bool Has(string key) => Table.ContainsKey(key);

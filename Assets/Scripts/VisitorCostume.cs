@@ -112,22 +112,52 @@ public class VisitorCostume : MonoBehaviour
         }
     }
 
+    // Costumes that go together (by model node name). Each pick after the first has SetChance to come from the
+    // sets of what is already worn, so matching outfits show up a bit more often than by luck.
+    static readonly string[][] Sets =
+    {
+        new[] { "Costume_MaidHeadband", "Costume_MaidDress" },
+        new[] { "Costume_BunnyHeadband", "Costume_BunnySuit" },
+        new[] { "Costume_WitchHat", "Costume_Broom", "Costume_PumpkinBasket" },
+        new[] { "Costume_PirateHat", "Costume_PirateEyePatch", "Costume_Hook" },
+    };
+    const float SetChance = 0.4f;
+
+    // True when costume i is in a set with something in `mask`.
+    bool InSetWith(int i, int mask)
+    {
+        foreach (var set in Sets)
+        {
+            if (System.Array.IndexOf(set, costumes[i].item.name) < 0) continue;
+            for (int j = 0; j < costumes.Length; j++)
+            {
+                if ((mask & (1 << j)) != 0 && j != i && System.Array.IndexOf(set, costumes[j].item.name) >= 0) return true;
+            }
+        }
+        return false;
+    }
+
     // Wears up to `count` randomly chosen costumes, keeping to the slot rules (fewer when none fit).
     public void Randomize(int count)
     {
         int mask = 0;
         var candidates = new List<int>(costumes.Length);
+        var partners = new List<int>(costumes.Length);
         for (int picked = 0; picked < count; picked++)
         {
             candidates.Clear();
+            partners.Clear();
             for (int i = 0; i < costumes.Length; i++)
             {
                 int next = mask | (1 << i);
                 if (costumes[i].hard && count < 2) continue;
-                if (next != mask && Normalize(next) == next) candidates.Add(1 << i);
+                if (next == mask || Normalize(next) != next) continue;
+                candidates.Add(1 << i);
+                if (InSetWith(i, mask)) partners.Add(1 << i);
             }
             if (candidates.Count == 0) break;
-            mask |= candidates[Random.Range(0, candidates.Count)];
+            var pool = partners.Count > 0 && Random.value < SetChance ? partners : candidates;
+            mask |= pool[Random.Range(0, pool.Count)];
         }
         Apply(mask);
     }

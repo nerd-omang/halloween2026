@@ -121,9 +121,11 @@ public static class VisitorModelBuilder
         // glasses) are not listed, so the sheet hides them.
         // The pumpkin helmet is the second cover (GhostSheet picks it for some of the sheeted visitors).
         AddGhostSheet(koon, "Ghost_Sheet", "Pumpkin_Helmet", "Koon_Nose", "Koon_Tail", "Fake_HornBand", "Fake_GoatEars", "Fake_PaintBucket",
-            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband", "Costume_Broom", "Costume_Lollipop");
+            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband", "Costume_Broom", "Costume_Lollipop",
+            "Costume_PirateHat", "Costume_Hook");
         AddGhostSheet(oma, "Ghost_Sheet", "Pumpkin_Helmet", "Oma_Horns", "Oma_Ears", "Oma_Tail", "Fake_ConeNose", "Fake_RaccoonTail", "Fake_PaintBucket",
-            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband", "Costume_Broom", "Costume_Lollipop");
+            "Costume_WitchHat", "Costume_PumpkinBasket", "Costume_BatWings", "Costume_BunnyHeadband", "Costume_Broom", "Costume_Lollipop",
+            "Costume_PirateHat", "Costume_Hook");
         // Fixed full-costume variants, for the preview scene.
         var koonCostume = SavePrefab(koon, "Koonmungchi_OmaCostume", "Paint_Red",
             "Body", "Koon_", "Fake_HornBand", "Fake_GoatEars");
@@ -351,6 +353,8 @@ public static class VisitorModelBuilder
         ("Costume_GoldBikini", CostumeSlot.Body, false, false, false),
         ("Costume_BunnySuit", CostumeSlot.Body, false, false, true),
         ("Costume_MaidDress", CostumeSlot.Body, false, false, true),
+        ("Costume_PirateHat", CostumeSlot.Head, false, false, false),
+        ("Costume_Hook", CostumeSlot.Hand, false, false, false),
     };
 
     static void AddCostumes(GameObject prefab, (string name, CostumeSlot slot, bool stays, bool headband, bool hard)[] entries)

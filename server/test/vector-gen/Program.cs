@@ -92,7 +92,8 @@ static class P
         Forge("forged_two_head_props", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(1) | ItemTable.Mask(2) });
         Forge("forged_bucket_without_fur", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(6) });
         Forge("forged_hat_under_bucket", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(6) | ItemTable.Mask(0) | ItemTable.Mask(7) });
-        Forge("forged_unknown_item_bit26", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(26) });
+        Forge("forged_pirate_hat_with_witch_hat", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(26) | ItemTable.Mask(7) });
+        Forge("forged_hook_with_broom", new Outfit { kind = VisitorKind.Omangi, items = ItemTable.Mask(27) | ItemTable.Mask(18) });
         Forge("forged_maid_dress_with_bunny_suit", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(25) | ItemTable.Mask(24) });
         Forge("forged_bikini_with_bunny_suit", new Outfit { kind = VisitorKind.Omangi, items = ItemTable.Mask(23) | ItemTable.Mask(24) });
         Forge("forged_star_sunglasses_with_eye_patch", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(15) | ItemTable.Mask(22) });
@@ -129,7 +130,7 @@ static class P
         var validLooks = new List<uint>();
         for (int kind = 0; kind < 2; kind++)
             for (int dye = 0; dye < 4; dye++)
-                for (uint it = 0; it < (1u << 26); it++)
+                for (uint it = 0; it < (1u << 28); it++)
                 {
                     var o = new Outfit { kind = (VisitorKind)kind, items = it, dyeLevel = dye };
                     if (LookCode.IsPossible(o)) validLooks.Add(LookCode.Pack(o));

@@ -54,6 +54,13 @@ public static class WorldBoard
     public static LoadStatus Status => status;
     public static IReadOnlyList<WorldEntry> Entries => entries;
 
+    // Places on the world ranking (BOARD_SIZE of the server, server/fly.toml).
+    public const int BoardSize = 20;
+
+    // Would a game with this score make the loaded world ranking? Only meaningful once Status is Ready: a ranking
+    // that is not full takes any score, a full one only a score above its last (a tie never pushes an entry out).
+    public static bool Reaches(int score) => entries.Count < BoardSize || score > entries[entries.Count - 1].score;
+
     public static LoadStatus StatsStatus => statsStatus;
     public static int StatsGames { get; private set; }
 

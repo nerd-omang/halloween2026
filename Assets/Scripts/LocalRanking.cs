@@ -138,8 +138,9 @@ public static class LocalRanking
         return LookCode.Encode(entry.score, entry.initials, looks);
     }
 
-    // Texts of the records not sent yet (equal records count once).
-    public static List<string> PendingShare()
+    // Texts of the records not sent yet (equal records count once). A record whose score does not satisfy `reaches`
+    // (it would not make the world ranking) is left out and, when `skipped` is given, listed there instead.
+    public static List<string> PendingShare(Func<int, bool> reaches = null, List<string> skipped = null)
     {
         Load();
         LoadShared();
@@ -147,7 +148,13 @@ public static class LocalRanking
         foreach (var entry in entries)
         {
             string text = ShareText(entry);
-            if (text != null && !shared.Contains(text) && !list.Contains(text)) list.Add(text);
+            if (text == null || shared.Contains(text) || list.Contains(text)) continue;
+            if (reaches != null && !reaches(entry.score))
+            {
+                skipped?.Add(text);
+                continue;
+            }
+            list.Add(text);
         }
         return list;
     }

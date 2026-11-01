@@ -69,6 +69,7 @@ public class RankingView
     readonly List<GameObject> captions = new List<GameObject>();
 
     int page;
+    int onlinePage;
     int selected; // 1-based rank, 0 = none
     bool online;  // showing the world ranking
     int onlineSelected; // 1-based rank picked in the world ranking, 0 = none (separate from the local pick)
@@ -95,7 +96,7 @@ public class RankingView
         for (int i = 0; i < rows.Length; i++)
         {
             int slot = i;
-            var row = UiKit.Button(content, "Row" + i, "", 22, topLeft, topLeft, new Vector2(24f, -RowTop - i * RowStep), new Vector2(PanelWidth - 48f, RowHeight), () => Select(page * LocalRanking.PageSize + slot + 1));
+            var row = UiKit.Button(content, "Row" + i, "", 22, topLeft, topLeft, new Vector2(24f, -RowTop - i * RowStep), new Vector2(PanelWidth - 48f, RowHeight), () => Select((online ? onlinePage : page) * LocalRanking.PageSize + slot + 1));
             var left = new Vector2(0f, 0.5f);
             rankTexts[i] = UiKit.Label(row.transform, "Rank", "", 22, TextAnchor.MiddleLeft, left, left, new Vector2(12f, 0f), new Vector2(40f, RowHeight), UiKit.Dim);
             initialsTexts[i] = UiKit.Label(row.transform, "Initials", "", 22, TextAnchor.MiddleLeft, left, left, new Vector2(54f, 0f), new Vector2(60f, RowHeight), Color.white);
@@ -228,21 +229,29 @@ public class RankingView
         var entries = WorldBoard.Entries;
         emptyText.gameObject.SetActive(false);
         if (clearButton != null) clearButton.gameObject.SetActive(false);
-        prevButton.gameObject.SetActive(false);
-        nextButton.gameObject.SetActive(false);
-        pageText.gameObject.SetActive(false);
+        int pages = Mathf.Max(1, Mathf.CeilToInt(entries.Count / (float)LocalRanking.PageSize));
+        onlinePage = Mathf.Clamp(onlinePage, 0, pages - 1);
         for (int i = 0; i < rows.Length; i++)
         {
-            bool shown = i < entries.Count;
+            int index = onlinePage * LocalRanking.PageSize + i;
+            bool shown = index < entries.Count;
             rows[i].gameObject.SetActive(shown);
             if (!shown) continue;
 
-            rankTexts[i].text = (i + 1).ToString();
-            initialsTexts[i].text = entries[i].initials;
-            scoreTexts[i].text = entries[i].score.ToString();
+            rankTexts[i].text = (index + 1).ToString();
+            initialsTexts[i].text = entries[index].initials;
+            scoreTexts[i].text = entries[index].score.ToString();
             dateTexts[i].gameObject.SetActive(false);
-            rows[i].Highlighted = i + 1 == onlineSelected;
+            rows[i].Highlighted = index + 1 == onlineSelected;
         }
+
+        bool paged = entries.Count > LocalRanking.PageSize;
+        prevButton.gameObject.SetActive(paged);
+        nextButton.gameObject.SetActive(paged);
+        pageText.gameObject.SetActive(paged);
+        prevButton.Interactable = onlinePage > 0;
+        nextButton.Interactable = onlinePage < pages - 1;
+        pageText.text = Loc.T("records.page", onlinePage + 1, pages);
 
         var status = WorldBoard.Status;
         statusText.gameObject.SetActive(entries.Count == 0);
@@ -257,6 +266,7 @@ public class RankingView
         if (onlineSelected == 0 && entries.Count > 0)
         {
             onlineSelected = 1;
+            onlinePage = 0;
             rows[0].Highlighted = true;
         }
         ShowSelected();
@@ -296,7 +306,15 @@ public class RankingView
 
     void ChangePage(int delta)
     {
-        if (online) return;
+        if (online)
+        {
+            int onlinePages = Mathf.Max(1, Mathf.CeilToInt(WorldBoard.Entries.Count / (float)LocalRanking.PageSize));
+            int nextOnline = Mathf.Clamp(onlinePage + delta, 0, onlinePages - 1);
+            if (nextOnline == onlinePage) return;
+            onlinePage = nextOnline;
+            LayoutOnline();
+            return;
+        }
         int pages = Mathf.Max(1, Mathf.CeilToInt(LocalRanking.Entries.Count / (float)LocalRanking.PageSize));
         int next = Mathf.Clamp(page + delta, 0, pages - 1);
         if (next == page) return;

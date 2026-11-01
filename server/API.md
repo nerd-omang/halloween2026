@@ -45,7 +45,7 @@ yield return req.SendWebRequest();   // req.responseCode, req.downloadHandler.te
 
 ### `GET /api/top`
 
-`[ { "initials": "BBB", "score": 70, "r": "EAqgCLAAAABgYAABQDJAAAAAB4A" }, ... ]` best first, at most `BOARD_SIZE` (10) entries, `[]` when empty.
+`[ { "initials": "BBB", "score": 70, "r": "EAqgCLAAAABgYAABQDJAAAAAB4A" }, ... ]` best first, at most `BOARD_SIZE` (20) entries, `[]` when empty.
 `r` is the result text of that game (the same text format as the POST body, canonical: decoded and encoded again by the server),
 so the client can decode the three looks that cost the hearts with `LookCode.TryDecode`. Entries stored before `r` existed
 have no `r` field: show them without looks.

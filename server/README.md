@@ -87,7 +87,7 @@ The Redis Lua script was tested here on `ioredis-mock` (Lua via fengari), not on
 | `REDIS_URL` | required | `redis://default:PASSWORD@host:6379` (`rediss://` for TLS). **Secret** |
 | `ALLOWED_ORIGINS` | localhost:8000/8080 | comma separated exact origins, e.g. `https://nerd-omang.github.io` (no path, no trailing slash) |
 | `PORT` | 8080 | |
-| `BOARD_SIZE` | 10 | N of the top N (20 works the same) |
+| `BOARD_SIZE` | 20 | N of the top N |
 | `MAX_SCORE` | 536870911 | plausibility cap (29 bits at most) |
 | `BOARD_MIN_SCORE` / `BOARD_MIN_LOOKS` | 1 / 3 | what may enter the board |
 | `MAX_BODY_BYTES` | 256 | request size limit |

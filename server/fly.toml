@@ -9,7 +9,7 @@ primary_region = "nrt"   # Tokyo. Pick the region closest to the players and to 
 [env]
   PORT = "8080"
   ALLOWED_ORIGINS = "https://nerd-omang.github.io"   # add "http://localhost:8000" etc. for local development
-  BOARD_SIZE = "10"
+  BOARD_SIZE = "20"
 
 [http_service]
   internal_port = 8080

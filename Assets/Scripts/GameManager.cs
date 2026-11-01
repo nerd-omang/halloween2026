@@ -49,8 +49,11 @@ public class GameManager : MonoBehaviour
     Image comboBar;
     int shownStreak = -1;
     float comboTimeLeft;
+    float comboWindow = ComboSecondsStart;
 
-    const float ComboSeconds = 4f; // time to answer the next visitor and keep the combo
+    const float ComboSecondsStart = 4f;   // time to answer the next visitor and keep a new combo
+    const float ComboSecondsMin = 1.5f;   // the shortest it gets
+    const int ComboSecondsMinStreak = 200; // the streak that reaches it; in between the time shrinks evenly
     const float HandBaseSpeed = 1f;      // hand animation speed without a combo, relative to the animation as authored
     const float HandMaxSpeed = 10f;      // hand animation speed at the top of the combo (1 = normal)
     const int HandMaxSpeedStreak = 200;  // the streak that reaches it; in between the speed rises evenly
@@ -345,7 +348,8 @@ public class GameManager : MonoBehaviour
         {
             score++;
             streak++;
-            comboTimeLeft = ComboSeconds;
+            comboWindow = Mathf.Lerp(ComboSecondsStart, ComboSecondsMin, Mathf.Clamp01(streak / (float)ComboSecondsMinStreak));
+            comboTimeLeft = comboWindow;
             ShowMessage(Loc.T("hud.correct"));
             hand.ThumbsUpNext = action == HandAction.Give;
             AudioManager.Play(action == HandAction.Give ? Sfx.AnswerCorrect : Sfx.VisitorShoo);
@@ -503,7 +507,7 @@ public class GameManager : MonoBehaviour
         ShowToast(Loc.T("hud.newLook", OutfitCatalog.KindName(outfit.kind), numbers.ToString()));
     }
 
-    // The combo only goes on when the next visitor is answered within ComboSeconds of its arrival at the door.
+    // The combo only goes on when the next visitor is answered within the combo window (it shrinks as the streak grows) of its arrival at the door.
     // The gauge under the screen shows what is left; running out ends the combo without costing a heart.
     // The clock stands still while the next visitor is on its way, while a menu is open and during the first-game hints.
     void UpdateComboTimer()
@@ -525,7 +529,7 @@ public class GameManager : MonoBehaviour
             }
         }
         var rect = comboBar.rectTransform;
-        rect.anchorMax = new Vector2(Mathf.Clamp01(comboTimeLeft / ComboSeconds), rect.anchorMax.y);
+        rect.anchorMax = new Vector2(Mathf.Clamp01(comboTimeLeft / comboWindow), rect.anchorMax.y);
         comboBar.color = scoreText.color;
     }
 

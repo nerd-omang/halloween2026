@@ -50,10 +50,14 @@ public class GameManager : MonoBehaviour
     int shownStreak = -1;
     float comboTimeLeft;
     float comboPop;
+    float comboPopSize;
+    float comboPopSeconds = 0.35f;
     float comboWindow = ComboSecondsStart;
 
-    const float ComboPopSize = 0.6f;     // how much bigger the combo text gets at the start of its pop
-    const float ComboPopSeconds = 0.45f; // how long the pop takes to settle
+    // The combo text pops by this much (1 + size) with every step; every 10th and every 100th step pops bigger and longer.
+    const float ComboPopSize = 0.3f, ComboPopSeconds = 0.35f;
+    const float ComboPopSize10 = 0.6f, ComboPopSeconds10 = 0.5f;
+    const float ComboPopSize100 = 1.2f, ComboPopSeconds100 = 0.7f;
     const float ComboSecondsStart = 4f;     // time to answer the next visitor and keep a new combo
     const float ComboSecondsSoft = 1.5f;    // soft cap: reached evenly at ComboSoftStreak, after that it shrinks only slowly
     const int ComboSoftStreak = 200;
@@ -521,6 +525,14 @@ public class GameManager : MonoBehaviour
         return Mathf.Max(ComboSecondsSoft - ComboLogDrop * Mathf.Log(1f + past), ComboSecondsMin);
     }
 
+    void StartComboPop(int step)
+    {
+        bool hundred = step % 100 == 0, ten = step % 10 == 0;
+        comboPopSize = hundred ? ComboPopSize100 : ten ? ComboPopSize10 : ComboPopSize;
+        comboPopSeconds = hundred ? ComboPopSeconds100 : ten ? ComboPopSeconds10 : ComboPopSeconds;
+        comboPop = 1f;
+    }
+
     // The combo only goes on when the next visitor is answered within the combo window (it shrinks as the streak grows) of its arrival at the door.
     // The gauge under the screen shows what is left; running out ends the combo without costing a heart.
     // The clock stands still while the next visitor is on its way, while a menu is open and during the first-game hints.
@@ -579,11 +591,11 @@ public class GameManager : MonoBehaviour
         {
             shownStreak = streak;
             comboText.text = streak >= 2 ? Loc.T("hud.combo", streak) : "";
-            if (streak >= 2) comboPop = 1f; // every step of the combo pops the text
+            if (streak >= 2) StartComboPop(streak);
         }
         // The pop: the text jumps bigger and settles back to its size, quickly at first and then slowly.
-        comboPop = Mathf.MoveTowards(comboPop, 0f, Time.unscaledDeltaTime / ComboPopSeconds);
-        float comboScale = 1f + ComboPopSize * comboPop * comboPop;
+        comboPop = Mathf.MoveTowards(comboPop, 0f, Time.unscaledDeltaTime / comboPopSeconds);
+        float comboScale = 1f + comboPopSize * comboPop * comboPop;
         comboText.rectTransform.localScale = new Vector3(comboScale, comboScale, 1f);
         if (messageTimer > 0f)
         {

@@ -36,7 +36,7 @@ markings. Esc (or the gear button) opens the settings.
 
 When the third heart is gone, the game shows the three looks that fooled you, as models you can turn, zoom and move,
 and what you did against who they really were. Scores can be saved to a local top 20 and, if you allow it in the
-settings, sent to the online top 10.
+settings, sent to the online top 20.
 
 Other screens: a gallery of every look you have met (including the special guests), a dress-up screen to try any
 combination, a records screen with your personal statistics, and a settings screen (volumes, dither options,

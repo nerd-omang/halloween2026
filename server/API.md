@@ -28,6 +28,8 @@ Response `200`: `{ "rank": 3, "top": true }`
 - `rank`: 1-based place the score takes (or would take) on the board, `null` when it does not reach the top N.
   Equal scores rank after earlier ones. A game without initials can get a `rank` and `top: false` ("you would be #3, add initials").
   Not meant as an exact global rank beyond the board.
+- `duplicate`: only present, as `true`, when the same result (score, initials and looks all equal) was received before.
+  Such a game is not counted anywhere and answers `{ "rank": null, "top": false, "duplicate": true }`.
 - Every accepted game counts in the statistics, even without initials, even when it does not reach the board.
   Only games with three looks can enter the board (a game ends at the third lost heart); results with fewer looks still count for stats.
 
@@ -43,7 +45,7 @@ yield return req.SendWebRequest();   // req.responseCode, req.downloadHandler.te
 
 ### `GET /api/top`
 
-`[ { "initials": "BBB", "score": 70, "r": "EAqgCLAAAABgYAABQDJAAAAAB4A" }, ... ]` best first, at most `BOARD_SIZE` (10) entries, `[]` when empty.
+`[ { "initials": "BBB", "score": 70, "r": "EAqgCLAAAABgYAABQDJAAAAAB4A" }, ... ]` best first, at most `BOARD_SIZE` (20) entries, `[]` when empty.
 `r` is the result text of that game (the same text format as the POST body, canonical: decoded and encoded again by the server),
 so the client can decode the three looks that cost the hearts with `LookCode.TryDecode`. Entries stored before `r` existed
 have no `r` field: show them without looks.

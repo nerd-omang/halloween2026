@@ -32,6 +32,8 @@ public static class LocalRanking
 
     const string SaveKey = "local_ranking_v1";
     const string InitialsKey = "last_initials";
+    const string SharedKey = "local_shared_v1";
+    const int SharedKept = 200;
 
     static List<RankEntry> entries;
 
@@ -122,6 +124,55 @@ public static class LocalRanking
     {
         entries = new List<RankEntry>();
         Save();
+    }
+
+    // ---- sharing the local records with the world ranking ----
+
+    static List<string> shared; // result texts already sent, oldest first
+
+    // The record as the server wants it: its three looks (read from whatever version saved them) with the
+    // record's own score and initials, written in the current format. Null when the looks cannot be read.
+    public static string ShareText(RankEntry entry)
+    {
+        if (entry.score <= 0 || !entry.TryGetLooks(out Outfit[] looks) || looks.Length == 0) return null;
+        return LookCode.Encode(entry.score, entry.initials, looks);
+    }
+
+    // Texts of the records not sent yet (equal records count once). A record whose score does not satisfy `reaches`
+    // (it would not make the world ranking) is left out and, when `skipped` is given, listed there instead.
+    public static List<string> PendingShare(Func<int, bool> reaches = null, List<string> skipped = null)
+    {
+        Load();
+        LoadShared();
+        var list = new List<string>();
+        foreach (var entry in entries)
+        {
+            string text = ShareText(entry);
+            if (text == null || shared.Contains(text) || list.Contains(text)) continue;
+            if (reaches != null && !reaches(entry.score))
+            {
+                skipped?.Add(text);
+                continue;
+            }
+            list.Add(text);
+        }
+        return list;
+    }
+
+    public static void MarkShared(string text)
+    {
+        LoadShared();
+        if (shared.Contains(text)) return;
+        shared.Add(text);
+        if (shared.Count > SharedKept) shared.RemoveRange(0, shared.Count - SharedKept);
+        PlayerPrefs.SetString(SharedKey, string.Join(";", shared));
+        PlayerPrefs.Save();
+    }
+
+    static void LoadShared()
+    {
+        if (shared != null) return;
+        shared = new List<string>(PlayerPrefs.GetString(SharedKey, "").Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries));
     }
 
     // Entries are separated by ';', fields by '|': score|initials|unixTime|resultText (base64url has neither).

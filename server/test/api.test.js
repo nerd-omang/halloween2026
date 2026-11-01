@@ -43,13 +43,27 @@ async function boot(env = {}, now) {
 
 const game = (score, initials, codes = [KUN_HORN, OMA_FUR_BAG, OMA_PLAIN]) => encode(score, initials, codes);
 
+test('the same result twice is taken once: no count, no second board entry', async (t) => {
+  const s = await boot({ BOARD_SIZE: '3' });
+  t.after(s.close);
+
+  assert.deepEqual((await s.post(game(50, 'AAA'))).json, { rank: 1, top: true });
+  assert.deepEqual((await s.post(game(50, 'AAA'))).json, { rank: null, top: false, duplicate: true });
+  assert.deepEqual((await s.post(game(50, 'BBB'))).json, { rank: 2, top: true }, 'other initials are another game');
+  assert.deepEqual((await s.post(game(50, null))).json, { rank: 3, top: false });
+  assert.deepEqual((await s.post(game(50, null))).json, { rank: null, top: false, duplicate: true });
+  const stats = (await s.call('/api/stats')).json;
+  assert.equal(stats.games, 3);
+  assert.equal((await s.call('/api/top')).json.length, 2);
+});
+
 test('board: ranks, ties, trim to N, no-initials entries only count for stats', async (t) => {
   const s = await boot({ BOARD_SIZE: '3' });
   t.after(s.close);
 
   assert.deepEqual((await s.post(game(50, 'AAA'))).json, { rank: 1, top: true });
   assert.deepEqual((await s.post(game(70, 'BBB'))).json, { rank: 1, top: true });
-  assert.deepEqual((await s.post(game(50, 'AAA'))).json, { rank: 3, top: true }, 'same initials and score may repeat, later one ranks below');
+  assert.deepEqual((await s.post(game(50, 'AAA', [OMA_PLAIN, KUN_HORN, OMA_FUR_BAG]))).json, { rank: 3, top: true }, 'same initials and score may repeat with other looks, later one ranks below');
   assert.deepEqual((await s.post(game(50, 'CCC'))).json, { rank: null, top: false }, 'board full, tie with the lowest does not enter');
   assert.deepEqual((await s.post(game(60, null))).json, { rank: 2, top: false }, 'no initials: rank shown, never stored');
   assert.deepEqual((await s.post(game(10, null))).json, { rank: null, top: false });

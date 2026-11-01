@@ -6,6 +6,7 @@ version in Player Settings the same as the newest entry.
 
 ## 0.3 (2026-11-01)
 
+- Palm blast: it blows off the disguise props first; loose costumes only come off once no prop is left (before, one of them was picked at random).
 - Combo: the current streak of right answers is shown under the score ("COMBO x5") from the second one in a row, in the same color as the score. Every step of the combo pops the text and it settles back: 1.3x in 0.35 s, every 10th step 1.6x in 0.5 s, every 100th step 2.2x in 0.7 s (the `ComboPop*` constants in `GameManager`).
 - Combo speed: the hand and candy animations speed up evenly with the streak, from 1x without a combo to 10x at a 200 combo (`HandBaseSpeed`, `HandMaxSpeed`, `HandMaxSpeedStreak` in `GameManager`); the speed drops back when the combo ends.
 - Combo time limit: after a right answer, the next visitor has to be answered within a time limit of arriving at the door, or the combo ends (no heart is lost). The limit starts at 4 seconds and shrinks evenly with the streak to a soft cap of 1.5 seconds at a 200 combo; after that it shrinks logarithmically (about 1.26 s at 300, 0.94 s at 600) down to a floor of 0.8 seconds (the `ComboSeconds*` and `ComboLog*` constants in `GameManager`). A solid gauge along the bottom edge shows the time left. The clock stands still while the next visitor walks in, while a menu is open and during the first-game hints.

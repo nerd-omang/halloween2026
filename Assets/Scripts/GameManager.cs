@@ -323,13 +323,13 @@ public class GameManager : MonoBehaviour
 
         visitor.KnockDown();
 
-        // One loose item comes off per blast, picked evenly among fake props and loose costumes.
+        // One loose item comes off per blast: the disguise props first, the loose costumes once no prop is left.
         visitor.TryGetComponent(out VisitorDisguise disguise);
         visitor.TryGetComponent(out VisitorCostume costume);
         int props = disguise != null ? disguise.FakePropCount : 0;
         int loose = costume != null ? costume.LooseCount : 0;
         if (props + loose == 0) return;
-        if (Random.Range(0, props + loose) < props) disguise.DropOneFakeProp(direction);
+        if (props > 0) disguise.DropOneFakeProp(direction);
         else costume.DropOne(direction);
     }
 

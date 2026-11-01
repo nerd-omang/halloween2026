@@ -49,8 +49,11 @@ public class GameManager : MonoBehaviour
     Image comboBar;
     int shownStreak = -1;
     float comboTimeLeft;
+    float comboPop;
     float comboWindow = ComboSecondsStart;
 
+    const float ComboPopSize = 0.6f;     // how much bigger the combo text gets at the start of its pop
+    const float ComboPopSeconds = 0.45f; // how long the pop takes to settle
     const float ComboSecondsStart = 4f;   // time to answer the next visitor and keep a new combo
     const float ComboSecondsMin = 1.5f;   // the shortest it gets
     const int ComboSecondsMinStreak = 200; // the streak that reaches it; in between the time shrinks evenly
@@ -565,7 +568,12 @@ public class GameManager : MonoBehaviour
         {
             shownStreak = streak;
             comboText.text = streak >= 2 ? Loc.T("hud.combo", streak) : "";
+            if (streak >= 2) comboPop = 1f; // every step of the combo pops the text
         }
+        // The pop: the text jumps bigger and settles back to its size, quickly at first and then slowly.
+        comboPop = Mathf.MoveTowards(comboPop, 0f, Time.unscaledDeltaTime / ComboPopSeconds);
+        float comboScale = 1f + ComboPopSize * comboPop * comboPop;
+        comboText.rectTransform.localScale = new Vector3(comboScale, comboScale, 1f);
         if (messageTimer > 0f)
         {
             messageTimer -= Time.deltaTime;

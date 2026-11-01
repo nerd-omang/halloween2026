@@ -6,7 +6,7 @@ version in Player Settings the same as the newest entry.
 
 ## 0.3 (2026-11-01)
 
-- Combo: the current streak of right answers is shown under the score ("COMBO x5") from the second one in a row, in the same color as the score.
+- Combo: the current streak of right answers is shown under the score ("COMBO x5") from the second one in a row, in the same color as the score. Every step of the combo pops the text: it jumps 1.6x bigger and settles back in 0.45 s (`ComboPopSize`, `ComboPopSeconds` in `GameManager`).
 - Combo speed: the hand and candy animations speed up evenly with the streak, from 1x without a combo to 10x at a 200 combo (`HandBaseSpeed`, `HandMaxSpeed`, `HandMaxSpeedStreak` in `GameManager`); the speed drops back when the combo ends.
 - Combo time limit: after a right answer, the next visitor has to be answered within a time limit of arriving at the door, or the combo ends (no heart is lost). The limit starts at 4 seconds and shrinks evenly with the streak to 1.5 seconds at a 200 combo (`ComboSecondsStart`, `ComboSecondsMin`, `ComboSecondsMinStreak` in `GameManager`). A solid gauge along the bottom edge shows the time left. The clock stands still while the next visitor walks in, while a menu is open and during the first-game hints.
 - Title screen: an info button next to the version stamp opens the update history (one-line highlights per build, paged by version; works on touch).

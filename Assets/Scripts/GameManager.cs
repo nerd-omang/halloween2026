@@ -58,7 +58,7 @@ public class GameManager : MonoBehaviour
     const float ComboPopSize = 0.3f, ComboPopSeconds = 0.35f;
     const float ComboPopSize10 = 0.6f, ComboPopSeconds10 = 0.5f;
     const float ComboPopSize100 = 1.2f, ComboPopSeconds100 = 0.7f;
-    const float ComboSecondsStart = 4f;     // time to answer the next visitor and keep a new combo
+    const float ComboSecondsStart = 5f;     // time to answer the next visitor and keep a new combo
     const float ComboSecondsSoft = 1.5f;    // soft cap: reached evenly at ComboSoftStreak, after that it shrinks only slowly
     const int ComboSoftStreak = 200;
     const float ComboCurvePower = 1.6f;     // above 1: the time stays generous early on and drops faster towards the soft cap

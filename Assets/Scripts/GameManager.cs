@@ -51,6 +51,7 @@ public class GameManager : MonoBehaviour
     float comboTimeLeft;
 
     const float ComboSeconds = 4f; // time to answer the next visitor and keep the combo
+    const float HandBaseSpeed = 0.7f;    // hand animation speed without a combo, relative to the animation as authored
     const float HandMaxSpeed = 10f;      // hand animation speed at the top of the combo (1 = normal)
     const int HandMaxSpeedStreak = 100;  // the streak that reaches it; in between the speed rises evenly
 
@@ -285,7 +286,7 @@ public class GameManager : MonoBehaviour
         guide.gameObject.SetActive(false);
         queue.Begin();
         hand.ResetPose();
-        hand.Speed = 1f;
+        hand.Speed = HandBaseSpeed;
         hand.SetVisible(true);
         SetHud(true);
         messageText.text = "";
@@ -507,7 +508,7 @@ public class GameManager : MonoBehaviour
     // The clock stands still while the next visitor is on its way, while a menu is open and during the first-game hints.
     void UpdateComboTimer()
     {
-        hand.Speed = Mathf.Lerp(1f, HandMaxSpeed, Mathf.Clamp01(streak / (float)HandMaxSpeedStreak));
+        hand.Speed = Mathf.Lerp(HandBaseSpeed, HandMaxSpeed, Mathf.Clamp01(streak / (float)HandMaxSpeedStreak));
         bool active = !over && streak >= 1;
         if (comboBar.gameObject.activeSelf != active) comboBar.gameObject.SetActive(active);
         if (!active) return;

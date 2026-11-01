@@ -129,12 +129,21 @@ public static class LocalRanking
     {
         if (entries != null) return;
         entries = new List<RankEntry>();
+        bool upgradedAny = false;
         foreach (string row in PlayerPrefs.GetString(SaveKey, "").Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
         {
             string[] f = row.Split('|');
             if (f.Length < 4 || !int.TryParse(f[0], out int score) || !long.TryParse(f[2], out long time)) continue;
-            entries.Add(new RankEntry { score = score, initials = CleanInitials(f[1]), unixTime = time, result = f[3] });
+            string result = f[3];
+            // Results saved by an older version are rewritten in the current format (the looks stay readable).
+            if (LookCode.TryUpgrade(result, out string upgraded) && upgraded != result)
+            {
+                result = upgraded;
+                upgradedAny = true;
+            }
+            entries.Add(new RankEntry { score = score, initials = CleanInitials(f[1]), unixTime = time, result = result });
         }
+        if (upgradedAny) Save();
         // Saved in rank order already; keep it as it is (a sort could shuffle equal scores).
     }
 

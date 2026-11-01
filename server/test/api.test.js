@@ -57,11 +57,12 @@ test('board: ranks, ties, trim to N, no-initials entries only count for stats', 
 
   const top = (await s.call('/api/top')).json;
   assert.deepEqual(top, [
-    { initials: 'BBB', score: 70 },
-    { initials: 'DDD', score: 60 },
-    { initials: 'AAA', score: 50 },
+    { initials: 'BBB', score: 70, r: game(70, 'BBB') },
+    { initials: 'DDD', score: 60, r: game(60, 'DDD') },
+    { initials: 'AAA', score: 50, r: game(50, 'AAA') },
   ]);
   assert.equal(await s.redis.zcard(`${s.config.keyPrefix}board`), 3, 'trimmed to N');
+  assert.equal(await s.redis.hlen(`${s.config.keyPrefix}boardr`), 3, 'result texts of trimmed members are removed too');
 });
 
 test('board entry needs a finished game and a score above the minimum', async (t) => {
@@ -183,4 +184,59 @@ test('concurrent submissions keep the board consistent', async (t) => {
   const top = (await s.call('/api/top')).json;
   assert.deepEqual(top.map((e) => e.score), [119, 118, 117, 116, 115]);
   assert.equal((await s.call('/api/stats')).json.games, 20);
+});
+
+test('top carries the result text of each board entry; the hash never outgrows the board', async (t) => {
+  const s = await boot({ BOARD_SIZE: '3' });
+  t.after(s.close);
+  for (let i = 1; i <= 12; i++) await s.post(game(i * 10, 'AAA', [KUN_HORN, OMA_FUR_BAG, OMA_PLAIN]));
+  const top = (await s.call('/api/top')).json;
+  assert.deepEqual(top.map((e) => e.score), [120, 110, 100]);
+  for (const e of top) assert.equal(e.r, game(e.score, 'AAA'), `r of ${e.score}`);
+  assert.equal(await s.redis.hlen(`${s.config.keyPrefix}boardr`), 3);
+  assert.deepEqual((await s.redis.hkeys(`${s.config.keyPrefix}boardr`)).sort(), (await s.redis.zrange(`${s.config.keyPrefix}board`, 0, -1)).sort());
+});
+
+test('games without initials, short games and rejected games store no result text', async (t) => {
+  const s = await boot();
+  t.after(s.close);
+  await s.post(game(500, null));
+  await s.post(game(500, 'AAA', [KUN_HORN]));
+  await s.post(game(500, 'AAA', [KUN_HORN]).slice(0, 5));
+  assert.equal(await s.redis.hlen(`${s.config.keyPrefix}boardr`), 0);
+});
+
+test('the stored text is canonical: a repaired bit does not survive', async (t) => {
+  const s = await boot();
+  t.after(s.close);
+  const clean = game(77, 'WIN');
+  const bytes = Buffer.from(clean, 'base64url');
+  bytes[10] ^= 0x10; // one flipped bit inside the first look: the server repairs it
+  const damaged = bytes.toString('base64url');
+  assert.notEqual(damaged, clean);
+  assert.deepEqual((await s.post(damaged)).json, { rank: 1, top: true });
+  assert.deepEqual((await s.call('/api/top')).json, [{ initials: 'WIN', score: 77, r: clean }]);
+});
+
+test('entries stored before result texts existed come back without r', async (t) => {
+  const s = await boot();
+  t.after(s.close);
+  const k = s.config.keyPrefix;
+  await s.redis.zadd(`${k}board`, String(40 * 2097152 + 2097151 - 1), 'OLD:1');
+  await s.post(game(30, 'NEW'));
+  assert.deepEqual((await s.call('/api/top')).json, [
+    { initials: 'OLD', score: 40 },
+    { initials: 'NEW', score: 30, r: game(30, 'NEW') },
+  ]);
+});
+
+test('29-bit scores keep their order and are returned exactly', async (t) => {
+  const s = await boot({ BOARD_SIZE: '3' });
+  t.after(s.close);
+  const max = 536870911;
+  await s.post(game(max - 1, 'AAA'));
+  await s.post(game(max, 'BBB'));
+  await s.post(game(max, 'CCC'));
+  await s.post(game(1, 'DDD'));
+  assert.deepEqual((await s.call('/api/top')).json.map((e) => [e.initials, e.score]), [['BBB', max], ['CCC', max], ['AAA', max - 1]]);
 });

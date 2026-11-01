@@ -46,7 +46,11 @@ public class GameManager : MonoBehaviour
     float introStartTime;
     Text toast;
     Text comboText;
+    Image comboBar;
     int shownStreak = -1;
+    float comboTimeLeft;
+
+    const float ComboSeconds = 4f; // time to answer the next visitor and keep the combo
 
     int hearts;
     int score;
@@ -82,6 +86,15 @@ public class GameManager : MonoBehaviour
         scoreText.rectTransform.anchoredPosition = new Vector2(UiKit.MarginX, -UiKit.MarginY);
         heartsDisplay.GetComponent<RectTransform>().anchoredPosition = new Vector2(-UiKit.MarginX, -UiKit.MarginY);
         var canvasRoot = scoreText.canvas.transform;
+        // Time left to keep the combo: a solid bar along the bottom edge that shrinks to the left.
+        var bottomLeft = new Vector2(0f, 0f);
+        var bar = UiKit.Rect("ComboBar", canvasRoot, bottomLeft, bottomLeft, Vector2.zero, new Vector2(0f, 14f));
+        bar.anchorMax = new Vector2(1f, 0f);
+        bar.offsetMin = Vector2.zero;
+        bar.offsetMax = new Vector2(0f, 14f);
+        comboBar = bar.gameObject.AddComponent<Image>();
+        comboBar.raycastTarget = false;
+        comboBar.gameObject.SetActive(false);
         // The running streak under the score, shown from the second right answer in a row.
         var topLeft = new Vector2(0f, 1f);
         comboText = UiKit.Label(canvasRoot, "Combo", "", 33, TextAnchor.UpperLeft, topLeft, topLeft,
@@ -149,6 +162,7 @@ public class GameManager : MonoBehaviour
     {
         scoreText.gameObject.SetActive(visible);
         comboText.gameObject.SetActive(visible);
+        if (!visible) comboBar.gameObject.SetActive(false);
         if (!visible && guide != null) guide.gameObject.SetActive(false);
         heartsDisplay.gameObject.SetActive(visible);
         messageText.gameObject.SetActive(visible);
@@ -327,6 +341,7 @@ public class GameManager : MonoBehaviour
         {
             score++;
             streak++;
+            comboTimeLeft = ComboSeconds;
             ShowMessage(Loc.T("hud.correct"));
             hand.ThumbsUpNext = action == HandAction.Give;
             AudioManager.Play(action == HandAction.Give ? Sfx.AnswerCorrect : Sfx.VisitorShoo);
@@ -484,6 +499,31 @@ public class GameManager : MonoBehaviour
         ShowToast(Loc.T("hud.newLook", OutfitCatalog.KindName(outfit.kind), numbers.ToString()));
     }
 
+    // The combo only goes on when the next visitor is answered within ComboSeconds of its arrival at the door.
+    // The gauge under the screen shows what is left; running out ends the combo without costing a heart.
+    // The clock stands still while the next visitor is on its way, while a menu is open and during the first-game hints.
+    void UpdateComboTimer()
+    {
+        bool active = !over && streak >= 1;
+        if (comboBar.gameObject.activeSelf != active) comboBar.gameObject.SetActive(active);
+        if (!active) return;
+
+        var front = queue.Front;
+        if (front != null && front.Arrived && !guideOn && !settings.IsOpen && UiKit.ModalRoot == null)
+        {
+            comboTimeLeft -= Time.deltaTime;
+            if (comboTimeLeft <= 0f)
+            {
+                streak = 0;
+                comboBar.gameObject.SetActive(false);
+                return;
+            }
+        }
+        var rect = comboBar.rectTransform;
+        rect.anchorMax = new Vector2(Mathf.Clamp01(comboTimeLeft / ComboSeconds), rect.anchorMax.y);
+        comboBar.color = scoreText.color;
+    }
+
     void Update()
     {
         GameInput.Poll();
@@ -536,6 +576,7 @@ public class GameManager : MonoBehaviour
         {
             if (!over) RecordEncounter();
             UpdateGuide();
+            UpdateComboTimer();
             return;
         }
 

@@ -17,6 +17,7 @@ public static class PatchNotes
             lines = new[]
             {
                 ("The current combo is shown under the score", "점수 아래에 현재 콤보 표시"),
+                ("Combos need a quick answer: a gauge at the bottom shows the time left", "콤보는 제한 시간 안에 답해야 유지, 하단 게이지로 표시"),
                 ("Update history on the title screen", "타이틀 화면에 업데이트 내역 추가"),
                 ("World ranking sharing is set in the settings only", "월드랭킹 공유는 설정에서만 변경"),
                 ("Fixed the model row being cut off on the Records tab", "기록 탭에서 모델이 잘리던 문제 수정"),

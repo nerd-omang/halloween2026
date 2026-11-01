@@ -33,6 +33,15 @@ Response `200`: `{ "rank": 3, "top": true }`
 - Every accepted game counts in the statistics, even without initials, even when it does not reach the board.
   Only games with three looks can enter the board (a game ends at the third lost heart); results with fewer looks still count for stats.
 
+### `POST /api/results`
+
+Several games in one request (the game uses it to share its saved local records): one result text per line in a
+`text/plain` body, at most `MAX_BATCH` (20) lines and `MAX_BATCH_BYTES` (2048) bytes; or JSON `{ "r": ["..", ".."] }`.
+Response `200`: `{ "results": [ { "rank": 1, "top": true }, { "rank": null, "top": false, "duplicate": true }, { "error": "invalid_result", "detail": "look 0 impossible" } ] }`,
+one entry per line in the same order, each like the answer of `POST /api/result` or `{ error, detail? }` for a line the server did not take.
+Each accepted line counts as a game; the request as a whole counts once against `RATE_BATCH_MAX`. A bad request (empty,
+too many lines, bad JSON) answers the usual error for the whole request.
+
 Unity sketch:
 
 ```csharp
@@ -118,5 +127,5 @@ Body `{ "error": "<code>", "detail": "<optional short text>" }`. CORS headers ar
 
 ## Limits
 
-Per IP and 60 s window: 5 `POST` by default (20 in fly.toml, one batch of saved local records), 60 `GET` (`RATE_WRITE_MAX`, `RATE_READ_MAX`, `RATE_WINDOW_SEC`). Body 256 bytes. Score 0..`MAX_SCORE`.
+Per IP and 60 s window: 5 `POST /api/result`, 3 `POST /api/results`, 60 `GET` (`RATE_WRITE_MAX`, `RATE_READ_MAX`, `RATE_WINDOW_SEC`). Body 256 bytes. Score 0..`MAX_SCORE`.
 The server does not filter initials. A stopped machine needs about a second to start on the first request: use a timeout of at least 10 s and show the game-over screen without waiting for the answer.

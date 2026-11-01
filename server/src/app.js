@@ -86,6 +86,34 @@ export function createApp({ config, store, now = Date.now }) {
     res.end(text);
   }
 
+  // POST /api/results: one result text per line (or a JSON { "r": [..] }), answered one by one in the same order.
+  // A line that is not accepted answers { error, detail } on its own; the others are stored as usual.
+  async function submitBatch(type, body) {
+    let lines;
+    if (type === 'application/json' || body.trimStart().startsWith('{')) {
+      let parsed;
+      try { parsed = JSON.parse(body); } catch { throw new HttpError(400, 'bad_request', 'json'); }
+      if (!parsed || !Array.isArray(parsed.r) || parsed.r.some((x) => typeof x !== 'string')) throw new HttpError(400, 'bad_request', 'missing r list');
+      lines = parsed.r;
+    } else {
+      lines = body.split(/\r?\n/);
+    }
+    lines = lines.map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) throw new HttpError(400, 'bad_request', 'empty');
+    if (lines.length > config.maxBatch) throw new HttpError(400, 'bad_request', `more than ${config.maxBatch} results`);
+
+    const results = [];
+    for (const text of lines) {
+      const result = decode(text);
+      if (!result.ok) { results.push({ error: 'invalid_result', detail: result.error }); continue; }
+      if (result.score > config.maxScore) { results.push({ error: 'implausible_score' }); continue; }
+      const outcome = await store.submit(result);
+      if (outcome.top) cache.drop('/api/top');
+      results.push(outcome);
+    }
+    return { results };
+  }
+
   async function handle(req, res) {
     const url = new URL(req.url, 'http://x');
     const path = url.pathname;
@@ -108,13 +136,15 @@ export function createApp({ config, store, now = Date.now }) {
       });
     }
 
-    const route = { '/api/result': 'POST', '/api/top': 'GET', '/api/stats': 'GET' }[path];
+    const route = { '/api/result': 'POST', '/api/results': 'POST', '/api/top': 'GET', '/api/stats': 'GET' }[path];
     if (!route) throw new HttpError(404, 'not_found');
     if (method !== route && !(route === 'GET' && method === 'HEAD')) {
       throw new HttpError(405, 'method_not_allowed', route);
     }
 
-    const wait = limiter.hit(`${route}|${clientIp(req)}`, route === 'POST' ? config.rateWriteMax : config.rateReadMax);
+    const batch = path === '/api/results';
+    const wait = limiter.hit(batch ? `BATCH|${clientIp(req)}` : `${route}|${clientIp(req)}`,
+      batch ? config.rateBatchMax : route === 'POST' ? config.rateWriteMax : config.rateReadMax);
     if (wait) { const e = new HttpError(429, 'rate_limited'); e.retryAfter = wait; throw e; }
 
     if (route === 'GET') {
@@ -127,6 +157,7 @@ export function createApp({ config, store, now = Date.now }) {
 
     const type = (req.headers['content-type'] || 'text/plain').split(';')[0].trim().toLowerCase();
     if (type !== 'text/plain' && type !== 'application/json') throw new HttpError(415, 'unsupported_media_type');
+    if (batch) return send(res, 200, await submitBatch(type, await readBody(req, config.maxBatchBytes)), headers);
     let text = (await readBody(req, config.maxBodyBytes)).trim();
     if (type === 'application/json' || text.startsWith('{')) {
       let parsed;

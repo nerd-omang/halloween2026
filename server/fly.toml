@@ -12,7 +12,6 @@ primary_region = 'nrt'
 [env]
   ALLOWED_ORIGINS = 'https://nerd-omang.github.io'
   BOARD_SIZE = '20'
-  RATE_WRITE_MAX = '20'
   PORT = '8080'
 
 [http_service]

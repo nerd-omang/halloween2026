@@ -19,6 +19,9 @@ export function loadConfig(env = process.env) {
     boardMinLooks: int('BOARD_MIN_LOOKS', 3, 0),       // only finished games (3 hearts lost) enter the board
     maxBodyBytes: int('MAX_BODY_BYTES', 256, 16),
     rateWriteMax: int('RATE_WRITE_MAX', 5, 1),         // POST /api/result per IP per window
+    rateBatchMax: int('RATE_BATCH_MAX', 3, 1),         // POST /api/results (several games at once) per IP per window
+    maxBatch: int('MAX_BATCH', 20, 1),                 // results in one /api/results request
+    maxBatchBytes: int('MAX_BATCH_BYTES', 2048, 16),
     rateReadMax: int('RATE_READ_MAX', 60, 1),          // GET per IP per window
     rateWindowSec: int('RATE_WINDOW_SEC', 60, 1),
     cacheTtlSec: int('CACHE_TTL_SEC', 20, 0),          // in-memory and Cache-Control max-age for top/stats

@@ -21,7 +21,7 @@ public class HandController : MonoBehaviour
     [SerializeField] HandClip thumbsUpClip;
     [SerializeField] HandClip blastClip;
     [SerializeField] float blastHoldTime = 0.5f;
-    [SerializeField] float blastCooldown = 0.3f;
+    [SerializeField] float blastCooldown = 0.2f;
 
     float blastReadyTime;
     [SerializeField] float fps = 96f;

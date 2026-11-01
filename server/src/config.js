@@ -14,7 +14,7 @@ export function loadConfig(env = process.env) {
     allowedOrigins: (env.ALLOWED_ORIGINS || 'http://localhost:8000,http://localhost:8080,http://127.0.0.1:8000')
       .split(',').map((s) => s.trim()).filter(Boolean),
     boardSize: int('BOARD_SIZE', 10, 1),              // N of the top N
-    maxScore: Math.min(int('MAX_SCORE', 16383, 1), 16383), // plausibility cap, at most the 14 bits of the wire format
+    maxScore: Math.min(int('MAX_SCORE', 536870911, 1), 536870911), // plausibility cap, at most the 29 bits of the wire format
     boardMinScore: int('BOARD_MIN_SCORE', 1, 0),       // a score below this never enters the board
     boardMinLooks: int('BOARD_MIN_LOOKS', 3, 0),       // only finished games (3 hearts lost) enter the board
     maxBodyBytes: int('MAX_BODY_BYTES', 256, 16),

@@ -1,13 +1,18 @@
 // Decoder for the result text produced by Assets/Scripts/LookCode.cs (Encode/TryDecode).
-// [version 4][score 14][has initials 1][initials 3 x 5][look count 2][looks 39 bits each], MSB first,
-// zero padded to bytes, unpadded base64url. Each look is an extended Hamming (39,32) word.
+// [version 4][score 29][has initials 1][initials 3 x 5][look count 2][looks 39 bits each][checksum 16][reserved 8],
+// MSB first, zero padded to bytes, unpadded base64url. Three looks make exactly 192 bits = 32 characters.
+// Each look is an extended Hamming (39,32) word. The checksum is CRC-16/CCITT-FALSE over the whole message with the
+// checksum bits set to 0 and the looks as repaired by the Hamming code; it protects the header, which Hamming does not.
 import { isPossible } from './items.js';
 
-export const VERSION = 1;
-export const MAX_SCORE = (1 << 14) - 1;
+export const VERSION = 2;
+export const SCORE_BITS = 29;
+export const MAX_SCORE = 2 ** SCORE_BITS - 1;
 export const MAX_LOOKS = 3;
 const WORD_BITS = 39;
-const HEADER_BITS = 4 + 14 + 1 + 15 + 2;
+const CHECKSUM_BITS = 16;
+const RESERVED_BITS = 8;
+const HEADER_BITS = 4 + SCORE_BITS + 1 + 15 + 2;
 const ITEM_SHIFT = 3;
 
 const DATA_POSITIONS = [];
@@ -48,6 +53,16 @@ export function recover(word) {
   return data >>> 0;
 }
 
+// CRC-16/CCITT-FALSE: poly 0x1021, init 0xFFFF, no reflection, no final xor.
+export function crc16(bytes) {
+  let crc = 0xffff;
+  for (const b of bytes) {
+    crc ^= b << 8;
+    for (let i = 0; i < 8; i++) crc = (crc & 0x8000) !== 0 ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+  }
+  return crc;
+}
+
 const B64URL = /^[A-Za-z0-9_-]+$/;
 
 function toBytes(text) {
@@ -68,6 +83,25 @@ class Reader {
   }
 }
 
+// MSB-first bit writer; fields are [value, bits] pairs.
+function pack(fields) {
+  const bits = [];
+  for (const [value, n] of fields) for (let i = n - 1; i >= 0; i--) bits.push(Number((BigInt(value) >> BigInt(i)) & 1n));
+  while (bits.length % 8) bits.push(0);
+  const out = Buffer.alloc(bits.length / 8);
+  bits.forEach((b, i) => { if (b) out[i >> 3] |= 0x80 >> (i & 7); });
+  return out;
+}
+
+function message(score, hasInitials, letters, words, checksum) {
+  return pack([
+    [VERSION, 4], [score, SCORE_BITS], [hasInitials ? 1 : 0, 1],
+    [letters[0], 5], [letters[1], 5], [letters[2], 5],
+    [words.length, 2], ...words.map((w) => [w, WORD_BITS]),
+    [checksum, CHECKSUM_BITS], [0, RESERVED_BITS],
+  ]);
+}
+
 // Returns { ok: true, score, initials (string|null), looks: [{code, kind, fur, items}] } or { ok: false, error }.
 // Stricter than the client decoder in one way only: the text must be canonical (exact length, zero padding bits),
 // which is what Encode always produces.
@@ -77,17 +111,14 @@ export function decode(text) {
   const r = new Reader(bytes);
   if (!r.has(HEADER_BITS)) return { ok: false, error: 'too short' };
   if (Number(r.read(4)) !== VERSION) return { ok: false, error: 'unknown version' };
-  const score = Number(r.read(14));
+  const score = Number(r.read(SCORE_BITS));
   const hasInitials = r.read(1) === 1n;
   const letters = [Number(r.read(5)), Number(r.read(5)), Number(r.read(5))];
-  let initials = null;
-  if (hasInitials) {
-    if (letters.some((l) => l > 25)) return { ok: false, error: 'bad initials' };
-    initials = String.fromCharCode(...letters.map((l) => 65 + l));
-  }
+  if (hasInitials && letters.some((l) => l > 25)) return { ok: false, error: 'bad initials' };
   const count = Number(r.read(2));
-  if (count > MAX_LOOKS || !r.has(count * WORD_BITS)) return { ok: false, error: 'bad look count' };
+  if (count > MAX_LOOKS || !r.has(count * WORD_BITS + CHECKSUM_BITS + RESERVED_BITS)) return { ok: false, error: 'bad look count' };
   const looks = [];
+  const words = [];
   for (let i = 0; i < count; i++) {
     const code = recover(r.read(WORD_BITS));
     if (code === null) return { ok: false, error: `look ${i} damaged` };
@@ -96,27 +127,24 @@ export function decode(text) {
     const items = code >>> ITEM_SHIFT;
     if (!isPossible(kind, fur, items)) return { ok: false, error: `look ${i} impossible` };
     looks.push({ code, kind, fur, items });
+    words.push(protect(code));
   }
-  const usedBits = HEADER_BITS + count * WORD_BITS;
+  const checksum = Number(r.read(CHECKSUM_BITS));
+  if (r.read(RESERVED_BITS) !== 0n) return { ok: false, error: 'reserved bits set' };
+  const usedBits = HEADER_BITS + count * WORD_BITS + CHECKSUM_BITS + RESERVED_BITS;
   if (bytes.length !== Math.ceil(usedBits / 8)) return { ok: false, error: 'bad length' };
   const padBits = bytes.length * 8 - usedBits;
   if (padBits > 0 && (bytes[bytes.length - 1] & ((1 << padBits) - 1)) !== 0) return { ok: false, error: 'bad padding' };
-  return { ok: true, score, initials, looks };
+  if (crc16(message(score, hasInitials, letters, words, 0)) !== checksum) return { ok: false, error: 'bad checksum' };
+  return { ok: true, score, initials: hasInitials ? String.fromCharCode(...letters.map((l) => 65 + l)) : null, looks };
 }
 
-// Test helper: port of LookCode.Encode for already-valid input (looks are { code }).
+// Port of LookCode.Encode for already-valid input (codes are the 32-bit look codes).
 export function encode(score, initials, codes) {
-  const bits = [];
-  const put = (v, n) => { for (let i = n - 1; i >= 0; i--) bits.push(Number((BigInt(v) >> BigInt(i)) & 1n)); };
-  put(VERSION, 4);
-  put(Math.min(Math.max(score, 0), MAX_SCORE), 14);
+  const clamped = Math.min(Math.max(score, 0), MAX_SCORE);
   const has = !!initials;
-  put(has ? 1 : 0, 1);
-  for (let i = 0; i < 3; i++) put(has && i < initials.length ? initials.toUpperCase().charCodeAt(i) - 65 : 0, 5);
-  put(codes.length, 2);
-  for (const c of codes) put(protect(c), WORD_BITS);
-  while (bits.length % 8) bits.push(0);
-  const out = Buffer.alloc(bits.length / 8);
-  bits.forEach((b, i) => { if (b) out[i >> 3] |= 0x80 >> (i & 7); });
-  return out.toString('base64url');
+  const letters = [0, 1, 2].map((i) => (has && i < initials.length ? initials.toUpperCase().charCodeAt(i) - 65 : 0));
+  const words = codes.map(protect);
+  const checksum = crc16(message(clamped, has, letters, words, 0));
+  return message(clamped, has, letters, words, checksum).toString('base64url');
 }

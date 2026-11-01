@@ -2,7 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // The longer the combo, the more Halloween the yard gets: the jack-o'-lanterns start dim and glow brighter,
-// cobwebs and bats appear one by one, ambient motes drift up and the music speeds up a little.
+// the house windows light up, the moon grows and reddens, cobwebs and bats appear one by one, ambient motes
+// drift up and the music speeds up a little.
 // It reads the objects the environment builder made (under "Environment") by name, so no scene change is needed;
 // anything it does not find is left out.
 public class ComboAtmosphere : MonoBehaviour
@@ -17,6 +18,14 @@ public class ComboAtmosphere : MonoBehaviour
     const float LanternDim = 0.25f;  // lantern glow without a combo, as a fraction of its normal brightness
     const float LanternFull = 1.3f;  // and at full level
     const float FlickerFull = 1.8f;  // flicker grows with the level too
+
+    const float WindowDim = 0.04f;   // window light without a combo (they look switched off), as a fraction of normal
+    const float WindowFull = 1.15f;
+    const float WindowFlickerFull = 2.5f;
+
+    const float MoonRadiusFull = 1.45f;                         // the moon disc grows to this much of its size
+    static readonly Color MoonFullColor = new Color(1f, 0.52f, 0.28f);  // and goes from pale yellow to harvest red
+    static readonly Color MoonFullHalo = new Color(0.85f, 0.22f, 0.12f);
 
     const float MaxMotesPerSecond = 14f;
     const float MusicPitchFull = 1.1f;
@@ -48,6 +57,10 @@ public class ComboAtmosphere : MonoBehaviour
 
     readonly List<Reveal> reveals = new List<Reveal>();
     readonly List<Glow> glows = new List<Glow>();
+    readonly List<Glow> windows = new List<Glow>();
+    Material moon;
+    Color moonColor, moonHalo;
+    float moonRadius;
     CandySparkle motes;
     float level;
     float moteDebt;
@@ -63,7 +76,21 @@ public class ComboAtmosphere : MonoBehaviour
         {
             AddReveals(environment.transform.Find("Cobwebs"), WebStreaks);
             AddReveals(environment.transform.Find("Bats"), BatStreaks);
-            FindGlows(environment.transform.Find("JackOLanterns"));
+            var lanterns = environment.transform.Find("JackOLanterns");
+            if (lanterns != null)
+            {
+                glows.AddRange(CopyMaterials(lanterns, "EnvGlow"));
+                glows.AddRange(CopyMaterials(lanterns, "EnvHalo"));
+            }
+            windows.AddRange(CopyMaterials(environment.transform, "EnvWindow"));
+            var moons = CopyMaterials(environment.transform, "EnvMoon");
+            if (moons.Count > 0)
+            {
+                moon = moons[0].material;
+                moonColor = moon.GetColor("_MoonColor");
+                moonHalo = moon.GetColor("_HaloColor");
+                moonRadius = moon.GetFloat("_DiscRadius");
+            }
         }
         if (template != null && template.Material != null)
         {
@@ -84,37 +111,37 @@ public class ComboAtmosphere : MonoBehaviour
         }
     }
 
-    // The lantern materials are shared with the prefab asset, so they are copied (once, for all lanterns)
-    // before their brightness is changed; the asset itself stays as it is.
-    void FindGlows(Transform lanterns)
+    // Materials on the prefabs are shared with the assets, so every material whose name starts with `prefix` is
+    // copied once (the copy is shared by all the renderers that used it) before it is changed at runtime.
+    static List<Glow> CopyMaterials(Transform root, string prefix)
     {
-        if (lanterns == null) return;
+        var made = new List<Glow>();
         var copies = new Dictionary<Material, Glow>();
-        foreach (var renderer in lanterns.GetComponentsInChildren<Renderer>(true))
+        foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
         {
             var materials = renderer.sharedMaterials;
             bool changed = false;
             for (int i = 0; i < materials.Length; i++)
             {
                 var original = materials[i];
-                if (original == null || !(original.name.StartsWith("EnvGlow") || original.name.StartsWith("EnvHalo"))) continue;
+                if (original == null || !original.name.StartsWith(prefix)) continue;
                 if (!copies.TryGetValue(original, out var glow))
                 {
-                    var copy = new Material(original);
                     glow = new Glow
                     {
-                        material = copy,
+                        material = new Material(original),
                         intensity = original.HasProperty("_Intensity") ? original.GetFloat("_Intensity") : 1f,
                         flicker = original.HasProperty("_FlickerAmount") ? original.GetFloat("_FlickerAmount") : 0f,
                     };
                     copies[original] = glow;
-                    glows.Add(glow);
+                    made.Add(glow);
                 }
                 materials[i] = glow.material;
                 changed = true;
             }
             if (changed) renderer.sharedMaterials = materials;
         }
+        return made;
     }
 
     void Update()
@@ -141,6 +168,21 @@ public class ComboAtmosphere : MonoBehaviour
         {
             if (glow.material.HasProperty("_Intensity")) glow.material.SetFloat("_Intensity", glow.intensity * glowScale);
             if (glow.material.HasProperty("_FlickerAmount")) glow.material.SetFloat("_FlickerAmount", Mathf.Clamp01(glow.flicker * flickerScale));
+        }
+
+        float windowScale = Mathf.Lerp(WindowDim, WindowFull, level);
+        float windowFlicker = Mathf.Lerp(1f, WindowFlickerFull, level);
+        foreach (var window in windows)
+        {
+            window.material.SetFloat("_Intensity", window.intensity * windowScale);
+            window.material.SetFloat("_FlickerAmount", Mathf.Clamp01(window.flicker * windowFlicker));
+        }
+
+        if (moon != null)
+        {
+            moon.SetColor("_MoonColor", Color.Lerp(moonColor, MoonFullColor, level));
+            moon.SetColor("_HaloColor", Color.Lerp(moonHalo, MoonFullHalo, level));
+            moon.SetFloat("_DiscRadius", Mathf.Min(moonRadius * Mathf.Lerp(1f, MoonRadiusFull, level), 0.6f));
         }
 
         AudioManager.MusicPitch = Mathf.Lerp(1f, MusicPitchFull, level);

@@ -18,7 +18,7 @@ public static class PatchNotes
             {
                 ("Slower difficulty ramp: harder disguises come much later, Halloween costumes earlier", "난이도 곡선 완화: 어려운 위장은 훨씬 후반, 할로윈 분장은 더 일찍"),
                 ("The palm blast blows off disguise props first", "장풍이 위장 소품부터 날려보냄"),
-                ("A longer combo makes the yard more Halloween: glowing pumpkins, bats, cobwebs, motes, faster music", "콤보가 쌓일수록 호박등, 박쥐, 거미줄, 입자, 음악이 할로윈답게 변화"),
+                ("A longer combo makes the yard more Halloween: glowing pumpkins and windows, a red moon, bats, cobwebs, motes, faster music", "콤보가 쌓일수록 호박등과 창문 불빛, 붉은 달, 박쥐, 거미줄, 입자, 음악이 할로윈답게 변화"),
                 ("The current combo is shown under the score and pops with every step", "점수 아래에 현재 콤보 표시, 올라갈 때마다 팝 효과"),
                 ("The hand moves faster as the combo grows", "콤보가 쌓일수록 손 동작이 빨라짐"),
                 ("Combo time limit with a gauge, shorter as it grows", "콤보 제한 시간과 게이지, 쌓일수록 단축"),

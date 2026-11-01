@@ -21,7 +21,9 @@ public class HandController : MonoBehaviour
     [SerializeField] HandClip thumbsUpClip;
     [SerializeField] HandClip blastClip;
     [SerializeField] float blastHoldTime = 0.5f;
+    [SerializeField] float blastCooldown = 0.3f;
 
+    float blastReadyTime;
     [SerializeField] float fps = 96f;
     [SerializeField] float holdFps = 6f;
     [SerializeField] float holdTime = 0.15f;
@@ -89,7 +91,7 @@ public class HandController : MonoBehaviour
 
         if (GameInput.Consume(GameAction.Give)) StartCoroutine(Perform(HandAction.Give));
         else if (GameInput.Consume(GameAction.Reject)) StartCoroutine(Perform(HandAction.Reject));
-        else if (GameInput.Consume(GameAction.Blast) && CanBlast != null && CanBlast())
+        else if (Time.time >= blastReadyTime && GameInput.Consume(GameAction.Blast) && CanBlast != null && CanBlast())
             StartCoroutine(PerformBlast());
     }
 
@@ -100,6 +102,7 @@ public class HandController : MonoBehaviour
         AudioManager.Play(Sfx.BlastCharge);
         yield return PlayClip(blastClip, blastHoldTime, false, () => Blasted?.Invoke());
         ShowIdle();
+        blastReadyTime = Time.time + blastCooldown;
         Busy = false;
     }
 

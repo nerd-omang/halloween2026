@@ -55,38 +55,33 @@ static class P
             int n = g % 4;
             var looks = new List<Outfit>();
             for (int i = 0; i < n; i++) looks.Add(RandomValid());
-            int score = g < 4 ? new[] { 0, 1, 16383, 9999 }[g] : rng.Next(0, 16384);
+            int score = g < 6 ? new[] { 0, 1, 16383, 16384, LookCode.MaxScore, 9999 }[g] : rng.Next(0, LookCode.MaxScore + 1);
             string t = LookCode.Encode(score, inis[g % inis.Length], looks);
             Add("valid" + g, t);
         }
 
-        int first = 4 + 14 + 1 + 15 + 2;
+        int first = 4 + LookCode.ScoreBits + 1 + 15 + 2;
         {
             var looks = new List<Outfit> { RandomValid(), RandomValid(), RandomValid() };
             string t = LookCode.Encode(777, "WIN", looks);
             byte[] raw = Unb64(t);
-            int total = first + 3 * 39;
-            for (int bit = first; bit < total; bit++)
+            int total = raw.Length * 8;
+            // every single flipped bit of a full message: looks are repaired, everything else is refused or changes the message
+            for (int bit = 0; bit < total; bit++)
             {
                 var b = (byte[])raw.Clone();
                 b[bit / 8] ^= (byte)(0x80 >> (bit % 8));
                 Add("flip1_bit" + bit, B64(b));
             }
-            for (int k = 0; k < 60; k++)
+            for (int k = 0; k < 200; k++)
             {
-                int w1 = rng.Next(3), w2 = rng.Next(3);
-                int bit1 = first + w1 * 39 + rng.Next(39), bit2 = first + w2 * 39 + rng.Next(39);
+                int bit1 = rng.Next(total), bit2 = rng.Next(total);
                 if (bit1 == bit2) continue;
+                bool inLooks1 = bit1 >= first && bit1 < first + 3 * 39, inLooks2 = bit2 >= first && bit2 < first + 3 * 39;
                 var b = (byte[])raw.Clone();
                 b[bit1 / 8] ^= (byte)(0x80 >> (bit1 % 8));
                 b[bit2 / 8] ^= (byte)(0x80 >> (bit2 % 8));
-                Add("flip2_" + (w1 == w2 ? "same" : "diff") + "_" + bit1 + "_" + bit2, B64(b));
-            }
-            for (int bit = 0; bit < 4; bit++)
-            {
-                var b = (byte[])raw.Clone();
-                b[bit / 8] ^= (byte)(0x80 >> (bit % 8));
-                Add("version_flip" + bit, B64(b));
+                Add("flip2_" + bit1 + "_" + bit2 + (inLooks1 && inLooks2 ? "_looks" : ""), B64(b));
             }
         }
 
@@ -107,7 +102,9 @@ static class P
         Forge("fur_only_level3", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(0), dyeLevel = 3 });
         Forge("bucket_with_fur_ok", new Outfit { kind = VisitorKind.Kunmungchi, items = ItemTable.Mask(6) | ItemTable.Mask(0), dyeLevel = 1 });
 
-        foreach (var g in new[] { "", "A", "AAAA", "!!!!", "A=A=", "AAAAAAAAAAAAAAAAAAAAAAAAAAA" }) Add("garbage_" + g, g);
+        foreach (var g in new[] { "", "A", "AAAA", "!!!!", "A=A=", "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }) Add("garbage_" + g, g);
+        Add("clamped_score", LookCode.Encode(int.MaxValue, "MAX", new List<Outfit>()));
+        Add("negative_score", LookCode.Encode(-5, null, new List<Outfit>()));
 
         var items = new StringBuilder("[");
         for (int i = 0; i < ItemTable.All.Length; i++)

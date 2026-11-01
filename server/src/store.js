@@ -5,7 +5,7 @@
 //   {p}games   string  total finished games received (INCR)
 //   {p}items   hash    field = item bit number, value = times that item was on a look that fooled a player (HINCRBY)
 //   {p}looks   hash    field = 32-bit look code (decimal), value = times that exact look fooled a player (HINCRBY)
-//   {p}board   zset    member "INITIALS:seq", score = points * 2^32 + (2^32 - 1 - seq)  (earlier game wins a tie)
+//   {p}board   zset    member "INITIALS:seq", score = points * 2^24 + (2^24 - 1 - seq)  (earlier game wins a tie)
 //   {p}seq     string  member id counter (INCR)
 //   {p}boardr  hash    field = board member, value = canonical result text of that game (HSET; HDEL when trimmed)
 import { encode } from './lookcode.js';
@@ -17,7 +17,7 @@ local initials = ARGV[3]
 local eligible = ARGV[4] == '1'
 local text = ARGV[5]
 local nLooks = tonumber(ARGV[6])
-local SH = 4294967296
+local SH = 16777216.0 -- a float on purpose: stays exact up to 2^53 even where Lua has 32-bit integers (ioredis-mock)
 
 redis.call('INCR', KEYS[1])
 for i = 1, nLooks do
@@ -38,7 +38,9 @@ if eligible then
     rank = better + 1
     if initials ~= '' then
       local seq = redis.call('INCR', KEYS[5])
-      local z = score * SH + (SH - 1 - seq)
+      local tie = seq
+      if tie > SH - 1 then tie = SH - 1 end
+      local z = score * SH + (SH - 1 - tie)
       local member = initials .. ':' .. seq
       redis.call('ZADD', KEYS[4], string.format('%.0f', z), member)
       redis.call('HSET', KEYS[6], member, text)
@@ -53,7 +55,7 @@ end
 return { rank, entered }
 `;
 
-const SHIFT = 4294967296;
+const SHIFT = 2 ** 24; // points are 29 bits, the tie-break 24: together 53 bits, the exact range of a double
 
 export function createStore(redis, config) {
   const p = config.keyPrefix;

@@ -13,7 +13,7 @@ Use `Content-Type: text/plain` for the POST: it is a "simple" CORS request, so t
 ### `POST /api/result`
 
 Body: the result text from `LookCode.Encode`, as plain text, or `{ "r": "<text>" }` as JSON. At most 256 bytes
-(`MAX_BODY_BYTES`); a real text is at most 27 characters.
+(`MAX_BODY_BYTES`); a real text is 32 characters for a full game.
 
 ```
 POST /api/result
@@ -73,27 +73,29 @@ the POST answer, or request `/api/top?t=<anything>` (the server ignores the quer
 
 ## Wire format (result text)
 
-Unpadded base64url, bits MSB first, zero padding to a whole byte (exactly 27 characters for three looks):
+Unpadded base64url, bits MSB first, zero padding to a whole byte. Three looks make exactly 192 bits = 24 bytes = 32 characters (fewer looks: 75 + 39 per look bits):
 
 | bits | field |
 |---|---|
-| 4 | version, must be `1` |
-| 14 | score |
+| 4 | version, must be `2` |
+| 29 | score, 0..536870911 |
 | 1 | has initials |
 | 15 | initials, 3 x 5 bits, `A`=0 .. `Z`=25 (ignored when the flag is 0) |
 | 2 | look count 0..3 |
 | 39 each | look: extended Hamming (39,32) word of the 32-bit look code |
+| 16 | checksum: CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF, no reflection, no final xor) over the whole message with these 16 bits set to 0 and the looks as repaired by the Hamming code |
+| 8 | reserved, must be 0 (a later version may use them) |
 
 Look code: bit 0 kind (0 Kunmungchi, 1 Omangi), bits 1-2 fur level (0 unless the fur change item is worn), bits 3..31 item bits
 (item bit `b` = code bit `3 + b`; 13 items defined now, bits 13..28 reserved). The word has bit 0 = overall parity, bits 1..38 = Hamming positions, data bits go to the non-power-of-two positions in order.
 One flipped bit per look is repaired, two are rejected. The action of a mistake is implied by the kind (Kunmungchi sent away,
 Omangi given candy). The server rejects looks the game can never produce (unknown item bits, fur level without the fur change, anything `ItemTable.IsValid` refuses) and non-canonical
-text (extra bytes, non-zero padding bits). Reference vectors made by the C# code: `server/test/vectors.json`.
+text (extra bytes, non-zero padding bits, reserved bits set, bad checksum). A flipped bit in a look is repaired; a flipped bit anywhere else fails the checksum. Scores above the 29-bit maximum are clamped by the client, never wrapped. Reference vectors made by the C# code: `server/test/vectors.json`.
 
 ## Redis keys
 
 `h26:games` (string), `h26:items` (hash bit -> count), `h26:looks` (hash code -> count), `h26:board` (zset, member `INITIALS:seq`,
-score `points * 2^32 + (2^32 - 1 - seq)`), `h26:seq` (string), `h26:boardr` (hash board member -> result text). Details in [README.md](README.md).
+score `points * 2^24 + (2^24 - 1 - seq)`), `h26:seq` (string), `h26:boardr` (hash board member -> result text). Details in [README.md](README.md).
 
 ## Errors
 
@@ -101,7 +103,7 @@ Body `{ "error": "<code>", "detail": "<optional short text>" }`. CORS headers ar
 
 | status | `error` | meaning |
 |---|---|---|
-| 400 | `invalid_result` | text does not decode (`detail`: `not base64url`, `too short`, `unknown version`, `bad initials`, `bad look count`, `look N damaged`, `look N impossible`, `bad length`, `bad padding`) |
+| 400 | `invalid_result` | text does not decode (`detail`: `not base64url`, `too short`, `unknown version`, `bad initials`, `bad look count`, `look N damaged`, `look N impossible`, `reserved bits set`, `bad length`, `bad padding`, `bad checksum`) |
 | 400 | `bad_request` | JSON body without a string `r`, or unparsable JSON |
 | 403 | `origin_not_allowed` | `Origin` header not in `ALLOWED_ORIGINS` |
 | 404 | `not_found` | |

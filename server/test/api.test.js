@@ -222,10 +222,21 @@ test('entries stored before result texts existed come back without r', async (t)
   const s = await boot();
   t.after(s.close);
   const k = s.config.keyPrefix;
-  await s.redis.zadd(`${k}board`, String(40 * 4294967296 + 4294967295 - 1), 'OLD:1');
+  await s.redis.zadd(`${k}board`, String(40 * 16777216 + 16777215 - 1), 'OLD:1');
   await s.post(game(30, 'NEW'));
   assert.deepEqual((await s.call('/api/top')).json, [
     { initials: 'OLD', score: 40 },
     { initials: 'NEW', score: 30, r: game(30, 'NEW') },
   ]);
+});
+
+test('29-bit scores keep their order and are returned exactly', async (t) => {
+  const s = await boot({ BOARD_SIZE: '3' });
+  t.after(s.close);
+  const max = 536870911;
+  await s.post(game(max - 1, 'AAA'));
+  await s.post(game(max, 'BBB'));
+  await s.post(game(max, 'CCC'));
+  await s.post(game(1, 'DDD'));
+  assert.deepEqual((await s.call('/api/top')).json.map((e) => [e.initials, e.score]), [['BBB', max], ['CCC', max], ['AAA', max - 1]]);
 });

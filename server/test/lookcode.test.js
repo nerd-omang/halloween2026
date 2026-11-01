@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { decode, encode, protect, recover } from '../src/lookcode.js';
+import { decode, encode, protect, recover, crc16, MAX_SCORE } from '../src/lookcode.js';
 import { ITEMS, isPossible } from '../src/items.js';
 
 const vectors = JSON.parse(readFileSync(new URL('./vectors.json', import.meta.url), 'utf8'));
@@ -19,12 +19,14 @@ test('every C# vector decodes exactly like the C# decoder', () => {
 
 test('vectors cover the interesting cases', () => {
   const names = vectors.cases.map((c) => c.name);
-  for (const prefix of ['valid', 'flip1_', 'flip2_same', 'flip2_diff', 'version_flip', 'forged_', 'garbage_']) {
+  for (const prefix of ['valid', 'flip1_', 'flip2_', 'forged_', 'garbage_', 'clamped_score']) {
     assert.ok(names.some((n) => n.startsWith(prefix)), prefix);
   }
   assert.ok(vectors.cases.some((c) => !c.expect.ok && c.expect.error.endsWith('damaged')));
   assert.ok(vectors.cases.some((c) => !c.expect.ok && c.expect.error.endsWith('impossible')));
   assert.ok(vectors.cases.some((c) => !c.expect.ok && c.expect.error === 'unknown version'));
+  assert.ok(vectors.cases.some((c) => !c.expect.ok && c.expect.error === 'bad checksum'));
+  assert.ok(vectors.cases.some((c) => !c.expect.ok && c.expect.error === 'reserved bits set'));
 });
 
 test('item table equals the C# ItemTable', () => {
@@ -48,6 +50,7 @@ test('the set of producible looks equals the C# one (all kinds x fur levels x kn
   assert.equal(hash, vectors.validLookChecksum);
 });
 
+const FIRST_LOOK_BIT = 4 + 29 + 1 + 15 + 2; // 51
 const fur1Look = (1 << 3) | (1 << 1) | 0; // Kunmungchi with fur change level 1
 const plainOma = 1;
 
@@ -57,7 +60,7 @@ test('single flipped bit in any of the 39 positions is repaired, in every look',
   const bytes = Buffer.from(text, 'base64url');
   for (let look = 0; look < 3; look++) {
     for (let p = 0; p < 39; p++) {
-      const bit = 36 + look * 39 + p;
+      const bit = FIRST_LOOK_BIT + look * 39 + p;
       const b = Buffer.from(bytes);
       b[bit >> 3] ^= 0x80 >> (bit & 7);
       const r = decode(b.toString('base64url'));
@@ -74,7 +77,7 @@ test('two flipped bits in one look are rejected', () => {
   for (let p = 0; p < 39; p++) {
     for (let q = p + 1; q < 39; q++) {
       const b = Buffer.from(bytes);
-      for (const x of [p, q]) { const bit = 36 + x; b[bit >> 3] ^= 0x80 >> (bit & 7); }
+      for (const x of [p, q]) { const bit = FIRST_LOOK_BIT + x; b[bit >> 3] ^= 0x80 >> (bit & 7); }
       const r = decode(b.toString('base64url'));
       if (!r.ok) rejected++;
       else assert.fail(`two flips ${p},${q} accepted`);
@@ -95,7 +98,7 @@ test('hamming round trip over many data words, and 3 flips never crash', () => {
 
 test('reject unknown versions', () => {
   const bytes = Buffer.from(encode(1, null, []), 'base64url');
-  for (const v of [0, 2, 15]) {
+  for (const v of [0, 1, 3, 15]) {
     const b = Buffer.from(bytes);
     b[0] = (b[0] & 0x0f) | (v << 4);
     assert.deepEqual(decode(b.toString('base64url')), { ok: false, error: 'unknown version' });
@@ -135,5 +138,31 @@ test('malformed text', () => {
 test('initials are optional and bounded', () => {
   assert.equal(decode(encode(3, null, [])).initials, null);
   assert.equal(decode(encode(3, 'abc', [])).initials, 'ABC');
-  assert.equal(decode(encode(16383, 'ZZZ', [])).score, 16383);
+  assert.equal(decode(encode(MAX_SCORE, 'ZZZ', [])).score, 536870911);
+  assert.equal(decode(encode(16384, 'ZZZ', [])).score, 16384);
+  assert.equal(decode(encode(2 ** 40, null, [])).score, MAX_SCORE, 'too large scores are clamped, not wrapped');
+  assert.equal(decode(encode(-3, null, [])).score, 0);
+});
+
+test('a full message is exactly 192 bits = 32 characters', () => {
+  const text = encode(123456, 'ABC', [fur1Look, plainOma, fur1Look]);
+  assert.equal(text.length, 32);
+  assert.equal(Buffer.from(text, 'base64url').length, 24);
+});
+
+test('the checksum catches damage anywhere outside the looks, and the reserved bits must be zero', () => {
+  const text = encode(777, 'WIN', [fur1Look, plainOma, fur1Look]);
+  const bytes = Buffer.from(text, 'base64url');
+  const flip = (bit) => { const b = Buffer.from(bytes); b[bit >> 3] ^= 0x80 >> (bit & 7); return decode(b.toString('base64url')); };
+  for (let bit = 4; bit < FIRST_LOOK_BIT; bit++) {
+    const r = flip(bit);
+    assert.ok(!r.ok, `header bit ${bit} must not decode to a different game`);
+  }
+  const checksumStart = FIRST_LOOK_BIT + 3 * 39;
+  for (let bit = checksumStart; bit < checksumStart + 16; bit++) assert.equal(flip(bit).error, 'bad checksum', `checksum bit ${bit}`);
+  for (let bit = checksumStart + 16; bit < checksumStart + 24; bit++) assert.equal(flip(bit).error, 'reserved bits set', `reserved bit ${bit}`);
+});
+
+test('crc16 matches the CRC-16/CCITT-FALSE check value', () => {
+  assert.equal(crc16(Buffer.from('123456789')), 0x29b1);
 });

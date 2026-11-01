@@ -248,4 +248,46 @@ public static class WorldBoard
             Changed?.Invoke();
         };
     }
+
+    // Sends several finished games at once (the local records). A game counts as sent when the server answered
+    // 200, a repeat of an earlier one included; `sent` gets each such text, `done` the number sent and failed.
+    public static void SubmitMany(IList<string> texts, Action<string> sent, Action<int, int> done)
+    {
+        if (!Configured || texts == null || texts.Count == 0)
+        {
+            done?.Invoke(0, 0);
+            return;
+        }
+
+        int remaining = texts.Count;
+        int ok = 0;
+        foreach (string text in texts)
+        {
+            string current = text;
+            var request = new UnityWebRequest(BaseUrl + "/api/result", "POST")
+            {
+                uploadHandler = new UploadHandlerRaw(Encoding.ASCII.GetBytes(current)),
+                downloadHandler = new DownloadHandlerBuffer(),
+                timeout = TimeoutSeconds,
+            };
+            request.SetRequestHeader("Content-Type", "text/plain");
+            request.SendWebRequest().completed += _ =>
+            {
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    ok++;
+                    sent?.Invoke(current);
+                }
+                else
+                {
+                    Debug.LogWarning("WorldBoard: record not sent (" + request.error + ")");
+                }
+                request.Dispose();
+                if (--remaining > 0) return;
+                lastRefreshTime = -999f; // the board may have changed
+                done?.Invoke(ok, texts.Count - ok);
+                Changed?.Invoke();
+            };
+        }
+    }
 }

@@ -8,6 +8,8 @@
 //   {p}board   zset    member "INITIALS:seq", score = points * 2^21 + (2^21 - 1 - seq)  (earlier game wins a tie)
 //   {p}seq     string  member id counter (INCR)
 //   {p}boardr  hash    field = board member, value = canonical result text of that game (HSET; HDEL when trimmed)
+//   {p}seen    set     canonical result texts already received (SADD): the same score, initials and looks are taken once.
+//                      Filled from the board's texts the first time it is missing, so earlier board games count as seen.
 import { encode } from './lookcode.js';
 
 const SUBMIT_LUA = `
@@ -18,6 +20,12 @@ local eligible = ARGV[4] == '1'
 local text = ARGV[5]
 local nLooks = tonumber(ARGV[6])
 local SH = 2097152.0 -- 2^21; a float on purpose, so it stays exact even where Lua has 32-bit integers (ioredis-mock)
+
+-- the same result again (a retry, or a local record shared twice) changes nothing
+if redis.call('EXISTS', KEYS[7]) == 0 then
+  for _, v in ipairs(redis.call('HVALS', KEYS[6])) do redis.call('SADD', KEYS[7], v) end
+end
+if redis.call('SADD', KEYS[7], text) == 0 then return { 0, 0, 1 } end
 
 redis.call('INCR', KEYS[1])
 for i = 1, nLooks do
@@ -52,7 +60,7 @@ if eligible then
     end
   end
 end
-return { rank, entered }
+return { rank, entered, 0 }
 `;
 
 // Points are 29 bits and the tie-break 21 (2 million board entries): 50 bits together, three bits below the 53 a double
@@ -62,14 +70,15 @@ const SHIFT = 2 ** 21;
 export function createStore(redis, config) {
   const p = config.keyPrefix;
   const keys = {
-    games: `${p}games`, items: `${p}items`, looks: `${p}looks`, board: `${p}board`, seq: `${p}seq`, boardr: `${p}boardr`,
+    games: `${p}games`, items: `${p}items`, looks: `${p}looks`, board: `${p}board`, seq: `${p}seq`, boardr: `${p}boardr`, seen: `${p}seen`,
   };
-  redis.defineCommand('h26submit', { numberOfKeys: 6, lua: SUBMIT_LUA });
+  redis.defineCommand('h26submit', { numberOfKeys: 7, lua: SUBMIT_LUA });
 
   return {
     keys,
 
-    // result = decoded game. Returns { rank (1..N or null), top (stored on the board) }.
+    // result = decoded game. Returns { rank (1..N or null), top (stored on the board) }, or
+    // { rank: null, top: false, duplicate: true } when the same game was received before (nothing is counted).
     async submit(result) {
       const eligible = result.score >= config.boardMinScore && result.looks.length >= config.boardMinLooks;
       const itemCounts = new Map();
@@ -83,9 +92,10 @@ export function createStore(redis, config) {
       const args = [config.boardSize, result.score, result.initials || '', eligible ? '1' : '0', text, result.looks.length];
       for (const look of result.looks) args.push(look.code);
       for (const [bit, count] of itemCounts) args.push(bit, count);
-      const [rank, entered] = await redis.h26submit(
-        keys.games, keys.items, keys.looks, keys.board, keys.seq, keys.boardr, ...args,
+      const [rank, entered, duplicate] = await redis.h26submit(
+        keys.games, keys.items, keys.looks, keys.board, keys.seq, keys.boardr, keys.seen, ...args,
       );
+      if (Number(duplicate) === 1) return { rank: null, top: false, duplicate: true };
       return { rank: rank > 0 ? Number(rank) : null, top: Number(entered) === 1 };
     },
 

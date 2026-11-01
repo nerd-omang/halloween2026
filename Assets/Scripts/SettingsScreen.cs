@@ -29,6 +29,9 @@ public class SettingsScreen
     Text presetHint;
     readonly SimpleButton[] languageButtons = new SimpleButton[2];
     readonly SimpleButton[] shareButtons = new SimpleButton[2];
+    SimpleButton shareLocalButton;
+    bool shareLocalBusy;
+    string shareLocalNote;
     readonly SimpleButton[] skipIntroButtons = new SimpleButton[2];
     GameObject shareRow;
     GameObject confirmReset;
@@ -220,6 +223,8 @@ public class SettingsScreen
         UiKit.Bind(UiKit.Label(shareRow.transform, "ShareHint", "", 11, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -604f), new Vector2(BoxWidth - 2f * LabelX - 240f, 56f), UiKit.Dim),
             "settings.shareHint");
 
+        shareLocalButton = UiKit.Button(shareRow.transform, "ShareLocal", "", 20, topLeft, topLeft, new Vector2(BoxWidth - LabelX - 250f, -558f), new Vector2(250f, 40f), ShareLocalRecords);
+
         // Apart from the other settings, at the very bottom.
         var reset = UiKit.Button(page, "ResetAll", "", 22, topLeft, topLeft, new Vector2(LabelX, -696f), new Vector2(300f, 40f), OpenResetConfirm);
         UiKit.Bind(reset.Label, "settings.resetAll");
@@ -332,6 +337,26 @@ public class SettingsScreen
     }
 
     // Syncs every control with the current settings.
+    const int ShareLocalBatch = 5; // the server takes 5 results per minute from one address
+
+    // Sends the next few saved local records to the world ranking; press again for the rest.
+    void ShareLocalRecords()
+    {
+        if (shareLocalBusy) return;
+        var pending = LocalRanking.PendingShare();
+        if (pending.Count == 0) return;
+        if (pending.Count > ShareLocalBatch) pending.RemoveRange(ShareLocalBatch, pending.Count - ShareLocalBatch);
+        shareLocalBusy = true;
+        shareLocalNote = null;
+        Refresh();
+        WorldBoard.SubmitMany(pending, LocalRanking.MarkShared, (ok, failed) =>
+        {
+            shareLocalBusy = false;
+            shareLocalNote = Loc.T("settings.shareLocalDone", ok, failed);
+            Refresh();
+        });
+    }
+
     void Refresh()
     {
         Settings.EnsureAssets();
@@ -347,6 +372,10 @@ public class SettingsScreen
         shareRow.SetActive(WorldBoard.Configured);
         shareButtons[0].Highlighted = Settings.ShareOnline;
         shareButtons[1].Highlighted = !Settings.ShareOnline;
+        int pendingShare = LocalRanking.PendingShare().Count;
+        shareLocalButton.Interactable = !shareLocalBusy && pendingShare > 0;
+        shareLocalButton.Text = shareLocalBusy ? Loc.T("settings.shareLocalBusy")
+            : shareLocalNote ?? (pendingShare > 0 ? Loc.T("settings.shareLocal", pendingShare) : Loc.T("settings.shareLocalNone"));
 
         bool dither = Settings.DitherOn;
         ditherButtons[0].Highlighted = dither;
@@ -374,6 +403,7 @@ public class SettingsScreen
     // pause: stop the game while the screen is up (used when opened during play).
     public void Open(bool pause)
     {
+        shareLocalNote = null;
         if (IsOpen) return;
         paused = pause;
         giveUpButton.SetActive(pause);

@@ -28,6 +28,8 @@ Response `200`: `{ "rank": 3, "top": true }`
 - `rank`: 1-based place the score takes (or would take) on the board, `null` when it does not reach the top N.
   Equal scores rank after earlier ones. A game without initials can get a `rank` and `top: false` ("you would be #3, add initials").
   Not meant as an exact global rank beyond the board.
+- `duplicate`: only present, as `true`, when the same result (score, initials and looks all equal) was received before.
+  Such a game is not counted anywhere and answers `{ "rank": null, "top": false, "duplicate": true }`.
 - Every accepted game counts in the statistics, even without initials, even when it does not reach the board.
   Only games with three looks can enter the board (a game ends at the third lost heart); results with fewer looks still count for stats.
 

@@ -83,7 +83,7 @@ public class ReviewScreen
         scoreCard = card.gameObject;
         UiKit.Bind(UiKit.Label(card, "Header", "", 66, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 180f), new Vector2(640f, 76f), UiKit.Danger, true), "review.header", true);
         bigScore = UiKit.Label(card, "BigScore", "", 140, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 80f), new Vector2(640f, 150f), UiKit.Accent, true);
-        newBestText = UiKit.Label(card, "NewBest", "", 55, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -10f), new Vector2(640f, 62f), UiKit.ComboColor(12), true);
+        newBestText = UiKit.Label(card, "NewBest", "", 55, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -10f), new Vector2(640f, 62f), UiKit.ComboColor(UiKit.ComboColorMaxStreak), true);
         UiKit.Bind(newBestText, "score.newBest", true);
         bestText = UiKit.Label(card, "Best", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -56f), new Vector2(640f, 40f), UiKit.Dim);
         rankText = UiKit.Label(card, "Rank", "", 33, TextAnchor.MiddleCenter, center, center, new Vector2(0f, -100f), new Vector2(640f, 40f), Color.white);

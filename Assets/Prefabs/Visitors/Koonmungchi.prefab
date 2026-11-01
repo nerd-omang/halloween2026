@@ -182,16 +182,16 @@ PrefabInstance:
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 5374218985968793010}
+      addedObject: {fileID: 6919026031477155800}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 7345328087895988216}
+      addedObject: {fileID: 8470048361579714937}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 3490086307238459530}
+      addedObject: {fileID: 4486760740395225519}
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 603602903973478073}
+      addedObject: {fileID: 1065809324362301017}
   m_SourcePrefab: {fileID: 100100000, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
 --- !u!1 &202216857699242074 stripped
 GameObject:
@@ -223,7 +223,7 @@ GameObject:
   m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 33d972ead72d2c746b4918877ad7c543, type: 3}
   m_PrefabInstance: {fileID: 846233138622822328}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &5374218985968793010
+--- !u!114 &6919026031477155800
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -262,7 +262,7 @@ MonoBehaviour:
     lift: 2.6
     spin: 720
     gravity: 9.8
---- !u!114 &7345328087895988216
+--- !u!114 &8470048361579714937
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -376,7 +376,7 @@ MonoBehaviour:
     lift: 2.6
     spin: 720
     gravity: 9.8
---- !u!114 &3490086307238459530
+--- !u!114 &4486760740395225519
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -392,7 +392,7 @@ MonoBehaviour:
   amplitude: 20
   frequency: 0.4
   blendSpeed: 3
---- !u!114 &603602903973478073
+--- !u!114 &1065809324362301017
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

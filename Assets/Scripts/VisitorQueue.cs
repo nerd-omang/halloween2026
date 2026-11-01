@@ -29,9 +29,11 @@ public class VisitorQueue : MonoBehaviour
     [Header("Halloween costumes (visual noise, never the answer)")]
     [SerializeField] int costumeStartScore = 4;
     [SerializeField] float costumeChanceStart = 0.3f;
-    [SerializeField] float costumeChanceMax = 0.8f;
+    [SerializeField] float costumeChanceMax = 0.72f;
     [SerializeField] int scoreForMaxCostume = 30;
     [SerializeField] int maxCostumes = 4;
+    [Header("Plain visitors: now and then one comes with nothing at all (no disguise, costume or sheet)")]
+    [SerializeField, Range(0f, 0.3f)] float plainChance = 0.06f;
     [Header("Variety: a new look is not allowed to be too close to one of the last few")]
     [SerializeField] int varietyHistory = 6;
     [SerializeField] int varietyTries = 6;
@@ -99,6 +101,7 @@ public class VisitorQueue : MonoBehaviour
             isOmangi = true;
             disguised = true;
         }
+        bool introducesDisguise = isOmangi && disguised && !firstDisguisedOmangiSpawned; // the first disguised Omangi stays disguised
         if (isOmangi && disguised) firstDisguisedOmangiSpawned = true;
 
         // A fixed, plain start teaches the two answers: candy for the gray one, away for the red one.
@@ -109,6 +112,9 @@ public class VisitorQueue : MonoBehaviour
             disguised = false;
         }
         spawnedThisGame++;
+        // Some visitors are plain whatever the score is: neither a disguise, a costume nor a sheet.
+        bool plain = !teaching && !introducesDisguise && Random.value < plainChance;
+        if (plain) disguised = false;
 
         Visitor prefab = isOmangi ? omangiPrefab : kunmungchiPrefab;
         int index = line.Count;
@@ -126,14 +132,14 @@ public class VisitorQueue : MonoBehaviour
 
             // Costumes are independent of the disguise: more of them, and more often, as the score rises.
             float costumeChance = Mathf.Lerp(costumeChanceStart, costumeChanceMax, costumeT);
-            if (!teaching && futureScore >= costumeStartScore && Random.value < costumeChance && v.TryGetComponent(out VisitorCostume costume))
+            if (!teaching && !plain && futureScore >= costumeStartScore && Random.value < costumeChance && v.TryGetComponent(out VisitorCostume costume))
             {
                 int count = Mathf.Clamp(Mathf.RoundToInt(1f + costumeT * (maxCostumes - 1) + Random.Range(-0.6f, 0.6f)), 1, maxCostumes);
                 costume.Randomize(count);
             }
 
             float sheetChance = Mathf.Lerp(sheetChanceStart, sheetChanceMax, sheetT);
-            if (!teaching && futureScore >= sheetStartScore && Random.value < sheetChance && v.TryGetComponent(out GhostSheet sheet))
+            if (!teaching && !plain && futureScore >= sheetStartScore && Random.value < sheetChance && v.TryGetComponent(out GhostSheet sheet))
             {
                 sheet.Wear();
             }

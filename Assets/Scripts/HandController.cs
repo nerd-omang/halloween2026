@@ -45,6 +45,11 @@ public class HandController : MonoBehaviour
 
     public bool Busy { get; private set; }
 
+    // Playback speed of the hand and candy animations (1 = normal); the game raises it as the combo grows.
+    public float Speed { get => speed; set => speed = Mathf.Max(0.1f, value); }
+    float speed = 1f;
+    float Dt => Time.deltaTime * speed;
+
     public Func<Vector3?> TossTarget;
 
     Vector3 candyScale = Vector3.one;
@@ -130,14 +135,14 @@ public class HandController : MonoBehaviour
         if (!HasFrames(clip))
         {
             onPeak?.Invoke();
-            yield return new WaitForSeconds(hold);
+            yield return new WaitForSeconds(hold / Speed);
             yield break;
         }
 
         int last = clip.frames.Length - 1;
         int holdStart = Mathf.Clamp(clip.holdStart, 0, last);
 
-        for (float t = 0f; ; t += Time.deltaTime)
+        for (float t = 0f; ; t += Dt)
         {
             int i = Mathf.Min(Mathf.FloorToInt(t * fps), holdStart);
             handRenderer.sprite = clip.frames[i];
@@ -148,7 +153,7 @@ public class HandController : MonoBehaviour
         if (withCandy) StartCoroutine(CandySequence());
         onPeak?.Invoke();
 
-        for (float t = 0f; t < hold || candyBusy; t += Time.deltaTime)
+        for (float t = 0f; t < hold || candyBusy; t += Dt)
         {
             int span = last - holdStart;
             int i = span > 0 ? holdStart + Mathf.RoundToInt(Mathf.PingPong(t * holdFps, span)) : holdStart;
@@ -157,7 +162,7 @@ public class HandController : MonoBehaviour
         }
 
         HideCandy();
-        for (float t = 0f; ; t += Time.deltaTime)
+        for (float t = 0f; ; t += Dt)
         {
             int i = Mathf.Max(holdStart - Mathf.FloorToInt(t * fps), 0);
             handRenderer.sprite = clip.frames[i];
@@ -176,7 +181,7 @@ public class HandController : MonoBehaviour
         candy.gameObject.SetActive(true);
         AudioManager.Play(Sfx.CandyAppear);
         if (sparkle != null) sparkle.Burst(candy.transform.position, 16, 0.55f);
-        for (float t = 0f; t < candyPopTime; t += Time.deltaTime)
+        for (float t = 0f; t < candyPopTime; t += Dt)
         {
             candy.transform.localScale = candyScale * EaseOutBack(t / candyPopTime);
             yield return null;
@@ -188,7 +193,7 @@ public class HandController : MonoBehaviour
     {
         candyBusy = true;
         yield return PopCandy();
-        yield return new WaitForSeconds(candyShowTime);
+        yield return new WaitForSeconds(candyShowTime / Speed);
         yield return TossCandy();
         candyBusy = false;
     }
@@ -206,7 +211,7 @@ public class HandController : MonoBehaviour
         AudioManager.Play(Sfx.CandyToss);
 
         float trailTimer = 0f;
-        for (float t = 0f; t < tossTime; t += Time.deltaTime)
+        for (float t = 0f; t < tossTime; t += Dt)
         {
             float e = t / tossTime;
             Vector3 position = Vector3.Lerp(start, end, e) + Vector3.up * (tossArc * 4f * e * (1f - e));

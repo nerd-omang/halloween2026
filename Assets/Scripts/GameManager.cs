@@ -51,6 +51,8 @@ public class GameManager : MonoBehaviour
     float comboTimeLeft;
 
     const float ComboSeconds = 4f; // time to answer the next visitor and keep the combo
+    const float HandMaxSpeed = 2f;      // hand animation speed at the top of the combo (1 = normal)
+    const int HandMaxSpeedStreak = 12;  // the streak that reaches it; in between the speed rises evenly
 
     int hearts;
     int score;
@@ -283,6 +285,7 @@ public class GameManager : MonoBehaviour
         guide.gameObject.SetActive(false);
         queue.Begin();
         hand.ResetPose();
+        hand.Speed = 1f;
         hand.SetVisible(true);
         SetHud(true);
         messageText.text = "";
@@ -504,6 +507,7 @@ public class GameManager : MonoBehaviour
     // The clock stands still while the next visitor is on its way, while a menu is open and during the first-game hints.
     void UpdateComboTimer()
     {
+        hand.Speed = Mathf.Lerp(1f, HandMaxSpeed, Mathf.Clamp01(streak / (float)HandMaxSpeedStreak));
         bool active = !over && streak >= 1;
         if (comboBar.gameObject.activeSelf != active) comboBar.gameObject.SetActive(active);
         if (!active) return;

@@ -12,6 +12,16 @@ belong to 명칠 ([@_7M_3](https://x.com/_7M_3)). See [CREDITS.md](CREDITS.md).
 Built with Unity 6000.3.2f1 (URP 17.3) and published as a WebGL build on GitHub Pages (desktop and mobile browsers).
 The look is low poly plus a dither post-process rendered at a third of the screen resolution.
 
+## Screenshots
+
+![Title screen](Docs/images/menu.jpg)
+
+![In game: the first visitor, with the first-game hint](Docs/images/gameplay.jpg)
+
+Visitors and their disguises (3D renders; the characters are covered by [LICENSE-CHARACTERS.md](LICENSE-CHARACTERS.md)):
+
+![Kunmungchi, Omangi and some disguises](Docs/images/characters.jpg)
+
 ## How to play
 
 | Action | Mouse / keyboard | Touch |

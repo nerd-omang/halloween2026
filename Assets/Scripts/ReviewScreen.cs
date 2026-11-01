@@ -39,7 +39,6 @@ public class ReviewScreen
     readonly SimpleButton recordButton;
     readonly SimpleButton skipButton;
     readonly SimpleButton nextButton;
-    readonly SimpleToggle uploadToggle;
     readonly SimpleButton tabLooks;
     readonly SimpleButton tabRanking;
     readonly GameObject bottomButtons;
@@ -56,8 +55,8 @@ public class ReviewScreen
     int recordedRank;
 
     // The score and initials steps use keys of their own; the game must not treat them as shortcuts.
-    // Whether this game's result is to be uploaded online (never when no server is configured).
-    public bool Upload => WorldBoard.Configured && uploadToggle.Value;
+    // Whether this game's result is to be uploaded online: only the setting decides (never when no server is configured).
+    public bool Upload => WorldBoard.Configured && Settings.ShareOnline;
 
     public bool Busy => mode == Mode.Score || mode == Mode.Initials;
 
@@ -97,10 +96,6 @@ public class ReviewScreen
         UiKit.Bind(skipButton.Label, "score.skip");
         nextButton = UiKit.Button(card, "Next", "", 33, center, center, new Vector2(0f, -226f), new Vector2(210f, 52f), () => SetMode(Mode.Looks));
         UiKit.Bind(nextButton.Label, "score.next");
-
-        // Per game: starts from the settings default, and changing it here does not change the setting.
-        uploadToggle = UiKit.Toggle(card, "Upload", "", false, 22, center, center, new Vector2(0f, -176f), new Vector2(360f, 32f));
-        UiKit.Bind(uploadToggle.Label, "score.upload");
 
         initialsEntry = new InitialsEntry(root);
 
@@ -142,8 +137,6 @@ public class ReviewScreen
             shownOutfits.Add(outfit);
         }
 
-        uploadToggle.Set(Settings.ShareOnline);
-        uploadToggle.gameObject.SetActive(WorldBoard.Configured);
         bigScore.text = score.ToString();
         newBestText.gameObject.SetActive(newBest);
         bestText.gameObject.SetActive(!newBest);

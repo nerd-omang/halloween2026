@@ -18,9 +18,10 @@ public class ComboAtmosphere : MonoBehaviour
     const float FallSpeed = 5f;      // and a broken one
     const float PopSpeed = 2.5f;     // scale-in speed of a bat or web (1/s)
 
-    const float LanternDim = 0.25f;  // lantern glow without a combo, as a fraction of its normal brightness
+    const float LanternDim = 0.5f;   // lantern glow without a combo, as a fraction of its normal brightness
     const float LanternFull = 1.3f;  // and at full level
     const float FlickerFull = 1.8f;  // flicker grows with the level too
+    const float FlickerSlow = 0.5f;  // the flicker of lanterns and windows runs at this fraction of its original speed
 
     const float WindowDim = 0.04f;   // window light without a combo (they look switched off), as a fraction of normal
     const float WindowFull = 1.15f;
@@ -137,6 +138,7 @@ public class ComboAtmosphere : MonoBehaviour
                         intensity = original.HasProperty("_Intensity") ? original.GetFloat("_Intensity") : 1f,
                         flicker = original.HasProperty("_FlickerAmount") ? original.GetFloat("_FlickerAmount") : 0f,
                     };
+                    if (original.HasProperty("_FlickerSpeed")) glow.material.SetFloat("_FlickerSpeed", original.GetFloat("_FlickerSpeed") * FlickerSlow);
                     copies[original] = glow;
                     made.Add(glow);
                 }

@@ -11,6 +11,9 @@ public class ComboAtmosphere : MonoBehaviour
     // The streak at which everything is at full strength (the same scale as the score color).
     const int FullStreak = UiKit.ComboColorMaxStreak;
 
+    // The lantern and window light reaches full strength sooner than the rest.
+    const int FullLightStreak = 50;
+
     const float RiseSpeed = 2f;      // how fast the level follows a growing combo (1/s)
     const float FallSpeed = 5f;      // and a broken one
     const float PopSpeed = 2.5f;     // scale-in speed of a bat or web (1/s)
@@ -63,6 +66,7 @@ public class ComboAtmosphere : MonoBehaviour
     float moonRadius;
     CandySparkle motes;
     float level;
+    float lightLevel;
     float moteDebt;
     int streak;
 
@@ -148,6 +152,8 @@ public class ComboAtmosphere : MonoBehaviour
     {
         float target = Mathf.Clamp01(streak / (float)FullStreak);
         level = Mathf.MoveTowards(level, target, (target > level ? RiseSpeed : FallSpeed) * Time.unscaledDeltaTime * Mathf.Max(0.2f, Mathf.Abs(target - level) * 4f));
+        float lightTarget = Mathf.Clamp01(streak / (float)FullLightStreak);
+        lightLevel = Mathf.MoveTowards(lightLevel, lightTarget, (lightTarget > lightLevel ? RiseSpeed : FallSpeed) * Time.unscaledDeltaTime * Mathf.Max(0.2f, Mathf.Abs(lightTarget - lightLevel) * 4f));
         Apply(Time.unscaledDeltaTime);
     }
 
@@ -162,16 +168,16 @@ public class ComboAtmosphere : MonoBehaviour
             if (visible) reveal.transform.localScale = reveal.scale * Smooth(reveal.shown);
         }
 
-        float glowScale = Mathf.Lerp(LanternDim, LanternFull, level);
-        float flickerScale = Mathf.Lerp(1f, FlickerFull, level);
+        float glowScale = Mathf.Lerp(LanternDim, LanternFull, lightLevel);
+        float flickerScale = Mathf.Lerp(1f, FlickerFull, lightLevel);
         foreach (var glow in glows)
         {
             if (glow.material.HasProperty("_Intensity")) glow.material.SetFloat("_Intensity", glow.intensity * glowScale);
             if (glow.material.HasProperty("_FlickerAmount")) glow.material.SetFloat("_FlickerAmount", Mathf.Clamp01(glow.flicker * flickerScale));
         }
 
-        float windowScale = Mathf.Lerp(WindowDim, WindowFull, level);
-        float windowFlicker = Mathf.Lerp(1f, WindowFlickerFull, level);
+        float windowScale = Mathf.Lerp(WindowDim, WindowFull, lightLevel);
+        float windowFlicker = Mathf.Lerp(1f, WindowFlickerFull, lightLevel);
         foreach (var window in windows)
         {
             window.material.SetFloat("_Intensity", window.intensity * windowScale);

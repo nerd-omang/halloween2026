@@ -530,7 +530,9 @@ public class GameManager : MonoBehaviour
         }
         var rect = comboBar.rectTransform;
         rect.anchorMax = new Vector2(Mathf.Clamp01(comboTimeLeft / comboWindow), rect.anchorMax.y);
-        comboBar.color = scoreText.color;
+        // Toned down from the score color so the plain gray-white of a new combo is not glaring along the edge.
+        var tint = scoreText.color;
+        comboBar.color = new Color(tint.r * 0.55f, tint.g * 0.55f, tint.b * 0.55f, 0.85f);
     }
 
     void Update()

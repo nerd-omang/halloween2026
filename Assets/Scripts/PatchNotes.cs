@@ -16,6 +16,7 @@ public static class PatchNotes
             version = "0.3", date = "2026-11-01",
             lines = new[]
             {
+                ("Visitors in a row no longer repeat the same look", "연달아 같은 분장이 나오지 않도록 다양성 보정"),
                 ("New Halloween costumes, worn as sets more often", "새 할로윈 분장 추가, 세트로 입는 빈도 증가"),
                 ("Dress-up: parts paged with arrows", "옷입히기: 부위별 화살표 페이지"),
                 ("Slower difficulty ramp: harder disguises come much later, Halloween costumes earlier", "난이도 곡선 완화: 어려운 위장은 훨씬 후반, 할로윈 분장은 더 일찍"),

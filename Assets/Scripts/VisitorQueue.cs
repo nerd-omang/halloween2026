@@ -32,6 +32,10 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] float costumeChanceMax = 0.8f;
     [SerializeField] int scoreForMaxCostume = 30;
     [SerializeField] int maxCostumes = 4;
+    [Header("Variety: a new look is not allowed to be too close to one of the last few")]
+    [SerializeField] int varietyHistory = 6;
+    [SerializeField] int varietyTries = 6;
+    [SerializeField, Range(0.2f, 1f)] float varietyMaxOverlap = 0.6f; // shared items / all items of the two looks
     [SerializeField] int visibleCount = 8;
     [SerializeField] float frontZ = 2.6f;
     [SerializeField] float spacing = 1.1f;
@@ -42,6 +46,7 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] int scoreForMaxChance = 40;
 
     readonly List<Visitor> line = new List<Visitor>();
+    readonly List<uint> recentLooks = new List<uint>(); // the item bits of the last few dressed visitors
     bool firstDisguisedOmangiSpawned;
     int spawnedThisGame; // the first two visitors are fixed: a plain Kunmungchi, then a plain Omangi
     readonly bool[] specialSpawned = new bool[SpecialGuest.Count]; // each shows up at most once per game
@@ -62,6 +67,7 @@ public class VisitorQueue : MonoBehaviour
             if (v != null) Destroy(v.gameObject);
         }
         line.Clear();
+        recentLooks.Clear();
         firstDisguisedOmangiSpawned = false;
         spawnedThisGame = 0;
         for (int i = 0; i < specialSpawned.Length; i++) specialSpawned[i] = false;
@@ -106,29 +112,66 @@ public class VisitorQueue : MonoBehaviour
 
         Visitor prefab = isOmangi ? omangiPrefab : kunmungchiPrefab;
         int index = line.Count;
-        var v = Instantiate(prefab, SlotPos(visibleCount), Quaternion.identity, transform);
-        if (disguised) WearDisguise(v, isOmangi ? VisitorKind.Omangi : VisitorKind.Kunmungchi, futureScore);
-
-        // Costumes are independent of the disguise: more of them, and more often, as the score rises.
         float costumeT = Mathf.InverseLerp(costumeStartScore, scoreForMaxCostume, futureScore);
-        float costumeChance = Mathf.Lerp(costumeChanceStart, costumeChanceMax, costumeT);
-        if (!teaching && futureScore >= costumeStartScore && Random.value < costumeChance && v.TryGetComponent(out VisitorCostume costume))
-        {
-            int count = Mathf.Clamp(Mathf.RoundToInt(1f + costumeT * (maxCostumes - 1) + Random.Range(-0.6f, 0.6f)), 1, maxCostumes);
-            costume.Randomize(count);
-        }
-
         float sheetT = Mathf.InverseLerp(sheetStartScore, scoreForMaxSheet, futureScore);
-        float sheetChance = Mathf.Lerp(sheetChanceStart, sheetChanceMax, sheetT);
-        if (!teaching && futureScore >= sheetStartScore && Random.value < sheetChance && v.TryGetComponent(out GhostSheet sheet))
+
+        // Dress the visitor; when the look is too close to one of the last few, dress a new one instead
+        // (a few tries), so the line does not repeat itself.
+        Visitor v = null;
+        for (int attempt = 0; attempt < varietyTries; attempt++)
         {
-            sheet.Wear();
+            if (v != null) Destroy(v.gameObject);
+            v = Instantiate(prefab, SlotPos(visibleCount), Quaternion.identity, transform);
+            if (disguised) WearDisguise(v, isOmangi ? VisitorKind.Omangi : VisitorKind.Kunmungchi, futureScore);
+
+            // Costumes are independent of the disguise: more of them, and more often, as the score rises.
+            float costumeChance = Mathf.Lerp(costumeChanceStart, costumeChanceMax, costumeT);
+            if (!teaching && futureScore >= costumeStartScore && Random.value < costumeChance && v.TryGetComponent(out VisitorCostume costume))
+            {
+                int count = Mathf.Clamp(Mathf.RoundToInt(1f + costumeT * (maxCostumes - 1) + Random.Range(-0.6f, 0.6f)), 1, maxCostumes);
+                costume.Randomize(count);
+            }
+
+            float sheetChance = Mathf.Lerp(sheetChanceStart, sheetChanceMax, sheetT);
+            if (!teaching && futureScore >= sheetStartScore && Random.value < sheetChance && v.TryGetComponent(out GhostSheet sheet))
+            {
+                sheet.Wear();
+            }
+
+            if (teaching || !TooSimilar(v.CurrentOutfit.items)) break;
         }
+        Remember(v.CurrentOutfit.items);
 
         if (immediate) v.Place(SlotPos(index));
         else v.SetTarget(SlotPos(index));
         line.Add(v);
         return v;
+    }
+
+    // A plain visitor (no item at all) is always fine; otherwise the share of items two looks have in common must stay low.
+    bool TooSimilar(uint items)
+    {
+        if (items == 0) return false;
+        foreach (var other in recentLooks)
+        {
+            if (other == 0) continue;
+            int union = CountBits(items | other);
+            if (union > 0 && CountBits(items & other) / (float)union >= varietyMaxOverlap) return true;
+        }
+        return false;
+    }
+
+    void Remember(uint items)
+    {
+        recentLooks.Add(items);
+        while (recentLooks.Count > varietyHistory) recentLooks.RemoveAt(0);
+    }
+
+    static int CountBits(uint value)
+    {
+        int count = 0;
+        for (; value != 0; value &= value - 1) count++;
+        return count;
     }
 
     // Now and then a special guest takes the place of an ordinary visitor (never inside the first screenful).

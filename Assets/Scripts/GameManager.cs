@@ -54,9 +54,12 @@ public class GameManager : MonoBehaviour
 
     const float ComboPopSize = 0.6f;     // how much bigger the combo text gets at the start of its pop
     const float ComboPopSeconds = 0.45f; // how long the pop takes to settle
-    const float ComboSecondsStart = 4f;   // time to answer the next visitor and keep a new combo
-    const float ComboSecondsMin = 1.5f;   // the shortest it gets
-    const int ComboSecondsMinStreak = 200; // the streak that reaches it; in between the time shrinks evenly
+    const float ComboSecondsStart = 4f;     // time to answer the next visitor and keep a new combo
+    const float ComboSecondsSoft = 1.5f;    // soft cap: reached evenly at ComboSoftStreak, after that it shrinks only slowly
+    const int ComboSoftStreak = 200;
+    const float ComboSecondsMin = 0.8f;     // the shortest it ever gets
+    const float ComboLogDrop = 0.35f;       // seconds lost per e-fold of (1 + streaks past the cap / ComboLogSpan)
+    const float ComboLogSpan = 100f;
     const float HandBaseSpeed = 1f;      // hand animation speed without a combo, relative to the animation as authored
     const float HandMaxSpeed = 10f;      // hand animation speed at the top of the combo (1 = normal)
     const int HandMaxSpeedStreak = 200;  // the streak that reaches it; in between the speed rises evenly
@@ -351,7 +354,7 @@ public class GameManager : MonoBehaviour
         {
             score++;
             streak++;
-            comboWindow = Mathf.Lerp(ComboSecondsStart, ComboSecondsMin, Mathf.Clamp01(streak / (float)ComboSecondsMinStreak));
+            comboWindow = ComboWindow(streak);
             comboTimeLeft = comboWindow;
             ShowMessage(Loc.T("hud.correct"));
             hand.ThumbsUpNext = action == HandAction.Give;
@@ -508,6 +511,14 @@ public class GameManager : MonoBehaviour
             numbers.Append(catalog.EntryNumber(entry));
         }
         ShowToast(Loc.T("hud.newLook", OutfitCatalog.KindName(outfit.kind), numbers.ToString()));
+    }
+
+    // Time to answer for a streak: even steps down to the soft cap, then a logarithmic crawl towards the floor.
+    static float ComboWindow(int streak)
+    {
+        if (streak <= ComboSoftStreak) return Mathf.Lerp(ComboSecondsStart, ComboSecondsSoft, streak / (float)ComboSoftStreak);
+        float past = (streak - ComboSoftStreak) / ComboLogSpan;
+        return Mathf.Max(ComboSecondsSoft - ComboLogDrop * Mathf.Log(1f + past), ComboSecondsMin);
     }
 
     // The combo only goes on when the next visitor is answered within the combo window (it shrinks as the streak grows) of its arrival at the door.

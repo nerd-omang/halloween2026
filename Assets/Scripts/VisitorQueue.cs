@@ -22,7 +22,7 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] int heavyDyeFullScore = 200; // and are the usual ones from here
     [SerializeField] int lightPairStartScore = 20;   // from here a light disguise may have two elements instead of one
     [SerializeField] float lightPairChance = 0.35f;
-    [SerializeField] int sheetStartScore = 20;
+    [SerializeField] int sheetStartScore = 60;
     [SerializeField] float sheetChanceStart = 0.15f;
     [SerializeField] float sheetChanceMax = 0.35f;
     [SerializeField] int scoreForMaxSheet = 200;

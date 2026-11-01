@@ -14,6 +14,15 @@ public static class PatchNotes
     {
         new Entry
         {
+            version = "0.3.1", date = "2026-11-02 00:46",
+            lines = new[]
+            {
+                ("The world ranking now has 20 places, in two pages", "월드랭킹이 20등까지로 늘고, 2페이지로 볼 수 있어요"),
+                ("Records tab: share the scores saved on this device to the world ranking", "기록 탭에서 이 기기에 저장된 기록을 월드랭킹에 올릴 수 있어요"),
+            },
+        },
+        new Entry
+        {
             version = "0.3.0", date = "2026-11-01 23:22",
             lines = new[]
             {

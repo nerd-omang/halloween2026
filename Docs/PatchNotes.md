@@ -5,6 +5,18 @@ Detailed notes per build, newest first. The game itself only shows one-line high
 when a build is released, set the release time there (24-hour clock) and keep the version in Player Settings the
 same as the newest entry.
 
+## 0.3.1 (2026-11-02 00:46)
+
+World ranking
+- The world ranking holds 20 places instead of 10 (`BOARD_SIZE` in `server/fly.toml`). The ranking list in the records tab pages through them 10 at a time, like the local one (arrows, left/right keys, swipe).
+- Records tab, local list: a button below "clear ranking" sends the saved local records to the world ranking, up to 20 in one request (`POST /api/results`, `WorldBoard.SubmitMany`). Each record is read again from its saved looks (older versions' texts included) and written in the current format with the record's own score and initials.
+- Records that would not make the loaded world ranking are skipped and counted as done: a ranking with fewer than 20 entries takes any score, a full one only a score above its last. A record already sent is remembered (the last 200) and not sent again. The button waits for the ranking to load and offers a retry when it could not.
+
+Server
+- `POST /api/results` takes up to 20 result texts in one request (one per line, or JSON `{ "r": [..] }`) and answers one entry per result, in order; a bad line answers `{ error, detail }` and the others are stored. It counts once against its own limit (`RATE_BATCH_MAX`, 3 a minute per address). `POST /api/result` is unchanged.
+- The same result (score, initials and looks all equal) is taken once: the repeat answers `duplicate: true` and counts nowhere. The server fills this memory from the ranking's texts the first time, so games already on the ranking count as received.
+- The server has to be deployed (`fly deploy`; pushing the branch does not do it) before this client is used, or the share button fails. A server without the two item bits of 0.3.0 (pirate hat, hook) rejects looks that contain them as impossible.
+
 ## 0.3.0 (2026-11-01 23:22)
 
 Combo

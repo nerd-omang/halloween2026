@@ -13,7 +13,7 @@ public static class PatchNotes
     {
         new Entry
         {
-            version = "0.3", date = "2026-11-01",
+            version = "0.3.0", date = "2026-11-01",
             lines = new[]
             {
                 ("Combo: counter, time limit gauge and a faster hand", "콤보: 카운터, 제한 시간 게이지, 빨라지는 손 동작"),
@@ -29,7 +29,7 @@ public static class PatchNotes
         },
         new Entry
         {
-            version = "0.2", date = "2026-11-01",
+            version = "0.2.0", date = "2026-11-01",
             lines = new[]
             {
                 ("Online ranking, world statistics and others' mistaken looks", "온라인 랭킹, 월드 통계, 다른 사람이 틀린 외형 보기"),
@@ -43,7 +43,7 @@ public static class PatchNotes
         },
         new Entry
         {
-            version = "0.1", date = "2026-10-31",
+            version = "0.1.0", date = "2026-10-31",
             lines = new[]
             {
                 ("First release", "첫 배포"),

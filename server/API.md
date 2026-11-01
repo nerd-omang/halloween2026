@@ -95,7 +95,7 @@ text (extra bytes, non-zero padding bits, reserved bits set, bad checksum). A fl
 ## Redis keys
 
 `h26:games` (string), `h26:items` (hash bit -> count), `h26:looks` (hash code -> count), `h26:board` (zset, member `INITIALS:seq`,
-score `points * 2^24 + (2^24 - 1 - seq)`), `h26:seq` (string), `h26:boardr` (hash board member -> result text). Details in [README.md](README.md).
+score `points * 2^21 + (2^21 - 1 - seq)`), `h26:seq` (string), `h26:boardr` (hash board member -> result text). Details in [README.md](README.md).
 
 ## Errors
 

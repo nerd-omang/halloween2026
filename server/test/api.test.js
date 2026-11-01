@@ -222,7 +222,7 @@ test('entries stored before result texts existed come back without r', async (t)
   const s = await boot();
   t.after(s.close);
   const k = s.config.keyPrefix;
-  await s.redis.zadd(`${k}board`, String(40 * 16777216 + 16777215 - 1), 'OLD:1');
+  await s.redis.zadd(`${k}board`, String(40 * 2097152 + 2097151 - 1), 'OLD:1');
   await s.post(game(30, 'NEW'));
   assert.deepEqual((await s.call('/api/top')).json, [
     { initials: 'OLD', score: 40 },

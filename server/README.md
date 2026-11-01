@@ -35,13 +35,13 @@ per-command billing).
 | `h26:games` | string | `INCR` per accepted game (the denominator of every percentage) |
 | `h26:items` | hash | field = item bit number, `HINCRBY field n`: how often a look carrying that item fooled a player |
 | `h26:looks` | hash | field = 32-bit look code in decimal, `HINCRBY field 1`: how often that exact look fooled a player |
-| `h26:board` | zset | member `INITIALS:seq`, score `points * 2^24 + (2^24 - 1 - seq)` |
+| `h26:board` | zset | member `INITIALS:seq`, score `points * 2^21 + (2^21 - 1 - seq)` |
 | `h26:seq` | string | `INCR` to make members unique |
 | `h26:boardr` | hash | field = board member, value = canonical result text (32 characters) of that game; `HSET` on entry, `HDEL` when the member is trimmed |
 
 Commands inside the script, in order: `INCR h26:games`; per look `HINCRBY h26:looks <code> 1`; per item bit
 `HINCRBY h26:items <bit> <count>`; then, only for a finished game (`BOARD_MIN_LOOKS`, `BOARD_MIN_SCORE`):
-`ZCOUNT h26:board <points*2^24> +inf` (entries that already rank above) and, when that is fewer than N:
+`ZCOUNT h26:board <points*2^21> +inf` (entries that already rank above) and, when that is fewer than N:
 `INCR h26:seq`, `ZADD h26:board <score> INITIALS:seq` and `HSET h26:boardr INITIALS:seq <text>` (only when the game has initials),
 `ZRANGE h26:board 0 -(N+1)` + `HDEL h26:boardr <those members>`, then `ZREMRANGEBYRANK h26:board 0 -(N+1)` (trim to N). The tie-break part of the score makes an earlier game win a tie
 and keeps members unique even for identical initials and score. Reads: `ZREVRANGE h26:board 0 N-1 WITHSCORES` and `HMGET h26:boardr <members>`;

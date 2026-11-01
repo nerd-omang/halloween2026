@@ -5,7 +5,7 @@
 //   {p}games   string  total finished games received (INCR)
 //   {p}items   hash    field = item bit number, value = times that item was on a look that fooled a player (HINCRBY)
 //   {p}looks   hash    field = 32-bit look code (decimal), value = times that exact look fooled a player (HINCRBY)
-//   {p}board   zset    member "INITIALS:seq", score = points * 2^24 + (2^24 - 1 - seq)  (earlier game wins a tie)
+//   {p}board   zset    member "INITIALS:seq", score = points * 2^21 + (2^21 - 1 - seq)  (earlier game wins a tie)
 //   {p}seq     string  member id counter (INCR)
 //   {p}boardr  hash    field = board member, value = canonical result text of that game (HSET; HDEL when trimmed)
 import { encode } from './lookcode.js';
@@ -17,7 +17,7 @@ local initials = ARGV[3]
 local eligible = ARGV[4] == '1'
 local text = ARGV[5]
 local nLooks = tonumber(ARGV[6])
-local SH = 16777216.0 -- a float on purpose: stays exact up to 2^53 even where Lua has 32-bit integers (ioredis-mock)
+local SH = 2097152.0 -- 2^21; a float on purpose, so it stays exact even where Lua has 32-bit integers (ioredis-mock)
 
 redis.call('INCR', KEYS[1])
 for i = 1, nLooks do
@@ -55,7 +55,9 @@ end
 return { rank, entered }
 `;
 
-const SHIFT = 2 ** 24; // points are 29 bits, the tie-break 24: together 53 bits, the exact range of a double
+// Points are 29 bits and the tie-break 21 (2 million board entries): 50 bits together, three bits below the 53 a double
+// holds exactly, so no Lua or Redis implementation can come near its limit.
+const SHIFT = 2 ** 21;
 
 export function createStore(redis, config) {
   const p = config.keyPrefix;

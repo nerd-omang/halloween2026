@@ -43,6 +43,12 @@ public class MenuScreen
     GameObject guide;
     GameObject guideCaption;
     Text touchHint;
+    GameObject updates;
+    Text updatesHeader;
+    Text updatesBody;
+    SimpleButton updatesNewer;
+    SimpleButton updatesOlder;
+    int updatePage;
     int best;
     int found;
     int total;
@@ -93,10 +99,13 @@ public class MenuScreen
             () => Loc.Current = Loc.Current == Lang.Ko ? Lang.En : Lang.Ko);
         UiKit.Bind(language.Label, "menu.language");
 
-        // Version stamp in the bottom right corner (not translated; the smallest size the pixel font reads at).
+        // Version stamp in the bottom right corner (not translated; the smallest size the pixel font reads at),
+        // with an info button that opens the update history (a click, so it works on touch as well).
         var bottomRight = new Vector2(1f, 0f);
-        UiKit.Label(root, "Version", "halloween 2026-10-31", 11, TextAnchor.LowerRight, bottomRight, bottomRight,
-            new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(300f, 16f), UiKit.Dim * 0.8f);
+        UiKit.Label(root, "Version", "halloween 2026-10-31\nv" + PatchNotes.Current, 11, TextAnchor.LowerRight, bottomRight, bottomRight,
+            new Vector2(-UiKit.MarginX - 52f, UiKit.MarginY), new Vector2(300f, 32f), UiKit.Dim * 0.8f);
+        UiKit.Button(root, "Updates", "i", 22, bottomRight, bottomRight, new Vector2(-UiKit.MarginX, UiKit.MarginY), new Vector2(44f, 44f), OpenUpdates);
+        updates = BuildUpdates(root);
 
         // Control guide: a mouse icon with the pressed button lit, and what it does.
         // A centered row at the bottom: the layout group sizes each entry from its text, so the row stays
@@ -118,6 +127,61 @@ public class MenuScreen
         guideCaption = root.Find("BlastCaption").gameObject;
 
         panel.SetActive(false);
+    }
+
+    // Update history: one build per page with its one-line highlights, newest first.
+    GameObject BuildUpdates(RectTransform root)
+    {
+        var center = new Vector2(0.5f, 0.5f);
+        var modal = UiKit.Fill("Updates", root);
+        modal.gameObject.AddComponent<Image>().color = new Color(0.03f, 0.01f, 0.06f, 0.75f);
+        var card = UiKit.Card("Card", modal, new Vector2(760f, 500f));
+        card.gameObject.AddComponent<ScreenFit>().Init(modal, card, 500f, 24f);
+
+        UiKit.Bind(UiKit.Label(card, "Title", "", 44, TextAnchor.MiddleCenter, center, center, new Vector2(0f, 205f), new Vector2(680f, 56f), UiKit.Accent), "updates.title");
+        updatesHeader = UiKit.Label(card, "Header", "", 33, TextAnchor.MiddleLeft, center, center, new Vector2(0f, 142f), new Vector2(680f, 44f), Color.white);
+        updatesBody = UiKit.Label(card, "Body", "", 22, TextAnchor.UpperLeft, center, center, new Vector2(0f, 20f), new Vector2(680f, 220f), Color.white);
+        updatesBody.lineSpacing = 1.3f;
+
+        updatesNewer = UiKit.Button(card, "Newer", "", 22, center, center, new Vector2(-250f, -200f), new Vector2(150f, 44f), () => ShowUpdatePage(updatePage - 1));
+        UiKit.Bind(updatesNewer.Label, "updates.newer");
+        updatesOlder = UiKit.Button(card, "Older", "", 22, center, center, new Vector2(-90f, -200f), new Vector2(150f, 44f), () => ShowUpdatePage(updatePage + 1));
+        UiKit.Bind(updatesOlder.Label, "updates.older");
+        var close = UiKit.Button(card, "Close", "", 22, center, center, new Vector2(250f, -200f), new Vector2(200f, 44f), CloseUpdates);
+        UiKit.Bind(close.Label, "back");
+        modal.gameObject.SetActive(false);
+        return modal.gameObject;
+    }
+
+    void OpenUpdates()
+    {
+        updates.SetActive(true);
+        updates.transform.SetAsLastSibling();
+        UiKit.ModalRoot = updates.transform;
+        ShowUpdatePage(0);
+    }
+
+    void CloseUpdates()
+    {
+        updates.SetActive(false);
+        if (UiKit.ModalRoot == updates.transform) UiKit.ModalRoot = null;
+    }
+
+    void ShowUpdatePage(int page)
+    {
+        updatePage = Mathf.Clamp(page, 0, PatchNotes.Entries.Length - 1);
+        var entry = PatchNotes.Entries[updatePage];
+        bool ko = Loc.Current == Lang.Ko;
+        var body = new System.Text.StringBuilder();
+        foreach (var line in entry.lines)
+        {
+            if (body.Length > 0) body.Append('\n');
+            body.Append("- ").Append(ko ? line.ko : line.en);
+        }
+        updatesHeader.text = "v" + entry.version + "   " + entry.date;
+        updatesBody.text = body.ToString();
+        updatesNewer.gameObject.SetActive(updatePage > 0);
+        updatesOlder.gameObject.SetActive(updatePage < PatchNotes.Entries.Length - 1);
     }
 
     static void ControlHint(Transform parent, UiKit.MouseButtonIcon button, Func<string> text)
@@ -160,6 +224,7 @@ public class MenuScreen
         pressing = false;
         armedItem = -1;
         if (slide.isAlive) slide.Stop();
+        CloseUpdates();
         panel.SetActive(false);
     }
 

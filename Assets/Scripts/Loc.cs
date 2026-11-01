@@ -162,6 +162,9 @@ public static class Loc
 
         // Common
         ["back"] = ("BACK", "뒤로"),
+        ["updates.title"] = ("WHAT'S NEW", "업데이트 내역"),
+        ["updates.newer"] = ("NEWER", "최신"),
+        ["updates.older"] = ("OLDER", "이전"),
         ["drag.rotate"] = ("Drag to rotate · Wheel to zoom", "드래그: 회전 · 휠: 확대"),
         ["drag.rotateTouch"] = ("Drag to rotate · Pinch to zoom", "드래그: 회전 · 핀치: 확대"),
         ["menu.carouselHint"] = ("A / D, arrows, wheel or drag: choose    Enter or click: confirm", "A / D, 방향키, 휠, 드래그: 고르기    Enter, 클릭: 확인"),

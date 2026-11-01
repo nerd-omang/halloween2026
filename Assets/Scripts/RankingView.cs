@@ -46,7 +46,7 @@ public class RankingView
     const float RowStep = 42f;
     const float RowHeight = 38f;
     const float DesignHeight = 700f;
-    const int ShareBatch = 5; // the server takes 5 results per minute from one address
+    const int ShareBatch = LocalRanking.Capacity; // all saved records at once; the server takes this many POSTs per minute (RATE_WRITE_MAX in server/fly.toml)
 
     readonly OutfitCatalog catalog;
     readonly ModelStage stage;
@@ -239,7 +239,7 @@ public class RankingView
         if (online) LayoutOnline();
     }
 
-    // Sends the next few saved local records to the world ranking; press again for the rest. Records that would
+    // Sends the next few saved local records to the world ranking; press again for the ones that failed. Records that would
     // not make the world ranking only add to the statistics: they are skipped and counted as done.
     void ShareRecords()
     {

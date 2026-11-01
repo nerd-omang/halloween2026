@@ -118,5 +118,5 @@ Body `{ "error": "<code>", "detail": "<optional short text>" }`. CORS headers ar
 
 ## Limits
 
-Per IP and 60 s window: 5 `POST`, 60 `GET` (`RATE_WRITE_MAX`, `RATE_READ_MAX`, `RATE_WINDOW_SEC`). Body 256 bytes. Score 0..`MAX_SCORE`.
+Per IP and 60 s window: 5 `POST` by default (20 in fly.toml, one batch of saved local records), 60 `GET` (`RATE_WRITE_MAX`, `RATE_READ_MAX`, `RATE_WINDOW_SEC`). Body 256 bytes. Score 0..`MAX_SCORE`.
 The server does not filter initials. A stopped machine needs about a second to start on the first request: use a timeout of at least 10 s and show the game-over screen without waiting for the answer.

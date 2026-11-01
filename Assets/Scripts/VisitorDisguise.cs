@@ -168,20 +168,31 @@ public class VisitorDisguise : MonoBehaviour
         int worn = FakePropCount;
         if (worn == 0) return false;
 
-        int pick = Random.Range(0, worn);
+        // Weighted: the props that are harder to see through (see ItemDef.DropWeight) come off a little more often.
+        float total = 0f;
+        for (int i = 0; i < props.Length; i++)
+        {
+            if (IsWorn(i)) total += DropWeight(i);
+        }
+        float roll = Random.value * total;
         int index = -1;
         for (int i = 0; i < props.Length; i++)
         {
-            if (IsWorn(i) && pick-- == 0)
-            {
-                index = i;
-                break;
-            }
+            if (!IsWorn(i)) continue;
+            index = i;
+            roll -= DropWeight(i);
+            if (roll <= 0f) break;
         }
         droppedMask |= 1 << index;
 
         flight.Launch(transform, props[index].transform, direction);
         return true;
+    }
+
+    float DropWeight(int i)
+    {
+        var def = ItemTable.FromNode(props[i].name);
+        return def != null ? def.DropWeight : 1f;
     }
 
     bool IsWorn(int i) => props[i].activeSelf && (droppedMask & (1 << i)) == 0;

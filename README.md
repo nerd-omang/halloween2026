@@ -1,5 +1,7 @@
 # Halloween 2026: Trick or Treat
 
+**[Play it in your browser](https://nerd-omang.github.io/halloween2026/)** (desktop and mobile, no install, hosted on GitHub Pages)
+
 A first-person Halloween fan game. Trick-or-treaters line up at your door. The gray ones are 쿤뭉치 (Kunmungchi):
 give them candy. The red ones are 오망이 (Omangi), and they like to sneak in disguised: send them away. Three hearts,
 endless, one point per right answer.
@@ -7,7 +9,7 @@ endless, one point per right answer.
 This is an unofficial fan game. The original illustrations and character designs of 오망이, 쿤뭉치, 모쿠 and 명칠
 belong to 명칠 ([@_7M_3](https://x.com/_7M_3)). See [CREDITS.md](CREDITS.md).
 
-Built with Unity 6000.3.2f1 (URP 17.3) and published as a WebGL build (desktop and mobile browsers).
+Built with Unity 6000.3.2f1 (URP 17.3) and published as a WebGL build on GitHub Pages (desktop and mobile browsers).
 The look is low poly plus a dither post-process rendered at a third of the screen resolution.
 
 ## How to play

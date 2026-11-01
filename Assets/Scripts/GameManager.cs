@@ -66,6 +66,8 @@ public class GameManager : MonoBehaviour
     const float ComboLogDrop = 0.35f;       // seconds lost per e-fold of (1 + streaks past the cap / ComboLogSpan)
     const float ComboLogSpan = 100f;
     const float HandBaseSpeed = 1f;      // hand animation speed without a combo, relative to the animation as authored
+    const float HandEarlyBoost = 2f;     // extra speed that comes in quickly over the first combos
+    const float HandEarlyStreak = 15f;   // how quickly: about two thirds of it by this streak
     const float HandMaxSpeed = 10f;      // hand animation speed at the top of the combo (1 = normal)
     const int HandMaxSpeedStreak = 200;  // the streak that reaches it; in between the speed rises evenly
 
@@ -526,6 +528,15 @@ public class GameManager : MonoBehaviour
         return Mathf.Max(ComboSecondsSoft - ComboLogDrop * Mathf.Log(1f + past), ComboSecondsMin);
     }
 
+    // Hand speed for a streak: a quick lift over the first combos, then a slow, accelerating climb to the maximum.
+    static float HandSpeed(int streak)
+    {
+        float early = HandEarlyBoost * (1f - Mathf.Exp(-streak / HandEarlyStreak));
+        float earlyAtMax = HandEarlyBoost * (1f - Mathf.Exp(-HandMaxSpeedStreak / HandEarlyStreak));
+        float t = Mathf.Clamp01(streak / (float)HandMaxSpeedStreak);
+        return HandBaseSpeed + early + (HandMaxSpeed - HandBaseSpeed - earlyAtMax) * t * t;
+    }
+
     void StartComboPop(int step)
     {
         bool hundred = step % 100 == 0, ten = step % 10 == 0;
@@ -539,7 +550,7 @@ public class GameManager : MonoBehaviour
     // The clock stands still while the next visitor is on its way, while a menu is open and during the first-game hints.
     void UpdateComboTimer()
     {
-        hand.Speed = Mathf.Lerp(HandBaseSpeed, HandMaxSpeed, Mathf.Clamp01(streak / (float)HandMaxSpeedStreak));
+        hand.Speed = HandSpeed(streak);
         bool active = !over && streak >= 1;
         if (comboBar.gameObject.activeSelf != active) comboBar.gameObject.SetActive(active);
         if (!active) return;

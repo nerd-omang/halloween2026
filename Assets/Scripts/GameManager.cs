@@ -61,6 +61,7 @@ public class GameManager : MonoBehaviour
     const float ComboSecondsStart = 4f;     // time to answer the next visitor and keep a new combo
     const float ComboSecondsSoft = 1.5f;    // soft cap: reached evenly at ComboSoftStreak, after that it shrinks only slowly
     const int ComboSoftStreak = 200;
+    const float ComboCurvePower = 1.6f;     // above 1: the time stays generous early on and drops faster towards the soft cap
     const float ComboSecondsMin = 0.8f;     // the shortest it ever gets
     const float ComboLogDrop = 0.35f;       // seconds lost per e-fold of (1 + streaks past the cap / ComboLogSpan)
     const float ComboLogSpan = 100f;
@@ -517,10 +518,10 @@ public class GameManager : MonoBehaviour
         ShowToast(Loc.T("hud.newLook", OutfitCatalog.KindName(outfit.kind), numbers.ToString()));
     }
 
-    // Time to answer for a streak: even steps down to the soft cap, then a logarithmic crawl towards the floor.
+    // Time to answer for a streak: down to the soft cap (slowly at first, then faster), then a logarithmic crawl towards the floor.
     static float ComboWindow(int streak)
     {
-        if (streak <= ComboSoftStreak) return Mathf.Lerp(ComboSecondsStart, ComboSecondsSoft, streak / (float)ComboSoftStreak);
+        if (streak <= ComboSoftStreak) return Mathf.Lerp(ComboSecondsStart, ComboSecondsSoft, Mathf.Pow(streak / (float)ComboSoftStreak, ComboCurvePower));
         float past = (streak - ComboSoftStreak) / ComboLogSpan;
         return Mathf.Max(ComboSecondsSoft - ComboLogDrop * Mathf.Log(1f + past), ComboSecondsMin);
     }

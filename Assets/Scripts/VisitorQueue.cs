@@ -35,8 +35,8 @@ public class VisitorQueue : MonoBehaviour
     [Header("Plain visitors: now and then one comes with nothing at all (no disguise, costume or sheet)")]
     [SerializeField, Range(0f, 0.3f)] float plainChance = 0.06f;
     [Header("Variety: a new look is not allowed to be too close to one of the last few")]
-    [SerializeField] int varietyHistory = 6;
-    [SerializeField] int varietyTries = 6;
+    [SerializeField] int varietyHistory = 3;
+    [SerializeField] int varietyTries = 4;
     [SerializeField, Range(0.2f, 1f)] float varietyMaxOverlap = 0.6f; // shared items / all items of the two looks
     [SerializeField] int visibleCount = 8;
     [SerializeField] float frontZ = 2.6f;

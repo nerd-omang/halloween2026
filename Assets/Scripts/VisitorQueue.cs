@@ -12,24 +12,26 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] int disguiseStartScore = 6;
     [SerializeField] float disguiseChanceStart = 0.2f;
     [SerializeField] float disguiseChanceMax = 0.5f;
-    [SerializeField] int scoreForMaxDisguise = 30;
+    [SerializeField] int scoreForMaxDisguise = 200; // every disguise element is fully open from here
     [SerializeField] int firstDisguisedOmangiScore = 8;
     [Header("Disguise ramp: single prop first, paint later")]
-    [SerializeField] int multiDisguiseStartScore = 12;
-    [SerializeField] int furChangeStartScore = 15;
-    [SerializeField] int paintBucketStartScore = 22;
-    [SerializeField] int heavyDyeStartScore = 45; // the 60% and 90% dye levels only start to show up here
-    [SerializeField] int heavyDyeFullScore = 80;  // and are the usual ones from here
-    [SerializeField] int sheetStartScore = 10;
+    [SerializeField] int multiDisguiseStartScore = 40; // below it: light disguises only, two elements at most
+    [SerializeField] int furChangeStartScore = 40;
+    [SerializeField] int paintBucketStartScore = 60;
+    [SerializeField] int heavyDyeStartScore = 100; // the 60% and 90% dye levels only start to show up here
+    [SerializeField] int heavyDyeFullScore = 200; // and are the usual ones from here
+    [SerializeField] int lightPairStartScore = 20;   // from here a light disguise may have two elements instead of one
+    [SerializeField] float lightPairChance = 0.35f;
+    [SerializeField] int sheetStartScore = 20;
     [SerializeField] float sheetChanceStart = 0.15f;
     [SerializeField] float sheetChanceMax = 0.35f;
-    [SerializeField] int scoreForMaxSheet = 35;
+    [SerializeField] int scoreForMaxSheet = 200;
     [Header("Halloween costumes (visual noise, never the answer)")]
-    [SerializeField] int costumeStartScore = 10;
-    [SerializeField] float costumeChanceStart = 0.15f;
-    [SerializeField] float costumeChanceMax = 0.6f;
-    [SerializeField] int scoreForMaxCostume = 40;
-    [SerializeField] int maxCostumes = 3;
+    [SerializeField] int costumeStartScore = 4;
+    [SerializeField] float costumeChanceStart = 0.3f;
+    [SerializeField] float costumeChanceMax = 0.8f;
+    [SerializeField] int scoreForMaxCostume = 30;
+    [SerializeField] int maxCostumes = 4;
     [SerializeField] int visibleCount = 8;
     [SerializeField] float frontZ = 2.6f;
     [SerializeField] float spacing = 1.1f;
@@ -165,7 +167,13 @@ public class VisitorQueue : MonoBehaviour
         if (candidates.Count == 0) return;
 
         int count = 1;
-        if (futureScore >= multiDisguiseStartScore)
+        if (futureScore < multiDisguiseStartScore)
+        {
+            // Light disguises: one fake prop, now and then two.
+            if (futureScore >= lightPairStartScore && Random.value < lightPairChance) count = 2;
+            count = Mathf.Min(count, candidates.Count);
+        }
+        else
         {
             float skill = Mathf.InverseLerp(multiDisguiseStartScore, scoreForMaxDisguise, futureScore);
             count = DisguiseElements(skill, candidates.Count);

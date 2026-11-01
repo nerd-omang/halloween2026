@@ -6,8 +6,7 @@ version in Player Settings the same as the newest entry.
 
 ## 0.3 (2026-11-01)
 
-- Difficulty: the heavy paint levels (60% and 90% dye) show up much later, from a score of about 45 (full ramp at 80). The light levels (15%, 30%) are unchanged.
-- Difficulty: Omangi's cone nose, a hard disguise to see through, only appears from a score of 30 (`ItemDef.StartScore`).
+- Difficulty ramp stretched: every disguise element is fully open only at a score of 200. Below 40 a disguise has one fake prop, from 20 now and then two, and no paint, paint bucket or cone nose. From 40: more elements and the light paint (15%, 30%); paint bucket from 60; cone nose from 80; heavy paint (60%, 90%) from 100; ghost sheets from 20. Halloween costumes (visual noise, never the answer) come earlier and freer: from 4, up to four at once, full ramp at 30. Values are the serialized fields of `VisitorQueue` (rebuild the scene to apply new defaults) and `ItemDef.StartScore`.
 - Palm blast: it blows off the disguise props first; loose costumes only come off once no prop is left (before, one of them was picked at random).
 - Combo: the current streak of right answers is shown under the score ("COMBO x5") from the second one in a row, in the same color as the score. Every step of the combo pops the text and it settles back: 1.3x in 0.35 s, every 10th step 1.6x in 0.5 s, every 100th step 2.2x in 0.7 s (the `ComboPop*` constants in `GameManager`).
 - Combo speed: the hand and candy animations speed up evenly with the streak, from 1x without a combo to 10x at a 200 combo (`HandBaseSpeed`, `HandMaxSpeed`, `HandMaxSpeedStreak` in `GameManager`); the speed drops back when the combo ends.

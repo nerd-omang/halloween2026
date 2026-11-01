@@ -34,6 +34,7 @@ public class ModelStage : MonoBehaviour
     Vector3 savedPosition;
     Quaternion savedRotation;
     GameObject floor;
+    PorchFrame porch; // follows the camera, so on the stage its posts would cover the outer models
     int dragging = -1;
     Vector3 basePosition;
     Quaternion baseRotation;
@@ -69,6 +70,9 @@ public class ModelStage : MonoBehaviour
             if (floorMaterial != null) floor.GetComponent<Renderer>().sharedMaterial = floorMaterial;
         }
         floor.SetActive(true);
+
+        if (porch == null) porch = FindFirstObjectByType<PorchFrame>(FindObjectsInactive.Include);
+        if (porch != null) porch.gameObject.SetActive(false);
     }
 
     public void Exit()
@@ -76,6 +80,7 @@ public class ModelStage : MonoBehaviour
         if (!Active) return;
         Clear();
         floor.SetActive(false);
+        if (porch != null) porch.gameObject.SetActive(true);
         cam.transform.SetPositionAndRotation(savedPosition, savedRotation);
         Active = false;
     }

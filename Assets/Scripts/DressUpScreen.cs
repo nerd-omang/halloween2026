@@ -65,25 +65,31 @@ public class DressUpScreen
             dyeToggles[d] = toggle;
         }
 
-        UiKit.Bind(UiKit.Label(root, "PropsLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(RightColumn, -76f), new Vector2(360f, 26f), UiKit.Dim), "dress.props");
+        // The props and costumes list lives in a box that scales down on short screens and phones, so the
+        // last rows never run off the bottom.
+        float costumeLabelY = -104f - catalog.MaxPropCount * 34f - 14f;
+        float rightHeight = -costumeLabelY + 28f + catalog.MaxCostumeCount * 34f + 8f;
+        var right = UiKit.Rect("RightColumn", root, topLeft, topLeft, new Vector2(RightColumn, 0f), new Vector2(352f, rightHeight));
+        right.gameObject.AddComponent<ScreenFit>().Init(root, right, rightHeight, 16f);
+
+        UiKit.Bind(UiKit.Label(right, "PropsLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(0f, -76f), new Vector2(352f, 26f), UiKit.Dim), "dress.props");
         propToggles = new SimpleToggle[catalog.MaxPropCount];
         for (int p = 0; p < propToggles.Length; p++)
         {
             int slot = p;
-            var toggle = UiKit.Toggle(root, "Prop" + p, "", false, 22, topLeft, topLeft,
-                new Vector2(RightColumn, -104f - p * 34f), new Vector2(352f, 32f));
+            var toggle = UiKit.Toggle(right, "Prop" + p, "", false, 22, topLeft, topLeft,
+                new Vector2(0f, -104f - p * 34f), new Vector2(352f, 32f));
             toggle.Changed += on => SetListed(catalog.Props(current.kind), slot, on);
             propToggles[p] = toggle;
         }
 
-        float costumeLabelY = -104f - propToggles.Length * 34f - 14f;
-        UiKit.Bind(UiKit.Label(root, "CostumesLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(RightColumn, costumeLabelY), new Vector2(360f, 26f), UiKit.Dim), "dress.costumes");
+        UiKit.Bind(UiKit.Label(right, "CostumesLabel", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(0f, costumeLabelY), new Vector2(352f, 26f), UiKit.Dim), "dress.costumes");
         costumeToggles = new SimpleToggle[catalog.MaxCostumeCount];
         for (int c = 0; c < costumeToggles.Length; c++)
         {
             int slot = c;
-            var toggle = UiKit.Toggle(root, "Costume" + c, "", false, 22, topLeft, topLeft,
-                new Vector2(RightColumn, costumeLabelY - 28f - c * 34f), new Vector2(352f, 32f));
+            var toggle = UiKit.Toggle(right, "Costume" + c, "", false, 22, topLeft, topLeft,
+                new Vector2(0f, costumeLabelY - 28f - c * 34f), new Vector2(352f, 32f));
             toggle.Changed += on => SetListed(catalog.Costumes(current.kind), slot, on);
             costumeToggles[c] = toggle;
         }

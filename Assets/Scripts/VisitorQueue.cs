@@ -18,6 +18,8 @@ public class VisitorQueue : MonoBehaviour
     [SerializeField] int multiDisguiseStartScore = 12;
     [SerializeField] int furChangeStartScore = 15;
     [SerializeField] int paintBucketStartScore = 22;
+    [SerializeField] int heavyDyeStartScore = 45; // the 60% and 90% dye levels only start to show up here
+    [SerializeField] int heavyDyeFullScore = 80;  // and are the usual ones from here
     [SerializeField] int sheetStartScore = 10;
     [SerializeField] float sheetChanceStart = 0.15f;
     [SerializeField] float sheetChanceMax = 0.35f;
@@ -179,8 +181,11 @@ public class VisitorQueue : MonoBehaviour
         // How thorough the paint job is: sloppy (partial) when the fur change first appears, full later.
         if (v.TryGetComponent(out VisitorDisguise disguise))
         {
+            // The light levels (15%, 30%) come in as the fur change does; the heavy ones (60%, 90%) much later.
+            int heavyFrom = Mathf.Min(2, disguise.DyeLevelCount - 1);
             float furSkill = Mathf.InverseLerp(furChangeStartScore, scoreForMaxDisguise, futureScore);
-            float expected = furSkill * (disguise.DyeLevelCount - 1);
+            float heavySkill = Mathf.InverseLerp(heavyDyeStartScore, heavyDyeFullScore, futureScore);
+            float expected = furSkill * (heavyFrom - 1) + heavySkill * (disguise.DyeLevelCount - heavyFrom);
             outfit.dyeLevel = Mathf.Clamp(Mathf.RoundToInt(expected + Random.Range(-0.6f, 0.6f)), 0, disguise.DyeLevelCount - 1);
         }
         outfit.items = ItemTable.Normalize(kind, outfit.items);

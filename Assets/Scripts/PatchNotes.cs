@@ -16,6 +16,7 @@ public static class PatchNotes
             version = "0.3", date = "2026-11-01",
             lines = new[]
             {
+                ("Heavy paint disguises come much later", "진한 페인트 위장이 훨씬 후반에 등장"),
                 ("The palm blast blows off disguise props first", "장풍이 위장 소품부터 날려보냄"),
                 ("The current combo is shown under the score and pops with every step", "점수 아래에 현재 콤보 표시, 올라갈 때마다 팝 효과"),
                 ("The hand moves faster as the combo grows", "콤보가 쌓일수록 손 동작이 빨라짐"),

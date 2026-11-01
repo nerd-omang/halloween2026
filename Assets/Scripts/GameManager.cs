@@ -51,8 +51,8 @@ public class GameManager : MonoBehaviour
     float comboTimeLeft;
 
     const float ComboSeconds = 4f; // time to answer the next visitor and keep the combo
-    const float HandMaxSpeed = 2f;      // hand animation speed at the top of the combo (1 = normal)
-    const int HandMaxSpeedStreak = 12;  // the streak that reaches it; in between the speed rises evenly
+    const float HandMaxSpeed = 10f;      // hand animation speed at the top of the combo (1 = normal)
+    const int HandMaxSpeedStreak = 100;  // the streak that reaches it; in between the speed rises evenly
 
     int hearts;
     int score;

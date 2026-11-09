@@ -22,6 +22,8 @@ public static class Settings
     const string ShareKey = "set_share";
     const string SkipIntroKey = "set_skipintro";
     const string QualityKey = "set_quality";
+    const string AsciiKey = "set_ascii";
+    const string GlyphSetKey = "set_glyphset";
 
     // _MatrixSize values: blue noise, then Bayer-style fine to coarse.
     public static readonly int[] PatternValues = { 1, 2, 4, 8 };
@@ -33,7 +35,13 @@ public static class Settings
     const float OffLevels = 64f;
 
     public const int OptionCount = 4;
+    // Glyph sets of the ASCII look, in the row order of the glyph atlas (AsciiGlyphGenerator).
+    public const int GlyphSetCount = 3;
+    // The 70 level ramp ("Fine"), the first set of the atlas.
+    const int DefaultGlyphSet = 0;
 
+    static bool asciiOn;
+    static int glyphSet = DefaultGlyphSet;
     static float master = 1f;
     static float sfx = 1f;
     static float music = 1f;
@@ -79,6 +87,10 @@ public static class Settings
 
     public static bool DitherOn { get => ditherOn; set { ditherOn = value; PlayerPrefs.SetInt(DitherKey, value ? 1 : 0); ApplyGraphics(); } }
     public static int Pattern { get => pattern < 0 ? defaultPattern : pattern; set { pattern = Mathf.Clamp(value, 0, OptionCount - 1); PlayerPrefs.SetInt(PatternKey, pattern); ApplyGraphics(); } }
+
+    // Draw the screen as letters instead of dithering it. The letter size follows the Resolution option.
+    public static bool AsciiOn { get => asciiOn; set { asciiOn = value; PlayerPrefs.SetInt(AsciiKey, value ? 1 : 0); ApplyGraphics(); } }
+    public static int GlyphSet { get => glyphSet; set { glyphSet = Mathf.Clamp(value, 0, GlyphSetCount - 1); PlayerPrefs.SetInt(GlyphSetKey, glyphSet); ApplyGraphics(); } }
 
     public static int LevelCount => levelCount < 0 ? defaultLevelCount : levelCount;
 
@@ -151,7 +163,8 @@ public static class Settings
 
     public const int PresetCount = 5;
 
-    // Look presets: 0 rough, 1 original (the material's tuned look), 2 gentle, 3 soft, 4 sharp. Volumes are left alone.
+    // Look presets: 0 rough, 1 original (the material's tuned look), 2 gentle, 3 sharp, 4 ASCII (full resolution,
+    // letters from the 70 level ramp). Volumes are left alone.
     public static void ApplyPreset(int preset)
     {
         EnsureAssets();
@@ -164,10 +177,10 @@ public static class Settings
                 SetGraphics(true, defaultPattern, 16, 16, 2);
                 break;
             case 3:
-                SetGraphics(true, 1, 24, 24, 2);
+                SetGraphics(false, defaultPattern, -1, -1, 3);
                 break;
             case 4:
-                SetGraphics(false, defaultPattern, -1, -1, 3);
+                SetGraphics(true, defaultPattern, -1, -1, 3, true);
                 break;
             default:
                 SetGraphics(true, defaultPattern, -1, -1, 1);
@@ -179,23 +192,30 @@ public static class Settings
     public static int CurrentPreset()
     {
         EnsureAssets();
+        if (asciiOn) return Quality == 3 && GlyphSet == 0 ? 4 : -1;
         bool flatDefault = FlatOn;
         if (flatDefault && DitherOn && Pattern == defaultPattern && LevelCount == defaultLevelCount && DarkCount == defaultDarkCount && Quality == 1) return 1;
         if (flatDefault && DitherOn && Pattern == defaultPattern && LevelCount == 6 && DarkCount == 6 && Quality == 0) return 0;
         if (flatDefault && DitherOn && Pattern == defaultPattern && LevelCount == 16 && DarkCount == 16 && Quality == 2) return 2;
-        if (flatDefault && DitherOn && Pattern == 1 && LevelCount == 24 && DarkCount == 24 && Quality == 2) return 3;
-        if (!DitherOn && Quality == 3) return 4;
+        if (!DitherOn && Quality == 3) return 3;
         return -1;
     }
 
-    // Level counts below zero mean the material's own value.
-    static void SetGraphics(bool dither, int patternIndex, int levelValue, int darkValue, int qualityIndex)
+    // Level counts below zero mean the material's own value. ascii draws the screen as letters (the 70 level set).
+    static void SetGraphics(bool dither, int patternIndex, int levelValue, int darkValue, int qualityIndex, bool ascii = false)
     {
         ditherOn = dither;
         pattern = patternIndex;
         levelCount = levelValue;
         darkCount = darkValue;
         quality = qualityIndex;
+        asciiOn = ascii;
+        PlayerPrefs.SetInt(AsciiKey, ascii ? 1 : 0);
+        if (ascii)
+        {
+            glyphSet = DefaultGlyphSet;
+            PlayerPrefs.SetInt(GlyphSetKey, glyphSet);
+        }
         // Every preset keeps flat areas clean.
         flatOn = true;
         PlayerPrefs.SetInt(FlatKey, 1);
@@ -249,6 +269,8 @@ public static class Settings
         flatOn = PlayerPrefs.GetInt(FlatKey, 1) != 0;
         darkCount = PlayerPrefs.HasKey(DarkKey) ? Mathf.Clamp(PlayerPrefs.GetInt(DarkKey), 2, 255) : -1;
         quality = Mathf.Clamp(PlayerPrefs.GetInt(QualityKey, 1), 0, OptionCount - 1);
+        asciiOn = PlayerPrefs.GetInt(AsciiKey, 0) != 0;
+        glyphSet = Mathf.Clamp(PlayerPrefs.GetInt(GlyphSetKey, DefaultGlyphSet), 0, GlyphSetCount - 1);
         if (PlayerPrefs.HasKey(PatternKey)) pattern = Mathf.Clamp(PlayerPrefs.GetInt(PatternKey), 0, OptionCount - 1);
     }
 
@@ -319,6 +341,8 @@ public static class Settings
         material.SetFloat("_DitherStrength", ditherOn ? defaultStrength : 0f);
         material.SetFloat("_MatrixSize", PatternValues[pattern]);
         material.SetFloat("_FlatThreshold", FlatOn ? FlatOnValue : 0f);
+        material.SetFloat("_AsciiMode", asciiOn ? 1f : 0f);
+        material.SetFloat("_AsciiSet", glyphSet);
         pipeline.renderScale = QualityScale[quality];
     }
 
@@ -341,6 +365,8 @@ public static class Settings
             material.SetFloat("_DarkLevels", defaultDarkLevels);
             material.SetFloat("_FlatThreshold", defaultFlat);
             material.SetFloat("_MatrixSize", defaultMatrix);
+            material.SetFloat("_AsciiMode", 0f);
+            material.SetFloat("_AsciiSet", 0f);
         }
         if (pipeline != null) pipeline.renderScale = defaultScale;
 #endif

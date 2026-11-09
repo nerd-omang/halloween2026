@@ -23,12 +23,22 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
+    - _GlyphTex:
+        m_Texture: {fileID: 2800000, guid: 4f85e0ad6fdc1c046b42fd11fdae97d7, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _NoiseTex:
         m_Texture: {fileID: 2800000, guid: 35dece87a2be9d643bb80ad8f63f9696, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _AsciiBackground: 0
+    - _AsciiCell: 8
+    - _AsciiEmpty: 0.08
+    - _AsciiMode: 0
+    - _AsciiSet: 0
+    - _AsciiTop: 0.7
     - _DarkBias: 1
     - _DarkCutoff: 0.15
     - _DarkLevels: 13

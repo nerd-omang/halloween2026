@@ -45,6 +45,8 @@ public class SettingsScreen
     Text darkValue;
     readonly SimpleButton[] flatButtons = new SimpleButton[2];
     readonly SimpleButton[] qualityButtons = new SimpleButton[Settings.OptionCount];
+    readonly SimpleButton[] asciiButtons = new SimpleButton[2];
+    readonly SimpleButton[] glyphButtons = new SimpleButton[Settings.GlyphSetCount];
 
     bool paused;
 
@@ -193,7 +195,7 @@ public class SettingsScreen
 
         Section(page, "Graphics", "settings.graphics", -314f);
         RowLabel(page, "PresetLabel", "settings.preset", -348f);
-        string[] presetKeys = { "settings.presetRough", "settings.presetOriginal", "settings.presetGentle", "settings.presetSoft", "settings.presetSharp" };
+        string[] presetKeys = { "settings.presetRough", "settings.presetOriginal", "settings.presetGentle", "settings.presetSharp", "settings.ascii" };
         for (int i = 0; i < Settings.PresetCount; i++)
         {
             int preset = i;
@@ -280,6 +282,21 @@ public class SettingsScreen
 
         UiKit.Bind(UiKit.Label(page, "Hint", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -420f), new Vector2(BoxWidth - 2f * LabelX, 56f), UiKit.Dim),
             "settings.resolutionHint");
+
+        RowLabel(page, "AsciiLabel", "settings.ascii", -490f);
+        asciiButtons[0] = Option(page, "AsciiOn", -490f, 0, () => Settings.AsciiOn = true, "settings.on");
+        asciiButtons[1] = Option(page, "AsciiOff", -490f, 1, () => Settings.AsciiOn = false, "settings.off");
+
+        RowLabel(page, "GlyphLabel", "settings.glyphs", -534f);
+        string[] glyphKeys = { "settings.glyphStandard", "settings.glyphLetters", "settings.glyphBlocks" };
+        for (int i = 0; i < Settings.GlyphSetCount; i++)
+        {
+            int index = i;
+            glyphButtons[i] = Option(page, "Glyph" + i, -534f, i, () => Settings.GlyphSet = index, glyphKeys[i]);
+        }
+
+        UiKit.Bind(UiKit.Label(page, "AsciiHint", "", 22, TextAnchor.UpperLeft, topLeft, topLeft, new Vector2(LabelX, -584f), new Vector2(BoxWidth - 2f * LabelX, 56f), UiKit.Dim),
+            "settings.asciiHint");
     }
 
     void Section(Transform page, string name, string key, float y)
@@ -348,9 +365,20 @@ public class SettingsScreen
         shareButtons[0].Highlighted = Settings.ShareOnline;
         shareButtons[1].Highlighted = !Settings.ShareOnline;
 
-        bool dither = Settings.DitherOn;
-        ditherButtons[0].Highlighted = dither;
-        ditherButtons[1].Highlighted = !dither;
+        bool ascii = Settings.AsciiOn;
+        asciiButtons[0].Highlighted = ascii;
+        asciiButtons[1].Highlighted = !ascii;
+        for (int i = 0; i < Settings.GlyphSetCount; i++)
+        {
+            glyphButtons[i].Highlighted = i == Settings.GlyphSet;
+            glyphButtons[i].Interactable = ascii;
+        }
+
+        // The dither options do nothing while the screen is drawn as letters.
+        bool dither = Settings.DitherOn && !ascii;
+        ditherButtons[0].Highlighted = Settings.DitherOn;
+        ditherButtons[1].Highlighted = !Settings.DitherOn;
+        ditherButtons[0].Interactable = ditherButtons[1].Interactable = !ascii;
         for (int i = 0; i < Settings.OptionCount; i++)
         {
             patternButtons[i].Highlighted = i == Settings.Pattern;

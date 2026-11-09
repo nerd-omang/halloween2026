@@ -11,6 +11,13 @@ Shader "Fangame/DitherPixel"
         _DarkCutoff ("Dark Cutoff (luma where fine levels take over)", Float) = 0.35
         _FlatThreshold ("Flat Threshold (local contrast below this skips dithering, 0 = off)", Float) = 0
         [NoScaleOffset] _NoiseTex ("Blue Noise (128x128, 16-bit in RG)", 2D) = "gray" {}
+        _AsciiMode ("ASCII Mode (1 = letters instead of dithering)", Float) = 0
+        _AsciiSet ("ASCII Glyph Set (row of the glyph atlas)", Float) = 0
+        _AsciiCell ("ASCII Cell Width (px of the scaled screen; height is twice this)", Float) = 8
+        _AsciiEmpty ("ASCII Empty (perceptual brightness below which a cell stays empty)", Float) = 0.08
+        _AsciiTop ("ASCII Top (perceptual brightness that gets the densest glyph)", Float) = 0.7
+        _AsciiBackground ("ASCII Background (share of the cell color behind the letters, 0 = black)", Float) = 0
+        [NoScaleOffset] _GlyphTex ("Glyph Atlas (AsciiGlyphGenerator)", 2D) = "black" {}
     }
     SubShader
     {
@@ -28,8 +35,20 @@ Shader "Fangame/DitherPixel"
             #include "Packages/com.unity.render-pipelines.core/Runtime/Utilities/Blit.hlsl"
 
             TEXTURE2D(_NoiseTex);
+            TEXTURE2D(_GlyphTex);
+
+            // Must match AsciiGlyphGenerator: tiles per set row, and the size of one tile in texels.
+            #define GLYPH_COUNT 70
+            #define GLYPH_W 8
+            #define GLYPH_H 16
 
             CBUFFER_START(UnityPerMaterial)
+                float _AsciiMode;
+                float _AsciiSet;
+                float _AsciiCell;
+                float _AsciiEmpty;
+                float _AsciiTop;
+                float _AsciiBackground;
                 float _PixelSize;
                 float _Levels;
                 float _DitherStrength;
@@ -69,9 +88,42 @@ Shader "Fangame/DitherPixel"
                 return Bayer(cell & ((1 << bits) - 1), bits);
             }
 
+            // Every cell becomes one letter: brighter cells get denser glyphs, cells darker than _AsciiEmpty stay
+            // empty, and the letter takes the cell's own color.
+            half4 Ascii(Varyings input)
+            {
+                float cellWidth = max(_AsciiCell, 2.0);
+                float2 res = max(_ScaledScreenParams.xy / float2(cellWidth, cellWidth * 2.0), 1.0);
+                float2 grid = input.texcoord * res;
+                float2 cell = floor(grid);
+                float2 local = grid - cell;
+                float2 q = 0.25 / res;
+                float2 mid = (cell + 0.5) / res;
+
+                float3 c = SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, mid + float2(-q.x, -q.y)).rgb
+                         + SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, mid + float2(q.x, -q.y)).rgb
+                         + SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, mid + float2(-q.x, q.y)).rgb
+                         + SAMPLE_TEXTURE2D_X(_BlitTexture, sampler_PointClamp, mid + float2(q.x, q.y)).rgb;
+                c *= 0.25;
+
+                // The screen is linear, so a dim-looking scene has small values; judge brightness by eye (gamma).
+                float luma = dot(c, float3(0.299, 0.587, 0.114));
+                float bright = pow(max(luma, 0.0), 1.0 / 2.2);
+                float t = saturate((bright - _AsciiEmpty) / max(_AsciiTop - _AsciiEmpty, 0.001));
+                int glyph = bright <= _AsciiEmpty ? 0 : 1 + (int)floor(t * (GLYPH_COUNT - 1.001));
+
+                int2 px = int2(min((int)(local.x * GLYPH_W), GLYPH_W - 1), min((int)(local.y * GLYPH_H), GLYPH_H - 1));
+                float ink = LOAD_TEXTURE2D(_GlyphTex, int2(glyph * GLYPH_W + px.x, (int)(_AsciiSet + 0.5) * GLYPH_H + px.y)).r;
+
+                // The letter carries the cell's color (dim cells give dim letters); the cell behind it stays dark.
+                float3 letter = c / max(max(c.r, max(c.g, c.b)), 0.3);
+                return half4(lerp(c * _AsciiBackground, letter, ink), 1.0);
+            }
+
             half4 Frag(Varyings input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+                if (_AsciiMode > 0.5) return Ascii(input);
 
                 float2 res = max(_ScaledScreenParams.xy / max(_PixelSize, 1.0), 1.0);
                 float2 cell = floor(input.texcoord * res);

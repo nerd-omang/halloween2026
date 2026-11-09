@@ -9,7 +9,8 @@
 .vs/
 .vscode/
 .idea/
-.claude/
+.claude/*
+!.claude/skills/
 *.csproj
 *.sln
 *.slnx

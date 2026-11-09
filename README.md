@@ -10,7 +10,8 @@ This is an unofficial fan game. The original illustrations and character designs
 belong to 명칠 ([@_7M_3](https://x.com/_7M_3)). See [CREDITS.md](CREDITS.md).
 
 Built with Unity 6000.3.2f1 (URP 17.3) and published as a WebGL build on GitHub Pages (desktop and mobile browsers).
-The look is low poly plus a dither post-process rendered at a third of the screen resolution.
+The look is low poly plus a dither post-process rendered at a third of the screen resolution. An ASCII mode in the
+settings draws the screen as letters instead.
 
 ## Screenshots
 
@@ -39,8 +40,8 @@ and what you did against who they really were. Scores can be saved to a local to
 settings, sent to the online top 20.
 
 Other screens: a gallery of every look you have met (including the special guests), a dress-up screen to try any
-combination, a records screen with your personal statistics, and a settings screen (volumes, dither options,
-online sharing).
+combination, a records screen with your personal statistics, and a settings screen (volumes, dither and ASCII
+looks, online sharing).
 
 ## Special guests
 

@@ -9,8 +9,9 @@
 .vs/
 .vscode/
 .idea/
-.claude/*
-!.claude/skills/
+# Claude Code: share the project's skills and settings, keep the personal and local parts out.
+.claude/*.local.*
+.claude/worktrees/
 *.csproj
 *.sln
 *.slnx

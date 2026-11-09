@@ -19,7 +19,7 @@ public static class PatchNotes
             {
                 ("New ASCII look: the screen drawn as letters (ASCII preset or Advanced Look)", "화면을 글자로 그리는 아스키 모드가 생겼어요 (아스키 프리셋, 고급 화면)"),
                 ("Three letter styles: Fine (70 steps), Text and Blocks. A higher Resolution makes the letters smaller", "글자 종류는 정밀(70단계), 문자, 블록 3가지예요. 해상도가 높을수록 글자가 작아져요"),
-                ("The Soft look preset is gone; the ASCII preset takes its place", "화면 모드의 '부드럽게'는 없어지고 '아스키'가 생겼어요"),
+                ("Look preset: ASCII added in place of Soft", "화면 모드의 '부드럽게' 대신 '아스키'가 추가됐어요"),
             },
         },
         new Entry

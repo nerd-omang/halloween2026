@@ -5,6 +5,19 @@ Detailed notes per build, newest first. The game itself only shows one-line high
 when a build is released, set the release time there (24-hour clock) and keep the version in Player Settings the
 same as the newest entry.
 
+## 0.3.2 (2026-11-09 10:26)
+
+ASCII look
+- `DitherPixel` has a second mode: with `_AsciiMode` on, the screen is drawn as letters instead of dithering. Each cell (`_AsciiCell` px wide in the scaled screen, twice as tall, default 8x16) takes the average of 4 samples and picks one glyph from a 70-step ramp by brightness (gamma, so a dim scene still gets letters). Cells under `_AsciiEmpty` (0.08) stay empty, `_AsciiTop` (0.7) gets the densest glyph. The letter has the cell's own color (dim cells give dim letters) on black; `_AsciiBackground` can put a share of the cell color behind it (0 now).
+- Glyphs come from an atlas, `Assets/Textures/AsciiGlyphs.png`: one row of 70 tiles (8x16 px, point sampled) per set, from empty to densest. The atlas is baked by `Tools > Generate ASCII Glyphs` (`AsciiGlyphGenerator`), which also assigns it to the material. Set order = `Settings` glyph sets: 0 Fine, 1 Text, 2 Blocks. The shader constants `GLYPH_COUNT`, `GLYPH_W`, `GLYPH_H` must match the generator.
+- Fine: Paul Bourke's 70 character ramp, rasterized from DejaVu Sans Mono at 13 px with `Tools/Ascii/bake_standard_ramp.py` (Pillow; the font comes with matplotlib and is not in the project) into `Assets/Editor/AsciiStandardRamp.png`, then sorted by the real ink of each tile, so the order suits this font and size. Run the script again to change the font or size.
+- Text: 10 hand-drawn 5x7 glyphs (` . - : = + % * # @`) stretched to 70 steps. Blocks: shade blocks from an 8x8 Bayer order, light to full.
+- Letter size follows the resolution option: the cell is 8x16 px of the rendered image, so at 100% a letter is 8x16 screen pixels, at 33% about 24x48.
+
+Settings
+- Advanced look tab: an ASCII on/off row and a letter style row (Fine, Text, Blocks; default Fine). While ASCII is on, the dither options are greyed out. Saved as `set_ascii` and `set_glyphset`.
+- Look presets: Soft is removed; ASCII is added as the last one (full resolution, ASCII on, Fine). The others turn ASCII off. Order now: Rough, Original, Gentle, Sharp, ASCII.
+
 ## 0.3.1 (2026-11-02 00:46)
 
 World ranking
